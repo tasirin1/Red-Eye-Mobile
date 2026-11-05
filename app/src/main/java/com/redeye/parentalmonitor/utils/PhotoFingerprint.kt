@@ -3,15 +3,23 @@ package com.redeye.parentalmonitor.utils
 import java.io.File
 
 object PhotoFingerprint {
-    fun analyze(photoFile: File): Pair<Int, Long> {
+    // Satu lintasan dekode bersama (issue #1588): analyze,
+    // gridSpread, dan analyzeFull dulu masing-masing
+    // mendekode berkas yang sama dan membangun grid luma
+    // yang identik — aliran foto memanggil dua di antaranya
+    // untuk foto yang sama (4 lintasan dekode per foto).
+    // Mengembalikan (luma, sel 8x8) atau null bila berkas
+    // tak terdekode; tiap pemanggil memetakan null ke
+    // sentinelnya sendiri seperti sebelumnya.
+    private fun decodeCells(photoFile: File): Pair<Int, IntArray>? {
         return try {
             val bounds = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
             android.graphics.BitmapFactory.decodeFile(photoFile.absolutePath, bounds)
-            if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return 255 to 0L
+            if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
             var sample = 1
             while (bounds.outWidth / sample > 16 || bounds.outHeight / sample > 16) sample *= 2
             val opts = android.graphics.BitmapFactory.Options().apply { inSampleSize = sample }
-            val bmp = android.graphics.BitmapFactory.decodeFile(photoFile.absolutePath, opts) ?: return 255 to 0L
+            val bmp = android.graphics.BitmapFactory.decodeFile(photoFile.absolutePath, opts) ?: return null
             try {
                 val grid = IntArray(bmp.width * bmp.height)
                 var sum = 0L
@@ -24,13 +32,23 @@ object PhotoFingerprint {
                     }
                 }
                 val luma = if (grid.isEmpty()) 255 else (sum / grid.size).toInt().coerceIn(0, 255)
-                luma to fingerprintBits(cellAverages(grid, bmp.width, bmp.height))
+                luma to cellAverages(grid, bmp.width, bmp.height)
             } finally {
                 try { bmp.recycle() } catch (_: Exception) { }
             }
         } catch (_: Exception) {
-            255 to 0L
+            null
         }
+    }
+
+    fun analyze(photoFile: File): Pair<Int, Long> {
+        val d = decodeCells(photoFile) ?: return 255 to 0L
+        return d.first to fingerprintBits(d.second)
+    }
+
+    fun analyzeFull(photoFile: File): Triple<Int, Long, Int> {
+        val d = decodeCells(photoFile) ?: return Triple(255, 0L, -1)
+        return Triple(d.first, fingerprintBits(d.second), spreadOfCells(d.second))
     }
 
     fun cellAverages(lumas: IntArray, width: Int, height: Int): IntArray {
@@ -87,29 +105,8 @@ object PhotoFingerprint {
     const val FEATURELESS_SPREAD = 12
 
     fun gridSpread(photoFile: File): Int {
-        return try {
-            val bounds = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
-            android.graphics.BitmapFactory.decodeFile(photoFile.absolutePath, bounds)
-            if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return -1
-            var sample = 1
-            while (bounds.outWidth / sample > 16 || bounds.outHeight / sample > 16) sample *= 2
-            val opts = android.graphics.BitmapFactory.Options().apply { inSampleSize = sample }
-            val bmp = android.graphics.BitmapFactory.decodeFile(photoFile.absolutePath, opts) ?: return -1
-            try {
-                val grid = IntArray(bmp.width * bmp.height)
-                for (y in 0 until bmp.height) {
-                    for (x in 0 until bmp.width) {
-                        val px = bmp.getPixel(x, y)
-                        grid[y * bmp.width + x] = (((px shr 16) and 0xff) * 299 + ((px shr 8) and 0xff) * 587 + (px and 0xff) * 114) / 1000
-                    }
-                }
-                spreadOfCells(cellAverages(grid, bmp.width, bmp.height))
-            } finally {
-                try { bmp.recycle() } catch (_: Exception) { }
-            }
-        } catch (_: Exception) {
-            -1
-        }
+        val d = decodeCells(photoFile) ?: return -1
+        return spreadOfCells(d.second)
     }
 
     fun isComparableFingerprint(hash: Long): Boolean = hash != 0L && hash != 1L

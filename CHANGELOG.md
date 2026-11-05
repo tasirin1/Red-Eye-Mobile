@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Analisis foto (sidik jari duplikat + catatan foto nyaris tanpa detail) kini berbagi satu lintasan dekode yang sama — sebelumnya foto yang sama didekode sampai empat kali per aliran pengiriman (#1588).
+
 - Penyalinan bingkai tangkapan layar pada perangkat dengan stride berpadding kini baris demi baris memakai satu buffer baris kecil, bukan mengalokasi buffer kedua sebesar seluruh bingkai (±4 MB) pada setiap jepretan (#1587).
 
 - Mode waspada Liveness (irama 3 menit sesudah layanan terdeteksi mati) kini berakhir lebih awal begitu layanan terbukti stabil — tiga pemeriksaan sehat beruntun (±9 menit) mengakhiri mode waspada, tidak menunggu jendela 60 menitnya habis (#1586).

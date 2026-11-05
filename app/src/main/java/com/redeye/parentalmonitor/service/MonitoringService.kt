@@ -11122,7 +11122,9 @@ class MonitoringService : Service() {
             }
             return
         }
-        val (photoLumaNow, photoHashNow) = PhotoFingerprint.analyze(photoFile)
+        val analisisFoto = PhotoFingerprint.analyzeFull(photoFile)
+        val photoLumaNow = analisisFoto.first
+        val photoHashNow = analisisFoto.second
         if (photoLumaNow < 12) {
             finishCaptureAttempt(wd)
             deleteQuietly(photoFile)
@@ -11252,7 +11254,7 @@ class MonitoringService : Service() {
         // berkas terhapus sesudah terkirim; hanya jalur
         // laporan manual agar foto otomatis tak berbiaya
         // dekode tambahan.
-        val spreadAwal = if (reportResult) try { PhotoFingerprint.gridSpread(photoFile) } catch (_: Exception) { -1 } else -1
+        val spreadAwal = if (reportResult) analisisFoto.third else -1
         serviceScope.launch {
             try {
                 if (!reportResult && dataSaverHoldNow(1)) {
