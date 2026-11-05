@@ -566,6 +566,7 @@ class MonitoringService : Service() {
                     }
                 }
             }
+            try { preferencesManager.bersihkanWarisanIzinLayar() } catch (_: Exception) { }
             // Penanda video (issue #1509): padanan penanda
             // audio di atas untuk rekam video CameraService.
             val penandaVideo = java.io.File(

@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Sisa data izin tangkapan layar dari versi lama yang masih tersimpan di perangkat yang naik versi kini dibersihkan saat layanan mulai.
+
 - Pesan panjang yang sisa potongannya gagal diantrekan ulang tidak lagi dicatat sebagai 'ditolak server': pesan asal dipertahankan untuk dicoba lagi, bukan dibuang dengan label sebab yang salah.
 
 - Pengiriman ulang media yang hasil pengiriman sebelumnya tidak terkonfirmasi (misalnya koneksi putus di tengah jalan) kini berlabel 'mungkin duplikat' pada keterangannya, agar salinan ganda tidak membingungkan.

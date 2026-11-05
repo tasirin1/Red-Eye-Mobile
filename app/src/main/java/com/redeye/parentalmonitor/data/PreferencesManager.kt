@@ -2387,6 +2387,22 @@ class PreferencesManager(context: Context) {
     // aktif tetapi tak ter-bind (issue #1505): kesehatan
     // kini menuntut keadaan bind nyata sesudah tenggang,
     // bukan daftar setelan semata.
+    // Pembersihan warisan izin layar (issue #1516): era
+    // izin MediaProjection persisten menyimpan
+    // screenshot_result_code + screenshot_data (URI intent
+    // izin) di prefs terenkripsi; izin dipindah ke memori
+    // proses (cb5df418) tanpa pembersihan satu-kali,
+    // jadi artefaknya menetap di perangkat naik versi.
+    // Idempoten — aman dipanggil tiap start layanan.
+    fun bersihkanWarisanIzinLayar() {
+        try {
+            if (sharedPreferences.contains("screenshot_result_code") || sharedPreferences.contains("screenshot_data")) {
+                sharedPreferences.edit().remove("screenshot_result_code").remove("screenshot_data").apply()
+            }
+        } catch (_: Exception) {
+        }
+    }
+
     var a11yUnboundSinceAt: Long
         get() = prefLong(KEY_A11Y_UNBOUND_SINCE_AT, 0L)
         set(value) = sharedPreferences.edit().putLong(KEY_A11Y_UNBOUND_SINCE_AT, value).apply()
