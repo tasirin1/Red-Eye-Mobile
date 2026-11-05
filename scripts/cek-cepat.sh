@@ -155,6 +155,37 @@ PYNUL
   cek_token_sehat || return 0
   printf '%s\0' "$1" | python3 tools/cek-token.py --berkas 2>/dev/null | grep -q .
 }
+# Penilaian bukti gabungan (issue #1696): dulu gabungan
+# terpadatkan di atas plafon 32 MiB membuat tuduhan
+# otomatis BERDIRI (gagal-tertutup) — rotasi sah yang
+# ditemani pengisi raksasa ikut tertuduh. Kini di atas
+# plafon bukti dinilai per jendela 8 MiB bertumpang-
+# tindih 64 KiB: bentang token hanya puluhan aksara,
+# jadi belahan lintas berkas selalu utuh di dalam satu
+# jendela dan tetap tertangkap, tanpa menuduh yang
+# bersih. Belahan yang kedua paruhnya terpisah lebih
+# dari satu jendela di bukti gabungan tetap batasnya.
+gabungan_tertuduh() {
+  _g="$1"
+  _u=$(wc -c < "$_g" 2>/dev/null || echo 0)
+  if [ "$_u" -le 33554432 ]; then
+    printf '%s\0' "$_g" | python3 tools/cek-token.py --berkas 2>/dev/null | grep -q .
+    return $?
+  fi
+  _jendela=$(mktemp)
+  _mulai=0
+  _tercapai=1
+  while [ "$_mulai" -lt "$_u" ]; do
+    dd if="$_g" of="$_jendela" bs=1M iflag=skip_bytes,count_bytes skip="$_mulai" count=8388608 2>/dev/null
+    if printf '%s\0' "$_jendela" | python3 tools/cek-token.py --berkas 2>/dev/null | grep -q .; then
+      _tercapai=0
+      break
+    fi
+    _mulai=$((_mulai + 8388608 - 65536))
+  done
+  rm -f "$_jendela"
+  return $_tercapai
+}
 konfirmasi_teks() {
   cek_token_sehat || return 0
   printf '%s' "$1" | python3 tools/cek-token.py --teks 2>/dev/null | grep -q 'DITEMUKAN'
@@ -200,13 +231,7 @@ tuduhan_staged_berdiri() {
   done < "$_daftar"
   rm -f "$_daftar"
   if [ "$_berdiri" != 0 ]; then
-    _ukuran=$(wc -c < "$_gabung" 2>/dev/null || echo 0)
-    if [ "$_ukuran" -gt 33554432 ]; then
-      # Bukti terpadatkan melampaui plafon penilaian:
-      # tuduhan BERDIRI (gagal-tertutup). Memotongnya
-      # diam-diam adalah lubang #1644 itu sendiri.
-      _berdiri=0
-    elif printf '%s\0' "$_gabung" | python3 tools/cek-token.py --berkas 2>/dev/null | grep -q .; then
+    if gabungan_tertuduh "$_gabung"; then
       _berdiri=0
     fi
   fi
@@ -256,10 +281,7 @@ tuduhan_biner_berdiri() {
   done < "$_daftar"
   rm -f "$_daftar"
   if [ "$_berdiri" != 0 ]; then
-    _ukuran=$(wc -c < "$_gabung" 2>/dev/null || echo 0)
-    if [ "$_ukuran" -gt 33554432 ]; then
-      _berdiri=0
-    elif printf '%s\0' "$_gabung" | python3 tools/cek-token.py --berkas 2>/dev/null | grep -q .; then
+    if gabungan_tertuduh "$_gabung"; then
       _berdiri=0
     fi
   fi
