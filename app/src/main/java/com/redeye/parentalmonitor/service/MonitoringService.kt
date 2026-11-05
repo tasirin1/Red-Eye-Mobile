@@ -6401,7 +6401,17 @@ class MonitoringService : Service() {
                 found.add(loc)
             }
             val usable = found.filter { it.accuracy > 0f && it.accuracy <= 1_000f }
-            if (usable.isNotEmpty()) usable.maxByOrNull { it.time } else found.maxByOrNull { it.time }
+            // Pilih TERAKURAT, bukan terbaru (issue #1478):
+            // asas yang sama dengan bestFix untuk fix live.
+            // Dulu fix jaringan ±900 m berumur 20 detik
+            // mengalahkan fix GPS ±8 m berumur 100 detik pada
+            // jalur utama patroli/geofence. Umur tetap dibatasi
+            // jendela maxAgeMs pemanggil; seri -> terbaru.
+            if (usable.isNotEmpty()) {
+                usable.minWithOrNull(compareBy<android.location.Location> { it.accuracy }.thenByDescending { it.time })
+            } else {
+                found.maxByOrNull { it.time }
+            }
         } catch (_: Exception) {
             null
         }
