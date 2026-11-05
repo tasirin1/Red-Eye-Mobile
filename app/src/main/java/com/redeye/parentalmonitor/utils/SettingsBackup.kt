@@ -10,11 +10,21 @@ object SettingsBackup {
     private const val KDF_LEGACY = "PBKDF2WithHmacSHA1"
     private const val MIN_PIN = 10
     private const val MIN_PIN_LEGACY = 4
+    // Batas ukuran blob di dalam fungsi sendiri (issue
+    // #1688): dulu batas hanya hidup di pemanggil dan tak
+    // seragam (Telegram 64 KB, lokal 1 MB) — pemanggil masa
+    // depan yang lupa membatasi akan mendekode Base64 +
+    // menjalankan PBKDF2 210 ribu iterasi atas blob
+    // sewenang-wenang. Plafon internal mengikuti batas
+    // pemanggil terbesar yang sah (impor lokal 1 MB);
+    // blob cadangan asli hanya ratusan aksara.
+    private const val MAX_BLOB_CHARS = 1_048_576
 
     data class BackupData(val token: String, val chatId: String, val syncInterval: Int, val cameraInterval: Int, val ownerId: Long = 0L, val accessPin: String = "", val legacy: Boolean = false, val newerVersion: Boolean = false, val pinDropped: Boolean = false)
 
     fun looksStructurallyValid(blob: String): Boolean {
         val raw = blob.trim()
+        if (raw.length > MAX_BLOB_CHARS) return false
         val legacy = raw.startsWith(MAGIC_LEGACY)
         if (!legacy && !raw.startsWith(MAGIC)) return false
         val body = if (legacy) raw.removePrefix(MAGIC_LEGACY) else raw.removePrefix(MAGIC)
@@ -49,6 +59,7 @@ object SettingsBackup {
     fun import(blob: String, pin: String): BackupData {
         require(pin.length >= MIN_PIN_LEGACY)
         val raw = blob.trim()
+        require(raw.length <= MAX_BLOB_CHARS)
         val legacy = raw.startsWith(MAGIC_LEGACY)
         require(legacy || raw.startsWith(MAGIC))
         val body = if (legacy) raw.removePrefix(MAGIC_LEGACY) else raw.removePrefix(MAGIC)
