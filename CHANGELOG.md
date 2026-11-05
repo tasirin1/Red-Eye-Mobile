@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Statistik pemakaian aplikasi yang datanya rusak kini dicoba dipulihkan dari salinan cadangan bertanggal sama sebelum menyerah: sebelumnya satu data rusak membuat statistik satu hari hilang dan tertimpa.
+
 - Peringatan kredensial hilang kini juga tampil sebagai notifikasi lokal tersamar di perangkat: sebelumnya peringatan hanya dikirim lewat Telegram memakai token dari penyimpanan yang justru sedang tak terbaca, sehingga pada kejadian sungguhan pesannya tidak pernah sampai.
 
 - Layar Setup kini berjalan sendirian di tugasnya sendiri seperti layar sensitif lain, menutup celah penyisipan layar asing ke tugas yang memuat pengisian token bot.

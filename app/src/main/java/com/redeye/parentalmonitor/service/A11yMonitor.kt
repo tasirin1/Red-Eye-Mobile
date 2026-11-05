@@ -845,15 +845,26 @@ object A11yMonitor {
             // cadangan adalah hari ini, slot utama tertimpa
             // persist bertanggal palsu selama excursi jam —
             // data hari ini yang sah ada di cadangan.
-            val raw = when {
-                manager.a11yUsageDate == today -> manager.a11yUsageJson
-                manager.a11yUsagePrevDate == today -> manager.a11yUsagePrevJson
-                manager.a11yUsagePrev2Date == today -> manager.a11yUsagePrev2Json
-                else -> return HashMap()
+            // Calon slot bertanggal hari ini, urut utama →
+            // cadangan (issue #1037). Parse dicoba satu per
+            // satu (issue #1524): dulu slot dipilih berdasar
+            // tanggal SEBELUM parse — JSON hari ini yang
+            // rusak menghasilkan peta kosong tanpa mencoba
+            // slot cadangan bertanggal sama, dan persist
+            // berikutnya menimpa statistik satu hari senyap.
+            val kandidat = ArrayList<String>(3)
+            if (manager.a11yUsageDate == today) kandidat.add(manager.a11yUsageJson)
+            if (manager.a11yUsagePrevDate == today) kandidat.add(manager.a11yUsagePrevJson)
+            if (manager.a11yUsagePrev2Date == today) kandidat.add(manager.a11yUsagePrev2Json)
+            for (raw in kandidat) {
+                if (raw.isEmpty()) continue
+                try {
+                    val parsed: MutableMap<String, AppUsage>? = gson.fromJson(raw, usageType)
+                    if (parsed != null) return parsed
+                } catch (_: Exception) {
+                }
             }
-            if (raw.isEmpty()) return HashMap()
-            val parsed: MutableMap<String, AppUsage>? = gson.fromJson(raw, usageType)
-            parsed ?: HashMap()
+            HashMap()
         } catch (_: Exception) {
             HashMap()
         }
