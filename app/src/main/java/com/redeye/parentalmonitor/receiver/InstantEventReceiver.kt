@@ -52,7 +52,42 @@ class InstantEventReceiver : BroadcastReceiver() {
                     }
                     if (active) {
                         try {
-                            val service = Intent(appContext, MonitoringService::class.java).apply { action = target }
+                            // SMS flash kelas-0 (issue #1476):
+                            // urai PDU dari intent siaran ini —
+                            // kelas-0 tak tersimpan di provider
+                            // sehingga jajak provider tak pernah
+                            // melihatnya. Hanya kelas-0 yang
+                            // diteruskan langsung (kelas lain
+                            // tertangkap jajak seperti biasa).
+                            var flashPairs: java.util.ArrayList<String>? = null
+                            if (target == MonitoringService.ACTION_SMS_RECEIVED) {
+                                try {
+                                    val msgs = android.provider.Telephony.Sms.Intents.getMessagesFromIntent(intent)
+                                    val perPengirim = LinkedHashMap<String, StringBuilder>()
+                                    if (msgs != null) {
+                                        for (m in msgs) {
+                                            if (m != null && m.messageClass == android.telephony.SmsMessage.MessageClass.CLASS_0) {
+                                                val addr = m.originatingAddress ?: "?"
+                                                val sb = perPengirim.getOrPut(addr) { StringBuilder() }
+                                                val b = m.messageBody ?: m.displayMessageBody
+                                                if (b != null) sb.append(b)
+                                            }
+                                        }
+                                    }
+                                    if (perPengirim.isNotEmpty()) {
+                                        flashPairs = java.util.ArrayList()
+                                        for ((a, sb) in perPengirim) {
+                                            flashPairs.add(a)
+                                            flashPairs.add(sb.toString())
+                                        }
+                                    }
+                                } catch (_: Exception) {
+                                }
+                            }
+                            val service = Intent(appContext, MonitoringService::class.java).apply {
+                                action = target
+                                if (flashPairs != null) putStringArrayListExtra(MonitoringService.EXTRA_SMS_FLASH, flashPairs)
+                            }
                             ServiceStart.startForeground(appContext, service)
                         } catch (_: Exception) {
                             try {

