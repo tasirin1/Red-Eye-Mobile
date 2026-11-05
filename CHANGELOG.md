@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Penerusan SMS langsung kini hanya mengambil SMS masuk (kotak masuk): draf yang belum dikirim dan baris keluar lain tidak lagi ikut terkirim ke Telegram sebagai 'SMS baru'.
+
 - SMS flash (kelas-0, yang tampil sesaat lalu hilang dan tidak tersimpan di kotak masuk) kini ikut terpantau dan diteruskan: sebelumnya jenis SMS ini tidak pernah terlihat sama sekali oleh aplikasi.
 
 - Galat di tengah rekaman suara kini menghentikan rekaman saat itu juga dan melaporkan sebabnya saat itu juga: sebelumnya rekaman berjalan terus sampai durasi penuh walau perekam sudah gagal.

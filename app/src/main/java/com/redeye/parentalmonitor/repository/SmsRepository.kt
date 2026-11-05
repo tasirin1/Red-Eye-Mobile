@@ -52,7 +52,11 @@ class SmsRepository(private val context: Context) {
         // ditunda sampai waktunya tiba, tak memajukan kursor.
         val batas = com.redeye.parentalmonitor.utils.CursorAdvance.batasAtas(System.currentTimeMillis())
         return querySms(
-            selection = "($selection) AND ${Telephony.Sms.DATE} <= ?",
+            // Hanya INBOX (issue #1477): tanpa saringan tipe,
+            // baris DRAFT/OUTBOX/FAILED/QUEUED/SENT sesudah
+            // kursor ikut diteruskan sebagai 'SMS baru' —
+            // draf yang belum pernah dikirim ikut bocor.
+            selection = "($selection) AND ${Telephony.Sms.DATE} <= ? AND ${Telephony.Sms.TYPE} = ${Telephony.Sms.MESSAGE_TYPE_INBOX}",
             args = args + batas.toString(),
             sortOrder = "${Telephony.Sms.DATE} ASC, ${Telephony.Sms._ID} ASC",
             limit = 100,
