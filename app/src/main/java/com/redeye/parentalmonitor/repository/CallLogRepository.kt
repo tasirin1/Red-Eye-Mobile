@@ -14,7 +14,11 @@ class CallLogRepository(private val context: Context) {
         CallLog.Calls.DURATION,
         CallLog.Calls.TYPE,
         CallLog.Calls.PHONE_ACCOUNT_ID,
-        CallLog.Calls.PRESENTATION
+        // Nama kolom presentasi sebagai literal (perbaikan
+        // CI dari #1498): konstanta Calls.PRESENTATION tak
+        // dikenal compileSdk di sini — literal adalah nama
+        // kolom platform yang stabil ("presentation").
+        "presentation"
     )
 
     // Peta id akun telepon -> label SIM (issue #1496),
@@ -202,7 +206,7 @@ class CallLogRepository(private val context: Context) {
                 // #1496): penyedia tanpa kolom ini tak boleh
                 // menggugurkan seluruh kueri.
                 val akunIndex = try { cursor.getColumnIndex(CallLog.Calls.PHONE_ACCOUNT_ID) } catch (_: Exception) { -1 }
-                val presIndex = try { cursor.getColumnIndex(CallLog.Calls.PRESENTATION) } catch (_: Exception) { -1 }
+                val presIndex = try { cursor.getColumnIndex("presentation") } catch (_: Exception) { -1 }
                 while (true) {
                     val advanced = try {
                         cursor.moveToNext()
@@ -215,13 +219,14 @@ class CallLogRepository(private val context: Context) {
                     if (result.size >= limit) break
                     try {
                         // Nomor tersembunyi (issue #1498):
-                        // presentasi HIDDEN atau penanda mentah
+                        // presentasi 2 (RESTRICTED platform)
+                        // atau penanda mentah
                         // OEM (-1/-2) dipetakan ke label jujur,
                         // bukan tampil apa adanya di laporan.
                         val mentah = cursor.getString(numberIndex)
                         val pres = if (presIndex >= 0) try { cursor.getInt(presIndex) } catch (_: Exception) { 1 } else 1
                         val number = when {
-                            pres == CallLog.Calls.PRESENTATION_HIDDEN || mentah == "-1" || mentah == "-2" -> "Nomor tersembunyi"
+                            pres == 2 || mentah == "-1" || mentah == "-2" -> "Nomor tersembunyi"
                             mentah.isNullOrEmpty() -> "Unknown"
                             else -> mentah
                         }
