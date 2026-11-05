@@ -3119,7 +3119,7 @@ def utama():
     parser.add_argument("--rentang", default="", help="rentang diff A...B (dipakai CI)")
     args = parser.parse_args()
 
-    global REF_BENIH, REF_POHON, _isi_strings_wajib
+    global REF_BENIH, REF_POHON, _isi_strings_wajib, _MODUL_CACHE
     # Reset keadaan modul di awal lari (issue #1528):
     # REF_POHON/REF_BENIH hanya dipasang cabang --rentang
     # dan tak pernah dikembalikan, baca() ter-lru_cache,
@@ -3136,6 +3136,10 @@ def utama():
     # antara dua lari tanpa membersihkannya membuat
     # _keadaan_sebelum_baris menilai berkas benih lama.
     _cache_benih.clear()
+    # Cache daftar modul (issue #1546): settings.gradle
+    # yang berubah di antara dua lari tak terbaca ulang
+    # tanpa penolan ini.
+    _MODUL_CACHE = None
     gagal = []
     peringatan = []
     diff = ""
