@@ -655,6 +655,32 @@ class MessageQueue private constructor(context: Context) {
         }
     }
 
+    // Catat kemajuan potongan terkirim pada item antrean
+    // (issue #1682): persisten agar kematian proses di
+    // tengah pesan panjang tidak mengulang potongan awal
+    // pada run berikutnya. Kemajuan hidup dan mati
+    // bersama itemnya — pesan sisa yang diantrekan ulang
+    // adalah item baru yang mulai dari nol.
+    fun noteChunkProgress(messageId: String, chunksSent: Int): Boolean {
+        if (chunksSent <= 0) return true
+        synchronized(lock) {
+            ensureRestored()
+            if (volatileOnly) {
+                val i = volatileQueue.indexOfFirst { it.id == messageId }
+                if (i < 0) return false
+                volatileQueue[i] = volatileQueue[i].copy(chunksSent = chunksSent)
+                return true
+            }
+            val queue = readLocked().toMutableList()
+            if (volatileOnly) return false
+            val i = queue.indexOfFirst { it.id == messageId }
+            if (i < 0) return false
+            if (queue[i].chunksSent == chunksSent) return true
+            queue[i] = queue[i].copy(chunksSent = chunksSent)
+            return persistWithRetriesLocked(queue)
+        }
+    }
+
     fun registerTransientFailures(messageIds: Collection<String>): Pair<List<String>, Int> {
         return registerWithBudget(messageIds, MAX_TRANSIENT_RETRIES)
     }

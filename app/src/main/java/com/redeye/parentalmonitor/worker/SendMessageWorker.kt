@@ -201,7 +201,7 @@ class SendMessageWorker(
             }
             processed++
             try {
-                val outcome = sendMessage(queuedMessage.message, runToken, runChatId, queuedMessage.retryCount, queuedMessage.id, runDeadlineAt, queuedMessage.priority, runGen)
+                val outcome = sendMessage(queuedMessage.message, runToken, runChatId, queuedMessage.retryCount, queuedMessage.id, runDeadlineAt, queuedMessage.priority, runGen, queuedMessage.chunksSent)
                 when (outcome) {
                     is SendOutcome.Sent -> {
                         sentIds.add(queuedMessage.id)
@@ -698,7 +698,7 @@ class SendMessageWorker(
         }
     }
 
-    private suspend fun sendChunked(message: String, botToken: String, chatId: String, retryCount: Int = 0, origId: String? = null, deadlineAt: Long = Long.MAX_VALUE, priority: Boolean = false, runGen: Long = -1L): SendOutcome {
+    private suspend fun sendChunked(message: String, botToken: String, chatId: String, retryCount: Int = 0, origId: String? = null, deadlineAt: Long = Long.MAX_VALUE, priority: Boolean = false, runGen: Long = -1L, chunksSent: Int = 0): SendOutcome {
         val parts = mutableListOf<String>()
         var rest = message
         while (rest.length > 4000) {
@@ -744,7 +744,12 @@ class SendMessageWorker(
         var failedKept = false
         var remainderQueued = false
         var rejected = 0
-        for ((idx, part) in parts.withIndex()) {
+        // Lanjutkan dari kemajuan persisten (issue #1682):
+        // nilai di luar rentang sehat diperlakukan sebagai
+        // belum ada kemajuan (kirim ulang penuh, arah aman).
+        val mulaiDari = if (chunksSent in 1 until parts.size) chunksSent else 0
+        for (idx in mulaiDari until parts.size) {
+            val part = parts[idx]
             if (genStale()) return SendOutcome.Failed
             // Kredensial berganti di tengah pesan panjang (issue #693):
             // sisa potongan TIDAK diteruskan ke bot/chat snapshot lama —
@@ -779,6 +784,7 @@ class SendMessageWorker(
             when (val outcome = sendSingleChunk(part, botToken, chatId)) {
                 is SendOutcome.Sent -> {
                     noteSendOk()
+                    try { if (origId != null) messageQueue.noteChunkProgress(origId, idx + 1) } catch (_: Exception) { }
                     try {
                         delay(500)
                     } catch (e: kotlinx.coroutines.CancellationException) {
@@ -1004,7 +1010,7 @@ class SendMessageWorker(
         }
     }
 
-    private suspend fun sendMessage(message: String, botToken: String, chatId: String, retryCount: Int = 0, origId: String? = null, deadlineAt: Long = Long.MAX_VALUE, priority: Boolean = false, runGen: Long = -1L): SendOutcome {
+    private suspend fun sendMessage(message: String, botToken: String, chatId: String, retryCount: Int = 0, origId: String? = null, deadlineAt: Long = Long.MAX_VALUE, priority: Boolean = false, runGen: Long = -1L, chunksSent: Int = 0): SendOutcome {
         return try {
             val url = sendMessageUrl(botToken)
             val response = TelegramClient.api.sendMessage(
@@ -1015,7 +1021,7 @@ class SendMessageWorker(
             if (response.isSuccessful && response.body()?.ok == true) {
                 SendOutcome.Sent
             } else if (response.code() == 400) {
-                classify400(response, chatId) ?: if (message.length > 4000) sendChunked(message, botToken, chatId, retryCount, origId, deadlineAt, priority, runGen) else sendPlainFallback(message, botToken, chatId)
+                classify400(response, chatId) ?: if (message.length > 4000) sendChunked(message, botToken, chatId, retryCount, origId, deadlineAt, priority, runGen, chunksSent) else sendPlainFallback(message, botToken, chatId)
             } else if (response.code() == 429) {
                 rateLimited(response)
             } else if (response.code() == 401) {
