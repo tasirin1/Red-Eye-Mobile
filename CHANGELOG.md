@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Pesan galat 'bot bukan anggota chat' saat tes koneksi di Setup kini mengikuti bahasa perangkat (sebelumnya selalu bahasa Indonesia walau bingkai pesannya Inggris).
+
 - Pesan status yang dikirim dari Setup ke Telegram kini selalu berbahasa Indonesia seperti pesan bot lain: sebelumnya bahasanya mengikuti bahasa perangkat.
 
 - Pesan 'terhubung sebagai' sesudah tes bot berhasil di layar Setup kini mengikuti bahasa perangkat (sebelumnya selalu bahasa Indonesia walau perangkat berbahasa Inggris).

@@ -116,6 +116,8 @@
     <string name="restore_pin_title">Masukkan PIN backup</string>
     <string name="restore_pin_hint">PIN/frasa sandi (min 4 karakter)</string>
     <string name="restore_pin_short">PIN terlalu pendek, minimal 4 karakter</string>
+    <string name="setup_test_this_bot">Bot ini</string>
+    <string name="setup_test_not_member">%1$s bukan anggota chat itu — tambahkan bot ke grup/channel tujuan dulu, atau pakai Chat ID privat Anda.</string>
     <string name="setup_test_connected_as">Terhubung sebagai @%1$s</string>
     <string name="restore_done">Backup dimuat (hanya kredensial &amp; interval utama — kata pantau, pagar, patroli dll. tetap bawaan), periksa lalu tap Simpan</string>
     <string name="restore_legacy_warn">Backup ini format lama yang lebih lemah. Sesudah menyimpan, ganti PIN aksesmu dan pertimbangkan token bot baru, lalu ekspor backup baru.</string>

@@ -439,8 +439,8 @@ class SetupActivity : AppCompatActivity() {
                         val anggota = status == "member" || status == "administrator" ||
                             status == "creator" || (status == "restricted" && isMember)
                         if (!anggota) {
-                            val namaBot = if (botUsername.isNotEmpty()) "@" + botUsername else "Bot ini"
-                            return VerifyOutcome.Error(namaBot + " bukan anggota chat itu — tambahkan bot ke grup/channel tujuan dulu, atau pakai Chat ID privat Anda.")
+                            val namaBot = if (botUsername.isNotEmpty()) "@" + botUsername else getString(R.string.setup_test_this_bot)
+                            return VerifyOutcome.Error(getString(R.string.setup_test_not_member, namaBot))
                         }
                     }
                     if (!memResp.isSuccessful) tutupBadanError(memResp)

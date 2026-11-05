@@ -116,6 +116,8 @@
     <string name="restore_pin_title">Enter backup PIN</string>
     <string name="restore_pin_hint">PIN/passphrase (min 4 characters)</string>
     <string name="restore_pin_short">PIN too short, minimum 4 characters</string>
+    <string name="setup_test_this_bot">This bot</string>
+    <string name="setup_test_not_member">%1$s is not a member of that chat — add the bot to the target group/channel first, or use your private Chat ID.</string>
     <string name="setup_test_connected_as">Connected as @%1$s</string>
     <string name="restore_done">Backup loaded (credentials &amp; main intervals only — watched words, fences, patrol etc. stay at defaults), check then tap Save</string>
     <string name="restore_legacy_warn">This backup uses the old, weaker format. After saving, change your access PIN and consider a new bot token, then export a fresh backup.</string>
