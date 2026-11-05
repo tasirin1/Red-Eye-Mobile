@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Pesan status yang dikirim dari Setup ke Telegram kini selalu berbahasa Indonesia seperti pesan bot lain: sebelumnya bahasanya mengikuti bahasa perangkat.
+
 - Pesan 'terhubung sebagai' sesudah tes bot berhasil di layar Setup kini mengikuti bahasa perangkat (sebelumnya selalu bahasa Indonesia walau perangkat berbahasa Inggris).
 
 - Statistik pemakaian aplikasi yang datanya rusak kini dicoba dipulihkan dari salinan cadangan bertanggal sama sebelum menyerah: sebelumnya satu data rusak membuat statistik satu hari hilang dan tertimpa.

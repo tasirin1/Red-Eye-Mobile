@@ -2059,12 +2059,17 @@ class SetupActivity : AppCompatActivity() {
                 val token = prefs.botToken
                 val chatId = prefs.chatId
                 val lastSync = prefs.lastSyncTime
+                // Muatan Telegram: literal Indonesia SELALU
+                // (issue #1526) — dulu dirakit dari string
+                // setup_status_live_* sehingga bahasanya
+                // mengikuti locale perangkat, melanggar aturan
+                // pesan Telegram satu bahasa. Pola teksBerhenti.
                 val text = buildString {
-                    appendLine(getString(R.string.setup_status_live_title))
-                    appendLine(getString(R.string.setup_status_live_monitoring, getString(if (prefs.isMonitoringEnabled) R.string.setup_status_on else R.string.setup_status_off)))
-                    appendLine(getString(R.string.setup_status_live_sync, if (lastSync > 0) com.redeye.parentalmonitor.utils.TimeFmt.full(lastSync) else getString(R.string.never)))
-                    appendLine(getString(R.string.setup_status_live_photo, if (prefs.lastPhotoTime > 0) com.redeye.parentalmonitor.utils.TimeFmt.full(prefs.lastPhotoTime) else getString(R.string.never)))
-                    appendLine(getString(R.string.setup_status_battery_fmt, getString(if (isBatteryExempt()) R.string.setup_status_battery_free else R.string.setup_status_battery_limited)))
+                    appendLine("📊 <b>Status</b> (langsung)")
+                    appendLine("Pemantauan: " + if (prefs.isMonitoringEnabled) "nyala" else "mati")
+                    appendLine("Sinkron terakhir: " + if (lastSync > 0) com.redeye.parentalmonitor.utils.TimeFmt.full(lastSync) else "Tidak pernah")
+                    appendLine("Foto terakhir: " + if (prefs.lastPhotoTime > 0) com.redeye.parentalmonitor.utils.TimeFmt.full(prefs.lastPhotoTime) else "Tidak pernah")
+                    appendLine("Baterai: " + if (isBatteryExempt()) "tanpa batas" else "dibatasi")
                 }
                 val url = "https://api.telegram.org/bot$token/sendMessage"
                 pending = text
