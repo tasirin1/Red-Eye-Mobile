@@ -4306,7 +4306,7 @@ class MonitoringService : Service() {
                 }
             }
             "/flush" -> handleFlushCommand()
-            "/clearqueue" -> handleClearQueueCommand(senderId)
+            "/clearqueue" -> handleClearQueueCommand(senderId, messageId)
             "/lock" -> handleLockCommand()
             "/ring" -> handleRingCommand(arg)
             "/ping" -> handlePingCommand(arg, sentAtSec, senderOk, chatOk, senderId, privateChat)
@@ -4367,7 +4367,7 @@ class MonitoringService : Service() {
             "/pickup" -> handleJemputCommand(arg)
             "/audit" -> handleAuditCommand(privateChat)
             "/logout" -> handleLogoutCommand(privateChat)
-            "/cleanup" -> handleCleanMediaCommand(arg, senderId)
+            "/cleanup" -> handleCleanMediaCommand(arg, senderId, messageId)
             "/restore" -> handleRestoreCommand(arg, privateChat, messageId, senderId)
             "/help", "/start" -> handleHelpCommand(senderOk)
             else -> {
@@ -4514,7 +4514,7 @@ class MonitoringService : Service() {
         sendToTelegram(body.trim())
     }
 
-    private suspend fun handleCleanMediaCommand(arg: String, senderId: String = "") {
+    private suspend fun handleCleanMediaCommand(arg: String, senderId: String = "", messageId: Long = 0L) {
         val parts = arg.trim().lowercase(java.util.Locale.ROOT).split(CMD_SPLIT_REGEX)
         val target = parts[0]
         val wantsPhoto = target in setOf("media", "semua", "all", "foto", "photo")
@@ -4539,14 +4539,19 @@ class MonitoringService : Service() {
         val stagedSpec = try { preferencesManager.pendingCleanupSpec } catch (_: Exception) { "" }
         val stagedAtC = try { preferencesManager.pendingCleanupAt } catch (_: Exception) { 0L }
         val stagedByC = try { preferencesManager.pendingCleanupOwner } catch (_: Exception) { "" }
+        val stagedMsgC = try { preferencesManager.pendingCleanupMsgId } catch (_: Exception) { 0L }
         val nowC = System.currentTimeMillis()
+        // Ikatan ID pesan penahap (issue #1601, pola
+        // /clearqueue di isu yang sama).
+        val kirimUlangC = messageId > 0L && stagedMsgC > 0L && messageId == stagedMsgC
         val tahapDuaC = stagedSpec == spec && stagedAtC > 0L && nowC - stagedAtC in 0..(5 * 60_000L) &&
-            (stagedByC.isEmpty() || stagedByC == senderId)
+            (stagedByC.isEmpty() || stagedByC == senderId) && !kirimUlangC
         if (!tahapDuaC) {
             try {
                 preferencesManager.pendingCleanupSpec = spec
                 preferencesManager.pendingCleanupAt = nowC
                 preferencesManager.pendingCleanupOwner = senderId
+                preferencesManager.pendingCleanupMsgId = messageId
             } catch (_: Exception) {
             }
             sendToTelegram("⚠️ Bersihkan media $target lebih tua dari $days hari? Media yang belum terkirim ikut terhapus. Ulangi perintah yang sama dalam 5 menit untuk konfirmasi.")
@@ -4556,6 +4561,7 @@ class MonitoringService : Service() {
             preferencesManager.pendingCleanupSpec = ""
             preferencesManager.pendingCleanupAt = 0L
             preferencesManager.pendingCleanupOwner = ""
+            preferencesManager.pendingCleanupMsgId = 0L
         } catch (_: Exception) {
         }
         val cutoff = System.currentTimeMillis() - days.toLong() * 86_400_000L
@@ -6306,7 +6312,7 @@ class MonitoringService : Service() {
         }
     }
 
-    private suspend fun handleClearQueueCommand(senderId: String) {
+    private suspend fun handleClearQueueCommand(senderId: String, messageId: Long = 0L) {
         val queued = messageQueue.getQueueSize()
         // Konfirmasi dua tahap (issue #1531): membuang
         // SELURUH antrean — termasuk peringatan prioritas
@@ -6317,13 +6323,23 @@ class MonitoringService : Service() {
         // mengeksekusi.
         val stagedAt = try { preferencesManager.pendingClearQueueAt } catch (_: Exception) { 0L }
         val stagedBy = try { preferencesManager.pendingClearQueueOwner } catch (_: Exception) { "" }
+        val stagedMsg = try { preferencesManager.pendingClearQueueMsgId } catch (_: Exception) { 0L }
         val nowMs = System.currentTimeMillis()
+        // Kiriman ulang update yang sama BUKAN konfirmasi
+        // (issue #1601): Telegram mengirim ulang update
+        // yang offset-nya belum terkonfirmasi sesudah
+        // proses mati — ID pesan yang sama dengan penahap
+        // memperlakukan kedatangan itu sebagai tahap-1
+        // lagi. ID 0 (jalur tombol menu) tak membawa ID
+        // dan berperilaku seperti sebelumnya.
+        val kirimUlang = messageId > 0L && stagedMsg > 0L && messageId == stagedMsg
         val tahapDua = stagedAt > 0L && nowMs - stagedAt in 0..(5 * 60_000L) &&
-            (stagedBy.isEmpty() || stagedBy == senderId)
+            (stagedBy.isEmpty() || stagedBy == senderId) && !kirimUlang
         if (!tahapDua) {
             try {
                 preferencesManager.pendingClearQueueAt = nowMs
                 preferencesManager.pendingClearQueueOwner = senderId
+                preferencesManager.pendingClearQueueMsgId = messageId
             } catch (_: Exception) {
             }
             sendToTelegram("⚠️ Buang SELURUH antrean ($queued pesan belum terkirim, termasuk peringatan prioritas)? Tindakan ini tidak bisa dibatalkan.\nKetuk 🗑️ Buang antrean lagi (atau kirim /clearqueue) dalam 5 menit untuk konfirmasi.", null, true)
@@ -6332,6 +6348,7 @@ class MonitoringService : Service() {
         try {
             preferencesManager.pendingClearQueueAt = 0L
             preferencesManager.pendingClearQueueOwner = ""
+            preferencesManager.pendingClearQueueMsgId = 0L
         } catch (_: Exception) {
         }
         val cleared = try {

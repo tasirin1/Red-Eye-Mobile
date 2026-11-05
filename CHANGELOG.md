@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Konfirmasi dua tahap /clearqueue dan /cleanup kini terikat pada ID pesan penahap: pengiriman ulang update yang sama oleh Telegram sesudah proses dimulai ulang tidak lagi terbaca sebagai konfirmasi, sehingga antrean/media tidak terbuang tanpa ketukan kedua yang sungguhan (#1601).
+
 - Menyimpan atau menghapus kredensial lewat Setup kini ikut membatalkan catatan restore yang tertahan, sehingga cadangan lama yang terkonfirmasi via Telegram tidak bisa bangkit lagi dan menimpa kredensial yang baru dipilih pemilik di perangkat (#1600).
 
 - Penilaian jaringan terukur kini hanya melonggarkan untuk VPN di atas Wi-Fi/ethernet: Wi-Fi yang ditandai terukur oleh pengguna (mis. hotspot ponsel) kembali dihormati sebagai terukur, sehingga hemat kuota tetap menahan media di sana (#1599).
