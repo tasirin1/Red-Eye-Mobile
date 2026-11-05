@@ -21,21 +21,42 @@ class ShotConsentActivity : Activity() {
     private val safetyHandler = Handler(Looper.getMainLooper())
     private var outcomeHandled = false
     private val safetyFinish = Runnable {
-        if (!outcomeHandled && consentInFlight) {
+        if (!outcomeHandled && (consentInFlight || sudahMinta)) {
             outcomeHandled = true
             reportConsentFailure(timeout = true)
         }
         finishQuietly()
     }
     private var consentInFlight = false
+    private var sudahMinta = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Keadaan minta-izin disimpan lintas pembuatan
+        // ulang (issue #1436): tanpa ini, pembuatan ulang
+        // (locale/density/proses mati — di luar daftar
+        // configChanges) menerbitkan permintaan izin KEDUA
+        // selagi dialog pertama masih menanti jawaban;
+        // hasilnya tetap diantar sistem ke instance baru
+        // ini dan jaring safetyFinish menutup sisanya.
+        sudahMinta = try {
+            savedInstanceState?.getBoolean(KEY_SUDAH_MINTA, false) ?: false
+        } catch (_: Exception) {
+            false
+        }
         try {
             safetyHandler.postDelayed(safetyFinish, SAFETY_MS)
         } catch (_: Exception) {
         }
-        launchConsent()
+        if (!sudahMinta) launchConsent()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        try {
+            outState.putBoolean(KEY_SUDAH_MINTA, sudahMinta || consentInFlight)
+        } catch (_: Exception) {
+        }
     }
 
     override fun onNewIntent(intent: Intent?) {
@@ -54,6 +75,7 @@ class ShotConsentActivity : Activity() {
     private fun launchConsent() {
         if (consentInFlight) return
         consentInFlight = true
+        sudahMinta = true
         try {
             val mpm = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
             @Suppress("DEPRECATION")
@@ -144,5 +166,6 @@ class ShotConsentActivity : Activity() {
     companion object {
         private const val REQ_CONSENT = 7041
         private const val SAFETY_MS = 5 * 60_000L
+        private const val KEY_SUDAH_MINTA = "sudah_minta"
     }
 }

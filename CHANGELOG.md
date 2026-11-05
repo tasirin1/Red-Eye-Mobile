@@ -4,6 +4,8 @@
 
 ### Fixed
 
+- Dialog izin tangkap layar tidak lagi bisa terbit dua kali bila aktivitasnya dibuat ulang sistem di tengah permintaan (mis. pergantian bahasa perangkat): keadaan 'sudah minta' kini disimpan dan dipulihkan, sehingga instance baru cukup menunggu hasil yang memang akan diantar sistem kepadanya.
+
 - Jendela bangun tak terlihat sesudah reboot kini tidak lagi menelan ketukan pengguna atau menjeda aplikasi di bawahnya selama beberapa detik pertama: jendelanya kini dinyatakan tidak menerima sentuhan dan fokus.
 
 - Permintaan lokasi yang tidak mengizinkan data basi kini tetap memakai titik terakhir yang masih sangat segar (di bawah dua menit) saat semua penyedia lokasi mati: sebelumnya jalur itu langsung menyerah sehingga satu siklus patroli bisa terlewat walau titik segar tersedia.
