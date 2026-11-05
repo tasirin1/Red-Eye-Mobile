@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Antrean dua pool tugas latar (kritis dan luapan receiver) kini terbatas 64 seperti pool receiver utama — satu tugas yang menggantung tidak lagi bisa menumpuk pekerjaan tanpa batas di memori; pada batasnya tugas berjalan di benang pemanggil sebagai tekanan balik (#1596).
+
 - Peta kunci login per pengirim kini ikut dipangkas seperti peta cap lainnya: entri kedaluwarsa disapu dan ukuran dibatasi 200 entri, tidak lagi tumbuh tanpa batas selama proses hidup (#1595).
 
 - Cache JSON per pesan di antrean pesan kini selalu dibersihkan mengikuti isi antrean pada persist yang sama — salinan JSON pesan yang sudah terkirim tidak lagi menumpuk di memori melewati batas antrean (#1594).

@@ -1,9 +1,16 @@
 package com.redeye.parentalmonitor.utils
 
 object Background {
+    // Antrean kedua pool ini kini TERBATAS 64 (issue #1596,
+    // menyelaraskan pola pool receivers di bawah): antrean
+    // tak terbatas membuat CallerRunsPolicy tak pernah
+    // terpicu dan satu tugas menggantung bisa menumpuk
+    // tugas tanpa batas di memori. Pada batasnya tugas
+    // kritis berjalan di benang pemanggil (tekanan balik,
+    // bukan hilang) — sesuai makna CallerRuns.
     private val critical: java.util.concurrent.ExecutorService = java.util.concurrent.ThreadPoolExecutor(
         0, 1, 60L, java.util.concurrent.TimeUnit.SECONDS,
-        java.util.concurrent.LinkedBlockingQueue(),
+        java.util.concurrent.LinkedBlockingQueue(64),
         java.util.concurrent.ThreadFactory { r -> Thread(r, "RedEyeCrit").apply { isDaemon = true } },
         java.util.concurrent.ThreadPoolExecutor.CallerRunsPolicy()
     )
@@ -17,7 +24,7 @@ object Background {
     // luapan terserial seperti rancangan #1069.
     private val receiverOverflow: java.util.concurrent.ExecutorService = java.util.concurrent.ThreadPoolExecutor(
         0, 1, 60L, java.util.concurrent.TimeUnit.SECONDS,
-        java.util.concurrent.LinkedBlockingQueue(),
+        java.util.concurrent.LinkedBlockingQueue(64),
         java.util.concurrent.ThreadFactory { r -> Thread(r, "RedEyeRecvOvf").apply { isDaemon = true } },
         java.util.concurrent.ThreadPoolExecutor.CallerRunsPolicy()
     )
