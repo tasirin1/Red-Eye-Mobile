@@ -6,6 +6,7 @@ import com.google.gson.Gson
 import com.redeye.parentalmonitor.data.models.QueuedMessage
 import com.redeye.parentalmonitor.utils.MessageTrim
 import com.redeye.parentalmonitor.utils.QueueCap
+import com.redeye.parentalmonitor.utils.QueueDecisions
 import com.redeye.parentalmonitor.utils.QueueFresh
 
 class MessageQueue private constructor(context: Context) {
@@ -549,8 +550,8 @@ class MessageQueue private constructor(context: Context) {
     }
 
     private fun evictOldestLocked(queue: MutableList<QueuedMessage>, persist: Boolean = true) {
-        val idx = queue.indexOfFirst { !it.priority }
-        val evicted = if (idx >= 0) queue.removeAt(idx) else queue.removeAt(0)
+        // Pilihan korban murni di QueueDecisions (issue #1673).
+        val evicted = queue.removeAt(QueueDecisions.evictionIndex(queue.map { it.priority }))
         try {
             if (evicted.priority) priorityDrops.incrementAndGet()
         } catch (_: Exception) {
@@ -670,14 +671,15 @@ class MessageQueue private constructor(context: Context) {
             if (volatileOnly) {
                 pruneVolatileLocked()
                 val drop = mutableListOf<String>()
-                for (i in volatileQueue.indices) {
-                    val queued = volatileQueue[i]
-                    if (queued.id in messageIds) {
-                        val updated = queued.copy(retryCount = queued.retryCount + 1)
-                        volatileQueue[i] = updated
-                        if (updated.retryCount >= budget) drop.add(updated.id)
-                        else if (updated.retryCount > maxRetry) maxRetry = updated.retryCount
-                    }
+                // Akuntansi anggaran murni di QueueDecisions
+                // (issue #1673); di sini hanya penerapan.
+                val tertarget = volatileQueue.indices.filter { volatileQueue[it].id in messageIds }
+                val (gugur, maksRetry) = QueueDecisions.retryBudgetOutcome(tertarget.map { volatileQueue[it].retryCount }, budget)
+                maxRetry = maksRetry
+                for ((k, i) in tertarget.withIndex()) {
+                    val updated = volatileQueue[i].copy(retryCount = volatileQueue[i].retryCount + 1)
+                    volatileQueue[i] = updated
+                    if (gugur[k]) drop.add(updated.id)
                 }
                 volatileQueue.removeAll { it.id in drop }
                 return Pair(drop, maxRetry)
@@ -691,14 +693,15 @@ class MessageQueue private constructor(context: Context) {
             }
             val queue = original.toMutableList()
             val drop = mutableListOf<String>()
-            for (i in queue.indices) {
-                val queued = queue[i]
-                if (queued.id in messageIds) {
-                    val updated = queued.copy(retryCount = queued.retryCount + 1)
-                    queue[i] = updated
-                    if (updated.retryCount >= budget) drop.add(updated.id)
-                    else if (updated.retryCount > maxRetry) maxRetry = updated.retryCount
-                }
+            // Akuntansi anggaran murni di QueueDecisions
+            // (issue #1673); di sini hanya penerapan.
+            val tertarget = queue.indices.filter { queue[it].id in messageIds }
+            val (gugur, maksRetry) = QueueDecisions.retryBudgetOutcome(tertarget.map { queue[it].retryCount }, budget)
+            maxRetry = maksRetry
+            for ((k, i) in tertarget.withIndex()) {
+                val updated = queue[i].copy(retryCount = queue[i].retryCount + 1)
+                queue[i] = updated
+                if (gugur[k]) drop.add(updated.id)
             }
             queue.removeAll { it.id in drop }
             if (!persistWithRetriesLocked(queue)) {
