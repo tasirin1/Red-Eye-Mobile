@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Bila pesan berkas atau PIN cadangan gagal terhapus otomatis dari chat, pemilik kini diberi tahu untuk menghapusnya manual — sebelumnya kegagalan itu ditelan diam-diam dan rahasia bisa tertinggal permanen.
+
 - PIN atau berkas cadangan yang dikirim sesudah sesi pemulihan kedaluwarsa kini ikut dihapus dari riwayat chat, tidak lagi tertinggal permanen.
 
 - Pemulihan cadangan kini memperingatkan bila berkas dibuat oleh versi aplikasi yang lebih baru, dan menyebut terang-terangan bila PIN di dalam cadangan dibuang karena tidak memenuhi syarat — bukan lagi dilaporkan seolah cadangan memang tak membawa PIN.

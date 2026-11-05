@@ -4819,7 +4819,8 @@ class MonitoringService : Service() {
             return
         }
         val text = blob ?: return
-        try { deleteIncomingMessage(chatId, message.messageId, token) } catch (_: Exception) { }
+        val berkasTerhapus = try { deleteIncomingMessage(chatId, message.messageId, token) } catch (_: Exception) { false }
+        if (!berkasTerhapus) sendToTelegram("⚠️ Berkas cadangan tidak bisa dihapus otomatis dari chat — hapus manual pesan berkas tadi demi keamanan.")
         if (!SettingsBackup.looksStructurallyValid(text)) {
             pendingRestore = null
             sendToTelegram("File bukan backup Red Eye yang valid.")
@@ -4850,7 +4851,8 @@ class MonitoringService : Service() {
         } catch (_: Exception) {
             null
         }
-        try { deleteIncomingMessage(chatId, message.messageId, token) } catch (_: Exception) { }
+        val pinTerhapus = try { deleteIncomingMessage(chatId, message.messageId, token) } catch (_: Exception) { false }
+        if (!pinTerhapus) sendToTelegram("⚠️ Pesan PIN tidak bisa dihapus otomatis dari chat — hapus manual pesan PIN barusan demi keamanan.")
         if (data == null) {
             // Percobaan identik (berkas + PIN yang sama) tak dihitung
             // ulang (issue #873): bisa jadi berkasnya yang rusak,
@@ -5092,15 +5094,20 @@ class MonitoringService : Service() {
         }
     }
 
-    private suspend fun deleteIncomingMessage(chatId: String, messageId: Long, token: String) {
-        if (chatId.isEmpty() || messageId <= 0L || token.isEmpty()) return
-        try {
+    // Mengembalikan keberhasilan hapus (issue #1561):
+    // dulu semua kegagalan ditelan — situs restore tak
+    // bisa tahu PIN/berkasnya tertinggal di chat.
+    private suspend fun deleteIncomingMessage(chatId: String, messageId: Long, token: String): Boolean {
+        if (chatId.isEmpty() || messageId <= 0L || token.isEmpty()) return false
+        return try {
             val delMsgResp = TelegramClient.api.deleteMessage(
                 "https://api.telegram.org/bot$token/deleteMessage",
                 mapOf("chat_id" to chatId, "message_id" to messageId.toString())
             )
             if (!delMsgResp.isSuccessful) tutupBadanError(delMsgResp)
+            delMsgResp.isSuccessful
         } catch (_: Exception) {
+            false
         }
     }
 
