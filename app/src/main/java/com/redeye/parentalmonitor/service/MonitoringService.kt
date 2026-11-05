@@ -191,6 +191,8 @@ class MonitoringService : Service() {
     @Volatile
     private var lastGeofenceCheckAt = 0L
     private var geofenceFailStreak = 0
+    private var patrolLocFailStreak = 0
+    private var patrolLocBackoffUntilElapsed = 0L
     @Volatile
     private var idleDataCycles = 0
     @Volatile
@@ -1627,7 +1629,14 @@ class MonitoringService : Service() {
         if (NetworkUtils.isAuthBlocked(preferencesManager)) return
         if (android.os.SystemClock.elapsedRealtime() < mediaBackoffUntil) return
         ensureForegroundTypes()
-        val location = try {
+        // Backoff kegagalan lokasi patroli (issue #1580):
+        // meniru pola fallback pagar (#972) — di lingkungan
+        // tanpa fix, sesi GPS 20 detik yang pasti gagal tak
+        // lagi dibayar di setiap putaran. Putaran tetap
+        // berjalan (laporan + foto), hanya pengambilan
+        // lokasinya yang dilewati selama masa mundur.
+        val locBackoff = android.os.SystemClock.elapsedRealtime() < patrolLocBackoffUntilElapsed
+        val location = if (locBackoff) null else try {
             fetchLocation(coarseOk = true)
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
@@ -1638,6 +1647,8 @@ class MonitoringService : Service() {
         val body = buildString {
             appendLine("\uD83D\uDEF0 <b>Patrol</b>")
             if (location != null) {
+                patrolLocFailStreak = 0
+                patrolLocBackoffUntilElapsed = 0L
                 resetLocFailCount()
                 try { preferencesManager.lastLocAt = System.currentTimeMillis() } catch (_: Exception) { }
                 try { checkGeofence(location.latitude, location.longitude, location.accuracy, fixAtMs = location.time) } catch (_: Exception) { }
@@ -1651,7 +1662,19 @@ class MonitoringService : Service() {
                 }
                 appendLine(ReportFormat.accuracyText(location.accuracy))
             } else {
-                bumpLocFailCount()
+                if (!locBackoff) {
+                    bumpLocFailCount()
+                    patrolLocFailStreak++
+                    val mundurMenit = when {
+                        patrolLocFailStreak <= 1 -> 0L
+                        patrolLocFailStreak == 2 -> 10L
+                        patrolLocFailStreak == 3 -> 20L
+                        else -> 30L
+                    }
+                    if (mundurMenit > 0L) {
+                        patrolLocBackoffUntilElapsed = android.os.SystemClock.elapsedRealtime() + mundurMenit * 60_000L
+                    }
+                }
                 appendLine("Lokasi: tak didapat — " + locationFailureHint())
             }
             appendLine("Baterai: ${if (level in 0..100) "$level%" else "tak tahu"}")

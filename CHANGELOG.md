@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Loop patroli kini punya backoff kegagalan lokasi seperti fallback pagar: sesudah dua kegagalan beruntun, pengambilan lokasi dilewati 10 menit, lalu 20, lalu 30 menit (reset saat berhasil) — di tempat tanpa sinyal GPS, sesi lokasi 20 detik yang pasti gagal tidak lagi dibayar di setiap putaran patroli (#1580).
+
 - Fallback pagar lokasi tidak lagi menembak GPS sendiri tiap ±30 menit bila patroli mati: cache lokasi bersama yang akurasinya cukup (s.d. 300 m) kini diterima sampai 2 jam untuk vonis pagar, memangkas sesi GPS fallback dari s.d. ±48 menjadi s.d. ±12 per hari tanpa mengubah vonis (mesin pagar memang sadar akurasi dan kebasian posisi) (#1579).
 
 - Balapan pengambilan lokasi tidak lagi membakar GPS sampai timeout 20 detik untuk pemanggil bervonis kasar: patroli, fallback pagar, dan cek jam malam kini menerima fix jaringan berakurasi s.d. 300 m sebagai penyelesaian awal (tiba dalam 1–3 detik), sementara perintah presisi (/lokasi, mode hilang, darurat, gagal buka kunci) tetap menunggu fix terbaik seperti sebelumnya (#1578).
