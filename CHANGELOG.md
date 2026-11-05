@@ -2,6 +2,10 @@
 
 ### Fixed
 
+- Perbaikan alat verifikasi: berkas yang gagal dibaca pada pemeriksaan pohon kerja kini cukup diperingatkan (sudah dilaporkan bernama oleh pemeriksaan berkasnya sendiri), sementara pada pemeriksaan rentang tetap menggagalkan.
+
+- Perbaikan alat verifikasi: jumlah berkas gagal dibaca pada pesan peringatannya kini menghitung berkas unik, bukan jumlah kemunculan bacaan.
+
 - Sisa data izin tangkapan layar dari versi lama yang masih tersimpan di perangkat yang naik versi kini dibersihkan saat layanan mulai.
 
 - Pesan panjang yang sisa potongannya gagal diantrekan ulang tidak lagi dicatat sebagai 'ditolak server': pesan asal dipertahankan untuk dicoba lagi, bukan dibuang dengan label sebab yang salah.

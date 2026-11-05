@@ -454,13 +454,11 @@ def himpun_definisi():
             # diam-diam (issue #1504): himpunan sebagian
             # melahirkan vonis yatim palsu yang tak bisa
             # dibedakan dari vonis sah. Catat; pemanggil
-            # (cek_acuan_yatim) mengangkatnya jadi GAGAL
-            # tersendiri. Mode bawaan tak terpengaruh:
-            # _baca_pohon jatuh ke baca() yang memang
-            # mengembalikan None untuk berkas hilang —
-            # tetapi di mode bawaan _jalan hanya
-            # menghasilkan berkas yang ada, jadi None di
-            # sini pun anomali yang layak dilaporkan.
+            # (cek_acuan_yatim) mengangkatnya tersendiri:
+            # GAGAL di mode rentang, PERINGATAN di mode
+            # bawaan (issue #1518 — rumusan awal 'mode
+            # bawaan tak terpengaruh' keliru: pengangkatannya
+            # memang berlaku di semua mode).
             BACA_GAGAL.append(path)
             return ""
         return isi
@@ -690,11 +688,25 @@ def cek_acuan_yatim(gagal, peringatan=None):
     definisi, acuan = himpun_definisi()
     if BACA_GAGAL:
         # Himpunan tak utuh (issue #1504): vonis dari data
-        # sebagian tak bisa dipercaya — gagalkan dengan
+        # sebagian tak bisa dipercaya — laporkan dengan
         # menyebut berkasnya, jangan biarkan tampil
-        # sebagai yatim biasa.
-        gagal.append("Berkas gagal dibaca saat menghimpun acuan (%d): %s%s — vonis yatim dari himpunan tak utuh tak bisa dipercaya"
-                     % (len(BACA_GAGAL), ", ".join(sorted(set(BACA_GAGAL))[:10]), _sufiks_sisa(len(set(BACA_GAGAL)))))
+        # sebagai yatim biasa. Angka utama = berkas UNIK
+        # (issue #1517; dulu kemunculan mentah, jadi satu
+        # berkas yang terbaca dua gelung tercetak '(2)').
+        # Per mode (issue #1518): mode RENTANG menilai
+        # pohon — himpunan tak utuh menggagalkan vonis,
+        # jadi GAGAL. Mode BAWAAN menilai pohon kerja:
+        # berkas tak terbaca sudah dilaporkan bernama oleh
+        # cek berkas masing-masing (mis. cek_xml), jadi di
+        # sini cukup PERINGATAN agar keadaan pohon nyata
+        # (symlink putus) tak memblokir dua kali.
+        unik = sorted(set(BACA_GAGAL))
+        teks = ("Berkas gagal dibaca saat menghimpun acuan (%d): %s%s"
+                % (len(unik), ", ".join(unik[:10]), _sufiks_sisa(len(unik))))
+        if REF_POHON:
+            gagal.append(teks + " — vonis yatim dari himpunan tak utuh tak bisa dipercaya")
+        elif peringatan is not None:
+            peringatan.append(teks)
     for jenis, dipakai in sorted(acuan.items()):
         ada = definisi.get(jenis, set())
         yatim = sorted(n for n in dipakai
