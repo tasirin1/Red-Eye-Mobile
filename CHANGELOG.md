@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Memulai impor cadangan kini membatalkan proses simpan/tes yang sedang berjalan: sebelumnya penyelesaian simpan lama bisa menimpa hasil impor dan membatalkannya diam-diam sesudah impor selesai.
+
 - Pemilik kini diperingatkan (sekali per proses) bila izin Status Telepon belum diberikan saat mulai merekam: deteksi panggilan yang menghentikan rekaman di tengah sebelumnya mati diam-diam tanpa izin itu.
 
 - Perekam suara kini memasang pendengar galat: gangguan di tengah rekaman (mikrofon direbut aplikasi lain, penyimpanan penuh) kini dilaporkan dengan sebabnya, bukan hanya pesan gagal umum saat perekaman berakhir.

@@ -127,6 +127,14 @@ class SetupActivity : AppCompatActivity() {
             val text = readBackupText(uri)
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                 if (isFinishing || isDestroyed) return@withContext
+                // Impor membatalkan simpan/tes terbang
+                // (issue #1464): pola yang sama dengan jalur
+                // hapus — tanpa kenaikan generasi ini,
+                // penyelesaian simpan lama lolos penjaga,
+                // memanggil clearPendingRestore() dan menimpa
+                // kolom impor dengan masker.
+                try { saveSeq.incrementAndGet() } catch (_: Exception) { }
+                try { testSeq.incrementAndGet() } catch (_: Exception) { }
                 if (text.isNullOrBlank()) {
                     Toast.makeText(this@SetupActivity, getString(R.string.restore_bad), Toast.LENGTH_LONG).show()
                     return@withContext
