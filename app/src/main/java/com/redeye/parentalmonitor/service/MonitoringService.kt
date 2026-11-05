@@ -8435,7 +8435,13 @@ class MonitoringService : Service() {
         if (sendToTelegramStatus("🚗 <b>Sepertinya sedang berkendara</b>\nKecepatan ±$kmh km/jam\n📍 https://maps.google.com/?q=${fix.latitude},${fix.longitude}\n${ReportFormat.accuracyText(fix.accuracy)}$battery") != SendStatus.DROPPED) {
             try { preferencesManager.lastVehicleAlertAt = now } catch (_: Exception) { }
         }
-        try { checkGeofence(fix.latitude, fix.longitude, fix.accuracy, fixAtMs = fix.time) } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (_: Exception) { }
+        // Jemput hanya dari fix segar (issue #1536, aturan
+        // #794): fix jalur kendaraan adalah last-known cache
+        // yang diterima sampai 10 menit — tanpa syarat ini
+        // jemput sekali-tembak bisa terpicu posisi basi dan
+        // radiusnya hangus untuk kedatangan sungguhan. Ambang
+        // 5 menit menyamai batas segar fetchLocation.
+        try { checkGeofence(fix.latitude, fix.longitude, fix.accuracy, izinkanJemput = fixAge <= 5 * 60_000L, fixAtMs = fix.time) } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (_: Exception) { }
     }
 
     private fun isMeteredNetwork(): Boolean {
