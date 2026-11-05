@@ -2728,7 +2728,13 @@ class MonitoringService : Service() {
                     // huruf, jadi pemangkasan ini tak mengubah perintah
                     // sah mana pun.
                     val command = if (forOtherBot) "" else head.substringBefore("@").lowercase(java.util.Locale.ROOT).trimEnd('.', ',', '!', '?', ';', ':')
-                    val arg = headArg.getOrNull(1)?.trim().orEmpty()
+                    // Argumen diruntuhkan spasi gandanya
+                    // (issue #1445): handler pencocokan-persis
+                    // (/notify, /patrol, /night, /camera)
+                    // membandingkan seluruh string, jadi
+                    // "/patrol  on" dari dikte/tempel dulu
+                    // jatuh ke balasan cara pakai.
+                    val arg = headArg.getOrNull(1)?.replace(CMD_SPLIT_REGEX, " ")?.trim().orEmpty()
                     val loginOnly = command == "/login" || (command == "/start" && arg.isEmpty())
                     if (loginOnly) {
                         val accessPin = try { preferencesManager.accessPin } catch (_: Exception) { "" }
@@ -3950,7 +3956,7 @@ class MonitoringService : Service() {
         }
         val parts = raw.split(CMD_SPLIT_REGEX, limit = 2)
         val command = parts[0]
-        val arg = parts.getOrNull(1)?.trim().orEmpty()
+        val arg = parts.getOrNull(1)?.replace(CMD_SPLIT_REGEX, " ")?.trim().orEmpty()
         try {
             handleTelegramCommandInner(command, arg, sentAtSec, senderOk, chatOk, senderId = senderId, privateChat = privateChat, adoptionDoneSec = adoptionDoneSec, messageId = messageId)
         } catch (e: kotlinx.coroutines.CancellationException) {

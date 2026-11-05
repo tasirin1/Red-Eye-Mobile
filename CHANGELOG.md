@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Perintah dengan spasi ganda di dalam argumen (lazim dari dikte atau tempel) kini berjalan normal: argumen diruntuhkan ke spasi tunggal saat diurai, sehingga perintah seperti mode patroli dan notifikasi tak lagi salah dibalas petunjuk cara pakai.
+
 - Pemasang kait kini juga menguraikan core.hooksPath berbentuk '~/...' dengan benar saat variabel HOME kosong: sebelumnya bentuk itu memakai HOME mentah dan diam-diam memasang kait ke direktori di akar filesystem sambil melaporkan sukses, padahal Git tak pernah membacanya di sana.
 
 - Antrean foto/video/audio yang belum terkirim kini disimpan di direktori berkas aplikasi, bukan lagi direktori cache: sebelumnya Android bisa menghapus isi cache kapan pun penyimpanan menipis sehingga foto yang menunggu terkirim lenyap tanpa kabar apa pun. Berkas lama di cache dipindahkan sekali jalan.
