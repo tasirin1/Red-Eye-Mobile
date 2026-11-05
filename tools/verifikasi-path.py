@@ -426,10 +426,18 @@ def jalan_repo(rel, ext=EKSTENSI_KODE):
                 yield os.path.relpath(os.path.join(akar, nama), AKAR)
 
 
+# Berkas yang gagal dibaca saat menghimpun definisi/
+# acuan (issue #1504) — diisi _isi di dalam
+# himpun_definisi, dikosongkan di awalnya, dibaca
+# cek_acuan_yatim.
+BACA_GAGAL = []
+
+
 def himpun_definisi():
     """Kembalikan (definisi, acuan): nama sumber daya terdefinisi vs terpakai."""
     definisi = {}
     acuan = {}
+    BACA_GAGAL.clear()
     # Mode rentang menilai pohon ujung REF_POHON (issue
     # #1490): dulu himpunan ini selalu membaca berkas
     # KERJA — pemeriksaan rentang dari pohon kotor bisa
@@ -440,7 +448,22 @@ def himpun_definisi():
     _jalan = _jalan_pohon
 
     def _isi(path):
-        return _baca_pohon(path) or ""
+        isi = _baca_pohon(path)
+        if isi is None:
+            # Kegagalan baca dari pohon tak boleh ditelan
+            # diam-diam (issue #1504): himpunan sebagian
+            # melahirkan vonis yatim palsu yang tak bisa
+            # dibedakan dari vonis sah. Catat; pemanggil
+            # (cek_acuan_yatim) mengangkatnya jadi GAGAL
+            # tersendiri. Mode bawaan tak terpengaruh:
+            # _baca_pohon jatuh ke baca() yang memang
+            # mengembalikan None untuk berkas hilang —
+            # tetapi di mode bawaan _jalan hanya
+            # menghasilkan berkas yang ada, jadi None di
+            # sini pun anomali yang layak dilaporkan.
+            BACA_GAGAL.append(path)
+            return ""
+        return isi
     # Titik pada nama style (Theme.A.B) menjadi garis bawah di R (aturan aapt).
     def rapikan(jenis, nama):
         # Styleable ikut dirapikan (issue #1421): nama
@@ -665,6 +688,13 @@ def _sufiks_sisa(jumlah, batas=10):
 
 def cek_acuan_yatim(gagal, peringatan=None):
     definisi, acuan = himpun_definisi()
+    if BACA_GAGAL:
+        # Himpunan tak utuh (issue #1504): vonis dari data
+        # sebagian tak bisa dipercaya — gagalkan dengan
+        # menyebut berkasnya, jangan biarkan tampil
+        # sebagai yatim biasa.
+        gagal.append("Berkas gagal dibaca saat menghimpun acuan (%d): %s%s — vonis yatim dari himpunan tak utuh tak bisa dipercaya"
+                     % (len(BACA_GAGAL), ", ".join(sorted(set(BACA_GAGAL))[:10]), _sufiks_sisa(len(set(BACA_GAGAL)))))
     for jenis, dipakai in sorted(acuan.items()):
         ada = definisi.get(jenis, set())
         yatim = sorted(n for n in dipakai

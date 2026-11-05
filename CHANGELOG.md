@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Alat verifikasi kini melaporkan secara tersendiri berkas yang gagal dibaca saat pemeriksaan rentang, bukan menelannya diam-diam hingga tampak seperti temuan yatim biasa.
+
 - Pemeriksaan rentang alat verifikasi kini juga menilai definisi berbasis berkas (gambar, tata letak) dari pohon ujung rentang: pemeriksaan dari pohon kerja yang kotor tidak lagi salah vonis untuk keluarga sumber daya ini.
 
 - Teks interval penjaga keaktifan kini jujur soal Doze: interval waspada 3 menit disebut bisa memanjang menjadi sekitar 9 menit saat HP tidur nyenyak, bukan dibaca sebagai janji pasti.
