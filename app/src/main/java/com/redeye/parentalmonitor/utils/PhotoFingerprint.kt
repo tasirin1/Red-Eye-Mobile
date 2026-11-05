@@ -67,6 +67,51 @@ object PhotoFingerprint {
         return bits
     }
 
+    // Rentang grid 8x8 (issue #1540): proksi 'nyaris
+    // tanpa detail' — foto buram berat / lensa kotor
+    // meratakan kontras antarsel. Ambang disengaja
+    // sangat rendah agar foto polos yang sah (dinding,
+    // langit) tidak tertuduh; dipakai untuk CATATAN
+    // laporan, bukan penolakan.
+    fun spreadOfCells(cell: IntArray): Int {
+        if (cell.isEmpty()) return 0
+        var lo = cell[0]
+        var hi = cell[0]
+        for (v in cell) {
+            if (v < lo) lo = v
+            if (v > hi) hi = v
+        }
+        return hi - lo
+    }
+
+    const val FEATURELESS_SPREAD = 12
+
+    fun gridSpread(photoFile: File): Int {
+        return try {
+            val bounds = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            android.graphics.BitmapFactory.decodeFile(photoFile.absolutePath, bounds)
+            if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return -1
+            var sample = 1
+            while (bounds.outWidth / sample > 16 || bounds.outHeight / sample > 16) sample *= 2
+            val opts = android.graphics.BitmapFactory.Options().apply { inSampleSize = sample }
+            val bmp = android.graphics.BitmapFactory.decodeFile(photoFile.absolutePath, opts) ?: return -1
+            try {
+                val grid = IntArray(bmp.width * bmp.height)
+                for (y in 0 until bmp.height) {
+                    for (x in 0 until bmp.width) {
+                        val px = bmp.getPixel(x, y)
+                        grid[y * bmp.width + x] = (((px shr 16) and 0xff) * 299 + ((px shr 8) and 0xff) * 587 + (px and 0xff) * 114) / 1000
+                    }
+                }
+                spreadOfCells(cellAverages(grid, bmp.width, bmp.height))
+            } finally {
+                try { bmp.recycle() } catch (_: Exception) { }
+            }
+        } catch (_: Exception) {
+            -1
+        }
+    }
+
     fun isComparableFingerprint(hash: Long): Boolean = hash != 0L && hash != 1L
 
     fun isDuplicateFingerprint(now: Long, other: Long): Boolean {

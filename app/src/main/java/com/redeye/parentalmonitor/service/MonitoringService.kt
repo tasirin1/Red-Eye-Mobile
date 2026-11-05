@@ -10981,6 +10981,12 @@ class MonitoringService : Service() {
     }
 
     private fun sendCapturedPhoto(photoFile: File, reportResult: Boolean, photoHashNow: Long, lensUsed: Int = -1, lensAsked: Int = -1) {
+        // Spread grid untuk catatan 'nyaris tanpa detail'
+        // (issue #1540) — dihitung sebelum kirim karena
+        // berkas terhapus sesudah terkirim; hanya jalur
+        // laporan manual agar foto otomatis tak berbiaya
+        // dekode tambahan.
+        val spreadAwal = if (reportResult) try { PhotoFingerprint.gridSpread(photoFile) } catch (_: Exception) { -1 } else -1
         serviceScope.launch {
             try {
                 if (!reportResult && dataSaverHoldNow(1)) {
@@ -10992,6 +10998,9 @@ class MonitoringService : Service() {
                 }
                 when (sendPhotoFile(photoFile)) {
                     MediaSendOutcome.SENT -> {
+                        if (reportResult && spreadAwal in 0..PhotoFingerprint.FEATURELESS_SPREAD) {
+                            try { sendToTelegram("📷 Catatan: foto nyaris tanpa detail — mungkin buram atau lensa kotor/tertutup sebagian.") } catch (_: Exception) { }
+                        }
                         try { if (PhotoFingerprint.isComparableFingerprint(photoHashNow)) preferencesManager.setLastPhotoHashSync(photoHashNow) } catch (_: Exception) { }
                         // Lensa dipotret saat jepret selesai
                         // di pemanggil (issue #1538): membaca

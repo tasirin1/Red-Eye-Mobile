@@ -25,6 +25,15 @@ class PhotoFingerprintTest {
     }
 
     @Test
+    fun spreadOfCellsValues() {
+        // Nilai dibuktikan porting Python 1:1 (sesi #547).
+        assertEquals(0, PhotoFingerprint.spreadOfCells(IntArray(64) { 100 }))
+        assertEquals(190, PhotoFingerprint.spreadOfCells(IntArray(64) { i -> if (i < 32) 10 else 200 }))
+        assertEquals(12, PhotoFingerprint.spreadOfCells(IntArray(64) { i -> if (i == 0) 50 else if (i == 1) 62 else 55 }))
+        assertEquals(0, PhotoFingerprint.spreadOfCells(IntArray(0)))
+    }
+
+    @Test
     fun comparableRuleExcludesZeroAndOne() {
         assertFalse(PhotoFingerprint.isComparableFingerprint(0L))
         assertFalse(PhotoFingerprint.isComparableFingerprint(1L))

@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Foto hasil perintah manual yang nyaris tanpa detail kini disertai catatan 'mungkin buram atau lensa kotor' pada laporannya: sebelumnya foto sangat buram terlaporkan sebagai sukses penuh tanpa catatan apa pun.
+
 - Foto dan video yang gagal unggah tidak lagi tertahan berjam-jam sesudah jam perangkat dimundurkan: berkas ber-cap waktu masa depan kini dianggap layak dikirim ulang, bukan 'terlalu baru'.
 
 - Kabar 'lensa yang diminta tak ada' kini membaca lensa yang dipotret tepat saat pengambilan selesai, bukan sesudah unggahan: kabar tidak lagi bisa menyebut lensa yang salah gara-gara pengambilan lain di tengah unggahan.
