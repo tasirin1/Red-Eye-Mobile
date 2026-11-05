@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Pengenal deklarasi Java di alat verifikasi kini memakai slot anotasi yang sama canggihnya dengan pengenal Kotlin: anotasi bersarang dan tanda kurung di dalam string argumen tidak lagi membuatnya lolos dari peringatan uji.
+
 - Penanda ruang-nama pada pengecualian style pustaka alat verifikasi kini wajib berupa segmen nama yang utuh dan dikenal, bukan substring di mana pun: nama berkedok seperti berakhiran nama sendiri sesudah kata pustaka kini tetap divonis.
 
 - Halaman rilis kini hanya memuat APK varian release: varian debug (yang bisa dibaca aplikasi lain lewat adb) sebelumnya ikut diterbitkan berdampingan dan berisiko salah pasang; varian debug tetap tersedia sebagai artefak hasil build di Actions.
