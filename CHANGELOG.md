@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Layanan aksesibilitas tidak lagi melanggan peristiwa perubahan konten jendela (aliran peristiwa terderas di Android) secara permanen: langganan kini dinamis mengikuti kebutuhan — menyala hanya selagi pemindaian kata pantau aktif atau halaman sensitif sedang di depan, mati pada konfigurasi bawaan — menghemat CPU dan baterai (#1571).
+
 - Antrean pesan tidak lagi menulis ulang seluruh antrean terenkripsi secara sinkron pada setiap pesan masuk: penambahan pesan kini lewat jalur persist debounce standar (ledakan pesan dalam jendela 2 detik digabung menjadi satu penulisan), menghemat CPU, flash, dan baterai (#1570).
 
 ## [1.6.633] - 2026-11-05

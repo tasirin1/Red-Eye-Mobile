@@ -33,6 +33,7 @@ class ShotAccessibilityService : AccessibilityService() {
         instance = this
         A11yMonitor.attach(this)
         A11yMonitor.noteEnabled(this)
+        A11yMonitor.refreshEventTypes(this)
         try {
             val filter = IntentFilter().apply {
                 addAction(Intent.ACTION_SCREEN_OFF)

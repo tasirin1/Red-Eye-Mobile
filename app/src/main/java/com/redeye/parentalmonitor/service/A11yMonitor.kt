@@ -1,6 +1,7 @@
 package com.redeye.parentalmonitor.service
 
 import android.accessibilityservice.AccessibilityService
+import android.accessibilityservice.AccessibilityServiceInfo
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -58,6 +59,8 @@ object A11yMonitor {
     @Volatile
     private var lastSensitiveCls = ""
     private var lastSensitivePkg = ""
+    @Volatile
+    private var contentEventsOn: Boolean? = null
     @Volatile
     private var lastTamperRecheckAt = 0L
     private val lastKeywordAlert = HashMap<String, Long>()
@@ -375,6 +378,7 @@ object A11yMonitor {
                 }
                 scanWatchedContent(service, pkg)
                 requestPeriodicPersist(app)
+                refreshEventTypes(service)
             }
             AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED -> {
                 val pkg = try { event.packageName?.toString().orEmpty() } catch (_: Exception) { "" }
@@ -435,6 +439,49 @@ object A11yMonitor {
                     requestPeriodicPersist(service.applicationContext)
                 }
             }
+        }
+    }
+
+    // Langganan event konten dinamis (issue #1571): XML
+    // melanggan TYPE_WINDOW_CONTENT_CHANGED secara permanen,
+    // padahal aliran event terderas itu hanya punya dua
+    // konsumen — cek-ulang tamper (bermakna hanya selagi
+    // halaman sensitif terakhir masih di depan) dan pindai
+    // kata pantau (mati secara bawaan). Selama tak satu pun
+    // aktif, tipe event itu dimatikan lewat setServiceInfo
+    // agar sistem tak mengirimkan ribuan event untuk dibuang.
+    // Halaman sensitif dinilai aktif hanya bila ia jendela
+    // depan terakhir: lastSensitivePkg sendiri lengket
+    // (issue #1387), jadi tanpa syarat ini langganan tak
+    // pernah mati sesudah kunjungan pertama. Konsekuensi
+    // yang diterima: split-screen dengan fokus di aplikasi
+    // lain menghentikan cek-ulang halaman sensitif yang
+    // masih tampak, sampai ia kembali ke depan.
+    // Gagal menilai kebutuhan = tetap menyala (arah aman);
+    // serviceInfo null = jangan sentuh (info kosong akan
+    // menghapus kapabilitas dari XML). Dinilai ulang pada
+    // koneksi layanan dan tiap transisi jendela, jadi
+    // pengaktifan pantau berlaku mulai transisi berikutnya.
+    fun refreshEventTypes(service: AccessibilityService) {
+        val manager = prefs ?: return
+        val watchActive = try {
+            manager.a11yAppWatchEnabled && watchedPackages(manager).isNotEmpty() && watchedKeywords(manager).isNotEmpty()
+        } catch (_: Exception) {
+            true
+        }
+        val tamperActive = lastSensitivePkg.isNotEmpty() && lastWindowPkg == lastSensitivePkg && TamperGuard.mayBeSensitive(lastSensitivePkg)
+        val need = watchActive || tamperActive
+        if (contentEventsOn == need) return
+        try {
+            val info: AccessibilityServiceInfo = service.serviceInfo ?: return
+            info.eventTypes = if (need) {
+                AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED or AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED
+            } else {
+                AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
+            }
+            service.setServiceInfo(info)
+            contentEventsOn = need
+        } catch (_: Exception) {
         }
     }
 
