@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Perintah /battery kini juga melaporkan status panas perangkat, sehingga kegagalan kamera atau rekam akibat perangkat kepanasan bisa dibedakan dari kerusakan.
+
 - Panggilan dari nomor tersembunyi kini tampil dengan label 'Nomor tersembunyi' di laporan, bukan penanda mentah seperti -1 yang membingungkan.
 
 - Deteksi 'sedang menelepon' kini juga mengenali panggilan VoIP seperti WhatsApp: rekaman suara tidak lagi berjalan menembus panggilan internet yang sedang berlangsung.

@@ -4078,7 +4078,8 @@ class MonitoringService : Service() {
             "/battery" -> {
                 val level = batteryLevel()
                 val levelText = if (level in 0..100) "$level%" else "tak tahu"
-                sendToTelegram("🔋 <b>Baterai</b>\nLevel: $levelText")
+                val suhu = thermalStatusText()
+                sendToTelegram("🔋 <b>Baterai</b>\nLevel: $levelText" + if (suhu.isNotEmpty()) "\nSuhu perangkat: $suhu" else "")
             }
             "/stop" -> {
                 preferencesManager.setMonitoringPausedSync(true)
@@ -8024,6 +8025,29 @@ class MonitoringService : Service() {
             batteryManager?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY) ?: -1
         } catch (_: Exception) {
             -1
+        }
+    }
+
+    // Status panas perangkat (issue #1499): dulu tak
+    // pernah dibaca di mana pun — kegagalan kamera/rekam
+    // akibat proteksi panas tampil generik. Kini /battery
+    // menyebutkannya (API 29+; di bawah itu kosong).
+    private fun thermalStatusText(): String {
+        return try {
+            if (android.os.Build.VERSION.SDK_INT < 29) return ""
+            val pm = getSystemService(android.os.PowerManager::class.java) ?: return ""
+            when (pm.currentThermalStatus) {
+                0 -> "normal"
+                1 -> "ringan"
+                2 -> "sedang"
+                3 -> "berat"
+                4 -> "kritis"
+                5 -> "darurat"
+                6 -> "hampir mati otomatis"
+                else -> ""
+            }
+        } catch (_: Exception) {
+            ""
         }
     }
 
