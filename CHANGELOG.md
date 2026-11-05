@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Daftar laporan alat verifikasi yang panjang tidak lagi terpotong diam-diam pada 10 butir: sisanya kini disebut jumlahnya, sehingga tidak ada temuan yang hilang tanpa catatan.
+
 - Alat verifikasi kini mengenali tema pustaka berawalan Theme_ secara umum: style tema dari dependensi baru menghasilkan peringatan yang benar, bukan vonis gagal 'yatim' yang menyesatkan.
 
 - Batas diam-diam 200 commit pada pemeriksaan pesan pra-push dicabut: semua pesan commit yang belum ter-push kini diperiksa, bukan hanya 200 terakhir.

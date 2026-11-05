@@ -626,6 +626,15 @@ def _bebas_yatim_style_kode(nama):
     return any(seg in SEGMEN_PUSTAKA_STYLE for seg in nama.split("_"))
 
 
+
+def _sufiks_sisa(jumlah, batas=10):
+    """Penanda sisa daftar laporan yang dipotong (issue
+    #1489): daftar yang dibuang diam-diam melanggar asas
+    lapor-utuh gerbang ini."""
+    if jumlah > batas:
+        return " (+%d lagi)" % (jumlah - batas)
+    return ""
+
 def cek_acuan_yatim(gagal, peringatan=None):
     definisi, acuan = himpun_definisi()
     for jenis, dipakai in sorted(acuan.items()):
@@ -649,8 +658,8 @@ def cek_acuan_yatim(gagal, peringatan=None):
                        and not (jenis == "style" and n.startswith("Base_"))
                        and not (jenis == "style" and _bebas_yatim_style_kode(n)))
         if yatim:
-            gagal.append("Acuan %s yatim (dipakai tapi tak terdefinisi): %s"
-                         % (jenis, ", ".join(yatim[:10])))
+            gagal.append("Acuan %s yatim (dipakai tapi tak terdefinisi): %s%s"
+                         % (jenis, ", ".join(yatim[:10]), _sufiks_sisa(len(yatim))))
         # Style berawalan pustaka ber-segmen TAK dikenal
         # (issue #1468): dulu ikut divonis GAGAL "yatim" —
         # bump dependensi ber-segmen baru + acuan kode sah
@@ -671,6 +680,11 @@ def cek_acuan_yatim(gagal, peringatan=None):
                     "pustaka sah dari dependensi baru, tambahkan "
                     "segmennya ke SEGMEN_PUSTAKA_STYLE (bukan vonis "
                     "yatim)." % n)
+            if len(tak_dikenal) > 10:
+                peringatan.append(
+                    "Dan %d acuan style ber-segmen tak dikenal "
+                    "lainnya%s — daftar lengkap dinilai dari "
+                    "SEGMEN_PUSTAKA_STYLE." % (len(tak_dikenal) - 10, ""))
 
 
 def _kupas_komentar_kode(teks, bersarang=True):
@@ -1639,23 +1653,23 @@ def cek_sinkron_terjemah(gagal):
         kurang = sorted((inggris[jenis] - bebas_inggris[jenis]) - indonesia[jenis])
         lebih = sorted(indonesia[jenis] - (inggris[jenis] - bebas_inggris[jenis]) - bebas_inggris[jenis])
         if kurang:
-            gagal.append("values-in kurang %s: %s" % (jenis, ", ".join(kurang[:10])))
+            gagal.append("values-in kurang %s: %s%s" % (jenis, ", ".join(kurang[:10]), _sufiks_sisa(len(kurang))))
         if lebih:
-            gagal.append("values-in berlebih %s: %s" % (jenis, ", ".join(lebih[:10])))
+            gagal.append("values-in berlebih %s: %s%s" % (jenis, ", ".join(lebih[:10]), _sufiks_sisa(len(lebih))))
     tak_terhitung = sorted(
         nama for nama in item_inggris.keys() & item_indonesia.keys()
         if item_inggris[nama] is None or item_indonesia[nama] is None)
     if tak_terhitung:
         print("PERINGATAN: paritas item tak bisa dinilai (anggaran "
-              "pemindai cadangan habis) untuk: %s" % ", ".join(tak_terhitung[:10]))
+              "pemindai cadangan habis) untuk: %s%s" % (", ".join(tak_terhitung[:10]), _sufiks_sisa(len(tak_terhitung))))
     beda_item = sorted(
         nama for nama in item_inggris.keys() & item_indonesia.keys()
         if item_inggris[nama] is not None and item_indonesia[nama] is not None
         and item_inggris[nama] != item_indonesia[nama])
     if beda_item:
-        gagal.append("jumlah item string-array beda antar locale: %s" % ", ".join(
+        gagal.append("jumlah item string-array beda antar locale: %s%s" % (", ".join(
             "%s (%d vs %d)" % (n, item_inggris[n], item_indonesia[n])
-            for n in beda_item[:10]))
+            for n in beda_item[:10]), _sufiks_sisa(len(beda_item))))
 
 
 def adalah_env(rendah):
