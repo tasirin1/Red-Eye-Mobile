@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Sesudah monitoring dimulai, aplikasi kini menyebut dengan jelas akses apa saja yang masih mati (aksesibilitas, listener notifikasi, akses penggunaan, admin perangkat, tangkap layar) dalam satu dialog: sebelumnya kelimanya hanya tampil sebagai baris status kecil, sehingga monitoring bisa terasa aktif padahal fitur intinya tidak bekerja.
+
 - Ikatan pemilik pada hasil impor cadangan tidak lagi hilang diam-diam bila aplikasi mati dan dibuat ulang di tengah pemulihan: untuk cadangan tanpa PIN akses, kecocokan chat yang tersimpan kini cukup untuk memulihkan pemilik impor (cadangan ber-PIN tetap tertahan aman seperti sebelumnya).
 
 - Memulai impor cadangan kini membatalkan proses simpan/tes yang sedang berjalan: sebelumnya penyelesaian simpan lama bisa menimpa hasil impor dan membatalkannya diam-diam sesudah impor selesai.

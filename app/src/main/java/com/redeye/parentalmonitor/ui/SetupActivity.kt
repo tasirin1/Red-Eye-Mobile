@@ -1858,6 +1858,31 @@ class SetupActivity : AppCompatActivity() {
                         }
                     }
                     updateStatus()
+                    // Peringatan akses mati (issue #1466):
+                    // lima akses ini dulu hanya baris status
+                    // kecil — monitoring menyala "Aktif" walau
+                    // fitur intinya mati semua. Kini disebut
+                    // dalam satu dialog sesudah mulai.
+                    try {
+                        val hilang = ArrayList<String>()
+                        if (!com.redeye.parentalmonitor.service.ShotAccessibilityService.isEnabled(this@SetupActivity)) hilang.add("Accessibility")
+                        if (!isNotificationAccessGranted()) hilang.add("Notification listener")
+                        if (!com.redeye.parentalmonitor.utils.UsageAccess.granted(this@SetupActivity)) hilang.add("Usage access")
+                        val adminOn2 = try { (getSystemService(DEVICE_POLICY_SERVICE) as android.app.admin.DevicePolicyManager).isAdminActive(android.content.ComponentName(this@SetupActivity, com.redeye.parentalmonitor.receiver.AdminReceiver::class.java)) } catch (_: Exception) { false }
+                        if (!adminOn2) hilang.add("Device admin")
+                        if (!com.redeye.parentalmonitor.utils.ScreenCapture.granted()) hilang.add("Screen capture")
+                        if (hilang.isNotEmpty()) {
+                            androidx.appcompat.app.AlertDialog.Builder(this@SetupActivity)
+                                .setTitle(getString(R.string.setup_start_missing_title))
+                                .setMessage(getString(R.string.setup_start_missing_body, hilang.joinToString("\n") { "• " + it }))
+                                .setPositiveButton(getString(R.string.grant_permissions)) { _, _ ->
+                                    try { permissionButton.performClick() } catch (_: Exception) { }
+                                }
+                                .setNegativeButton(android.R.string.cancel, null)
+                                .show()
+                        }
+                    } catch (_: Exception) {
+                    }
                     try {
                         if (!isBatteryExempt() || !com.redeye.parentalmonitor.utils.AutoStart.canDrawOverlays(this@SetupActivity)) {
                             showAntiKillWizard()

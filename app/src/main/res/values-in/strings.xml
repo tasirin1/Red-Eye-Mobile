@@ -122,6 +122,8 @@
     <string name="restore_same_attempt">Berkas + PIN ini sudah dicoba dan tetap gagal. Bila PIN yakin benar, kemungkinan berkas cadangannya rusak — buat ekspor baru.</string>
     <string name="restore_pin_locked">PIN backup dikunci sementara karena terlalu banyak percobaan salah. Coba lagi 15 menit.</string>
     <string name="setup_restore_pin_lost">PIN akses hasil restore tidak lagi tersedia karena aplikasi sempat dimulai ulang. Impor ulang backup sebelum menyimpan.</string>
+    <string name="setup_start_missing_title">Monitoring dimulai, tetapi beberapa akses masih mati</string>
+    <string name="setup_start_missing_body">Yang berikut ini masih mati, jadi fiturnya belum akan bekerja:\n%1$s\n\nBuka Izin untuk memberikannya.</string>
     <string name="setup_open_settings">Izin ditolak permanen, buka Pengaturan untuk mengaktifkan manual</string>
     <string name="setup_testing">Memeriksa token bot &amp; chat…</string>
     <string name="setup_test_success">✅ Tes berhasil! Token bot &amp; chat ID valid.</string>
