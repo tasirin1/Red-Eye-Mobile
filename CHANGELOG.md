@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Worker kini membuang hanya potongan pesan panjang yang ditolak permanen dan melanjutkan potongan sisanya (meniru jalur layanan), alih-alih menggagalkan seluruh pesan dan membuangnya berlabel percobaan habis (#1632).
+
 - Jalur screenshot berstride padding kini membaca baris sebagai IntBuffer massal dan menukar kanal R/B per piksel (hasil piksel setara, dibuktikan), tanpa alokasi slice per baris — biaya CPU jepretan di perangkat berpadding turun tanpa mengembalikan buffer bingkai penuh (#1631).
 
 - Tidur panjang loop monitor kini diiris per 5 menit (sejajar irama cek berkala), bukan per 30 detik — kebangkitan timer saat perangkat diam turun dari s.d. 40 menjadi s.d. 4 per tidur 20 menit (#1630).

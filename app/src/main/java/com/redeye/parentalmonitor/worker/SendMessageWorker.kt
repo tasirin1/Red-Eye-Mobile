@@ -862,17 +862,18 @@ class SendMessageWorker(
                     break
                 }
                 SendOutcome.Rejected -> {
+                    // Potongan ditolak permanen (issue #1632):
+                    // buang potongan INI saja dan lanjutkan ke
+                    // potongan berikutnya — pola yang sama
+                    // seperti sendFitted di layanan. Dulu
+                    // cabang ini break dan vonis akhir Failed
+                    // untuk seluruh pesan: potongan sah
+                    // sesudahnya tak pernah dicoba, pesan
+                    // terbuang berlabel 'exhausted' sesudah
+                    // ±20 percobaan, dan sisa yang diantrekan
+                    // ulang mulai dari potongan tertolak itu
+                    // sendiri (blokade yang sama tiap run).
                     rejected++
-                    if (idx > 0 && !failedKept) {
-                        failedKept = queueRemainder(idx)
-                        if (failedKept) {
-                            try {
-                                MessageScheduler.scheduleMessageSend(applicationContext)
-                            } catch (_: Exception) {
-                            }
-                        }
-                    }
-                    break
                 }
             }
         }
@@ -887,7 +888,15 @@ class SendMessageWorker(
         // salah. Vonis Failed mempertahankan pesan asal
         // untuk dicoba lagi (anggaran percobaan antrean
         // tetap membatasinya), statistik tetap jujur.
-        if (rejected > 0) return if (failedKept) SendOutcome.Sent else SendOutcome.Failed
+        // Potongan tertolak yang dilewati (issue #1632):
+        // bila sisa pesan terantre untuk dicoba lagi
+        // (failedKept) pesan bertahan sebagai Sent; bila
+        // tidak, vonis jujurnya Rejected — pesan tak
+        // terkirim utuh karena penolakan permanen, bukan
+        // kegagalan sementara. Kasus #1515 di atas berbeda:
+        // di sana tak ada potongan yang ditolak Telegram,
+        // yang gagal adalah antre LOKAL-nya.
+        if (rejected > 0) return if (failedKept) SendOutcome.Sent else SendOutcome.Rejected
         return SendOutcome.Sent
     }
 
