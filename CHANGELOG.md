@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Foto dan video yang gagal unggah tidak lagi tertahan berjam-jam sesudah jam perangkat dimundurkan: berkas ber-cap waktu masa depan kini dianggap layak dikirim ulang, bukan 'terlalu baru'.
+
 - Kabar 'lensa yang diminta tak ada' kini membaca lensa yang dipotret tepat saat pengambilan selesai, bukan sesudah unggahan: kabar tidak lagi bisa menyebut lensa yang salah gara-gara pengambilan lain di tengah unggahan.
 
 - Peringatan jam malam dan jam sekolah kini menyebut umur titik lokasi bila titiknya berasal dari simpanan (mis. 'posisi ±10 menit lalu'), agar vonis atas posisi lama tidak tampak seperti posisi saat ini.

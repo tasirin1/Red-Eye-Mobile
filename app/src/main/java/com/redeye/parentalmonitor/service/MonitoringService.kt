@@ -13142,7 +13142,14 @@ class MonitoringService : Service() {
                 var batchProgress = false
                 for (file in pending) {
                     if (isMediaActive(file)) continue
-                    if (now - file.lastModified() < 10_000L) continue
+                    // Umur negatif (cap masa depan sesudah
+                    // jam dimundurkan) BUKAN 'terlalu baru'
+                    // (issue #1539): dulu selisih negatif
+                    // lolos syarat <10 dtk sehingga berkas
+                    // dilewati semua flush sampai jam dinding
+                    // mengejar — tertunda senyap berjam-jam.
+                    val umurBerkas = now - file.lastModified()
+                    if (umurBerkas in 0L until 10_000L) continue
                     if (!file.exists() || file.length() == 0L) {
                         deleteQuietly(file)
                         batchProgress = true
@@ -13616,7 +13623,14 @@ class MonitoringService : Service() {
                 var batchProgress = false
                 for (file in pending) {
                     if (isMediaActive(file)) continue
-                    if (now - file.lastModified() < 10_000L) continue
+                    // Umur negatif (cap masa depan sesudah
+                    // jam dimundurkan) BUKAN 'terlalu baru'
+                    // (issue #1539): dulu selisih negatif
+                    // lolos syarat <10 dtk sehingga berkas
+                    // dilewati semua flush sampai jam dinding
+                    // mengejar — tertunda senyap berjam-jam.
+                    val umurBerkas = now - file.lastModified()
+                    if (umurBerkas in 0L until 10_000L) continue
                     if (!file.exists() || file.length() == 0L) {
                         deleteQuietly(file)
                         batchProgress = true
