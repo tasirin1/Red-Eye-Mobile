@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Peringatan jam malam dan jam sekolah kini menyebut umur titik lokasi bila titiknya berasal dari simpanan (mis. 'posisi ±10 menit lalu'), agar vonis atas posisi lama tidak tampak seperti posisi saat ini.
+
 - Kabar 'siap dijemput' tidak lagi bisa terpicu dari titik lokasi simpanan yang sudah berumur beberapa menit lewat jalur deteksi kendaraan: kini hanya titik segar (maksimal 5 menit) yang boleh memicunya, sama seperti jalur lain.
 
 - Baris statistik malam pada laporan pemakaian kini menyebut jendelanya (22.00–06.00) agar tidak tertukar dengan definisi malam pada laporan begadang (23.00–05.00).

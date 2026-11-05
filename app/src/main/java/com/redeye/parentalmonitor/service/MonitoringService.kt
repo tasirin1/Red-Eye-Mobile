@@ -9979,6 +9979,13 @@ class MonitoringService : Service() {
             var pos = lastSentLatLon()
             var posAccuracy = try { preferencesManager.lastLocAccM } catch (_: Exception) { -1f }
             val locAge = now - try { preferencesManager.lastLocAt } catch (_: Exception) { 0L }
+            // Atribusi umur posisi (issue #1537, pola #1479):
+            // vonis memakai cache sampai 30 menit tetapi teks
+            // alert tak menyebut umurnya — keputusan atas
+            // posisi basi tampak seperti posisi kini. Sufiks
+            // ditambahkan bila posisi dari cache berumur
+            // >1 menit; fetch segar menolkan umur efektif.
+            var umurPosisiMenit = if (locAge > 60_000L) (locAge / 60_000L).toInt() else 0
             if (pos == null || locAge < 0L || locAge > 30 * 60_000L) {
                 val nowEl = android.os.SystemClock.elapsedRealtime()
                 if (curfewFetchFailAt != 0L && nowEl - curfewFetchFailAt < 15 * 60_000L) return
@@ -9994,6 +10001,7 @@ class MonitoringService : Service() {
                 try { checkGeofence(fix.latitude, fix.longitude, fix.accuracy, fixAtMs = fix.time) } catch (_: Exception) { }
                 pos = Pair(fix.latitude, fix.longitude)
                 posAccuracy = fix.accuracy
+                umurPosisiMenit = 0
             }
             if (needCurfew) {
                 val dist = ReportFormat.distanceMeters(homeLat / 1_000_000.0, homeLon / 1_000_000.0, pos.first, pos.second)
@@ -10003,7 +10011,7 @@ class MonitoringService : Service() {
                     // proses agar kegagalan terantre tak menumpuk salinan.
                     if (curfewAttemptKey != key) {
                         curfewAttemptKey = key
-                        if (sendToTelegramStatus("🌙 Jam malam $curfew: perangkat masih di luar rumah (±${dist.toInt()} m).") != SendStatus.DROPPED) {
+                        if (sendToTelegramStatus("🌙 Jam malam $curfew: perangkat masih di luar rumah (±${dist.toInt()} m)." + if (umurPosisiMenit > 0) " (posisi ±$umurPosisiMenit menit lalu)" else "") != SendStatus.DROPPED) {
                             try { preferencesManager.setCurfewAlertDone(key, now) } catch (_: Exception) { }
                         }
                         return
@@ -10021,7 +10029,7 @@ class MonitoringService : Service() {
                 if (GeofenceLogic.judgedOutside(dist, schoolRad, posAccuracy)) {
                     if (schoolAttemptKey != key) {
                         schoolAttemptKey = key
-                        if (sendToTelegramStatus("🏫 Jam sekolah: perangkat di luar area sekolah (±${dist.toInt()} m).") != SendStatus.DROPPED) {
+                        if (sendToTelegramStatus("🏫 Jam sekolah: perangkat di luar area sekolah (±${dist.toInt()} m)." + if (umurPosisiMenit > 0) " (posisi ±$umurPosisiMenit menit lalu)" else "") != SendStatus.DROPPED) {
                             try { preferencesManager.setSchoolAlertDone(key, now) } catch (_: Exception) { }
                         }
                     }
