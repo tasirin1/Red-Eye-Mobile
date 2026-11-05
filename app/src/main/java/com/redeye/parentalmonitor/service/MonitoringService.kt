@@ -12169,6 +12169,7 @@ class MonitoringService : Service() {
         val audioFile = File(antreMedia(), "audio_" + System.currentTimeMillis() + "_" + java.util.UUID.randomUUID() + ".m4a")
         val audioTmp = File(antreMedia(), audioFile.name + ".tmp")
         var recorder: android.media.MediaRecorder? = null
+        var galatRekam = 0
         var keepForRetry = false
         var audioOutcome: MediaSendOutcome? = null
         markMediaActive(audioFile)
@@ -12182,6 +12183,12 @@ class MonitoringService : Service() {
             recorder.setOutputFormat(android.media.MediaRecorder.OutputFormat.MPEG_4)
             recorder.setAudioEncoder(android.media.MediaRecorder.AudioEncoder.AAC)
             recorder.setOutputFile(audioTmp.absolutePath)
+            // Pendengar galat perekam (issue #1462): dulu
+            // galat tengah rekam (mic direbut aplikasi lain,
+            // penyimpanan penuh) tak terdengar sama sekali —
+            // baru ketahuan kabur saat stop() gagal.
+            recorder.setOnErrorListener { _, what, _ -> galatRekam = what }
+            recorder.setOnInfoListener { _, what, _ -> if (galatRekam == 0) galatRekam = what }
             recorder.prepare()
             recorderActive.set(true)
             recorder.start()
@@ -12229,7 +12236,14 @@ class MonitoringService : Service() {
                     deleteQuietly(audioTmp)
                 } catch (_: Exception) {
                 }
-                sendToTelegram("Gagal merekam (rekaman tidak final). Coba lagi.")
+                // Pesan dibedakan (issue #1462): galat yang
+                // terdengar di tengah rekam disebut apa
+                // adanya agar pemilik bisa bertindak.
+                if (galatRekam != 0) {
+                    sendToTelegram("⚠️ Rekaman terganggu di tengah jalan (galat perekam " + galatRekam + ") — mikrofon mungkin direbut aplikasi lain atau penyimpanan penuh. Berkas belum final dan dibuang.")
+                } else {
+                    sendToTelegram("Gagal merekam (rekaman tidak final). Coba lagi.")
+                }
                 return
             }
             if (!audioTmp.exists() || audioTmp.length() == 0L) {
