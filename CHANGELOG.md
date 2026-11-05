@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.635] - 2026-11-05
+
 ### Fixed
 
 - Pindai pohon pada gerbang kini membaca nama berkas berformat NUL, sehingga berkas bernama mengandung tanda petik atau garis miring terbalik tidak lagi tertuduh token hanya karena namanya tak bisa dibuka pemeriksa (#1621).
