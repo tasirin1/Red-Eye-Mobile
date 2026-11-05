@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Batas diam-diam 200 commit pada pemeriksaan pesan pra-push dicabut: semua pesan commit yang belum ter-push kini diperiksa, bukan hanya 200 terakhir.
+
 - Pemeriksaan pesan commit pra-push kini menilai terhadap remote tujuan (origin) saja: commit yang sudah ter-push ke remote cadangan lain tidak lagi lolos dari pemeriksaan.
 
 - Berkas cadangan terenkripsi yang sedang menunggu PIN tidak lagi disimpan di data saved-state Android: kini ia hanya hidup di memori proses seperti token dan PIN impor, sesuai perlindungan yang sudah berlaku untuk keduanya.

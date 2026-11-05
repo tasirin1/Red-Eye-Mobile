@@ -174,9 +174,9 @@ if [ -f tools/cek-token.py ]; then
 fi
 # 5e. Token di PESAN commit yang belum ter-push (issue #769): diff dan
 # pohon tak memuat pesan commit, padahal token di sana hidup permanen di
-# riwayat. Tanpa upstream, periksa commit yang belum ada di remote TUJUAN origin (issue #1469 cadangan; #1486: remote lain tak mengecualikan).
+# riwayat. Tanpa upstream, periksa SEMUA commit yang belum ada di remote TUJUAN origin (issue #1469 cadangan; #1486 remote lain tak mengecualikan; #1487 tanpa batas jumlah — pindai pesan murah, batas senyap meloloskan).
 if [ -f tools/cek-token.py ]; then
-  pesan_token=$( (git log @{u}..HEAD --format=%B 2>/dev/null || git log --branches --not --remotes=origin -200 --format=%B 2>/dev/null) | python3 tools/cek-token.py --teks-pesan 2>/dev/null || true)
+  pesan_token=$( (git log @{u}..HEAD --format=%B 2>/dev/null || git log --branches --not --remotes=origin --format=%B 2>/dev/null) | python3 tools/cek-token.py --teks-pesan 2>/dev/null || true)
   if [ -n "$pesan_token" ]; then
     echo "GAGAL: kemungkinan token bot asli di pesan commit yang belum ter-push (hanya via input SetupActivity)"; gagal=1;
   fi
