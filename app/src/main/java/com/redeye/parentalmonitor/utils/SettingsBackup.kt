@@ -59,24 +59,40 @@ object SettingsBackup {
         val cipherText = all.copyOfRange(28, all.size)
         val plain = decrypt(cipherText, pin, salt, iv, if (legacy) ITERATIONS_LEGACY else ITERATIONS).toString(Charsets.UTF_8)
         val o = org.json.JSONObject(plain)
-        val versi = o.optInt("v", 0)
+        return backupDataFromFields(
+            getString = { k -> o.optString(k, "") },
+            getInt = { k, d -> o.optInt(k, d) },
+            getLong = { k, d -> o.optLong(k, d) },
+            legacy = legacy
+        )
+    }
+
+    // Keputusan medan MURNI (issue #1618): dipisah dari
+    // org.json/Base64 seperti inti kripto dipisah dari
+    // Android, agar penerimaan versi, koersi interval,
+    // penolakan token/chat kosong, dan tanda #1559 bisa
+    // diuji JVM. Badan dipindah VERBATIM dari import();
+    // satu-satunya perubahan adalah sumber bacanya
+    // (akses tidak langsung), bukan keputusannya.
+    internal fun backupDataFromFields(getString: (String) -> String, getInt: (String, Int) -> Int, getLong: (String, Long) -> Long, legacy: Boolean): BackupData {
+        val versi = getInt("v", 0)
         require(versi in 1..2)
-        val token = o.optString("token", "")
-        val chat = o.optString("chat", "")
+        val token = getString("token")
+        val chat = getString("chat")
         require(token.isNotEmpty() && chat.isNotEmpty())
-        val owner = o.optLong("owner", 0L)
+        val owner = getLong("owner", 0L)
         require(owner >= 0L)
         // PIN yang dibawa tetapi tak memenuhi syarat
         // dicatat sebagai pinDropped (issue #1559): dulu
         // dibuang senyap lalu dilaporkan seolah cadangan
         // memang tidak membawa PIN.
-        val pinMentah = o.optString("accessPin", "")
+        val pinMentah = getString("accessPin")
         val accessPin = pinMentah.takeIf { AccessPin.isValid(it) } ?: ""
         // Versi lebih baru dari yang ditulis ekspor (1)
         // diterima demi kompatibilitas, tetapi ditandai
         // agar pemulihan memperingatkan pemilik bahwa
         // sebagian isi bisa tak dikenal (issue #1559).
-        return BackupData(token, chat, o.optInt("interval", 5).coerceIn(1, 1440), o.optInt("camera", 1).coerceIn(0, 60), owner, accessPin, legacy, newerVersion = versi > 1, pinDropped = pinMentah.isNotEmpty() && accessPin.isEmpty())
+        return BackupData(token, chat, getInt("interval", 5).coerceIn(1, 1440), getInt("camera", 1).coerceIn(0, 60), owner, accessPin, legacy, newerVersion = versi > 1, pinDropped = pinMentah.isNotEmpty() && accessPin.isEmpty())
     }
 
     internal fun decrypt(cipherText: ByteArray, pin: String, salt: ByteArray, iv: ByteArray, iterations: Int): ByteArray {

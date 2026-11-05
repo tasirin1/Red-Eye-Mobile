@@ -10,6 +10,76 @@ import javax.crypto.spec.GCMParameterSpec
 
 class SettingsBackupTest {
 
+    // Lapisan keputusan medan (issue #1618): harapan
+    // dibaca langsung dari aturan di badannya —
+    // versi diterima 1..2, bawaan interval 5/kamera 1,
+    // koersi [1,1440]/[0,60], owner negatif ditolak,
+    // PIN sah = 6-12 digit (AccessPin).
+    private fun dataDari(map: Map<String, Any?>, legacy: Boolean = false): SettingsBackup.BackupData =
+        SettingsBackup.backupDataFromFields(
+            getString = { k -> (map[k] as? String) ?: "" },
+            getInt = { k, d -> (map[k] as? Int) ?: d },
+            getLong = { k, d -> (map[k] as? Long) ?: d },
+            legacy = legacy
+        )
+
+    private fun sah(extra: Map<String, Any?> = emptyMap()): Map<String, Any?> =
+        mapOf("v" to 1, "token" to "t", "chat" to "c") + extra
+
+    private fun expectTolak(map: Map<String, Any?>) {
+        try {
+            dataDari(map)
+            fail("seharusnya IllegalArgumentException")
+        } catch (e: IllegalArgumentException) {
+        }
+    }
+
+    @Test
+    fun medanVersiDanTanda() {
+        assertTrue(dataDari(sah(mapOf("v" to 2))).newerVersion)
+        assertTrue(!dataDari(sah()).newerVersion)
+        assertTrue(dataDari(sah(), legacy = true).legacy)
+        expectTolak(sah(mapOf("v" to 0)))
+        expectTolak(sah(mapOf("v" to 3)))
+        expectTolak(mapOf("token" to "t", "chat" to "c"))
+    }
+
+    @Test
+    fun medanWajibDanOwner() {
+        expectTolak(sah(mapOf("token" to "")))
+        expectTolak(sah(mapOf("chat" to "")))
+        expectTolak(sah(mapOf("owner" to -5L)))
+        assertEquals(0L, dataDari(sah()).ownerId)
+        assertEquals(42L, dataDari(sah(mapOf("owner" to 42L))).ownerId)
+    }
+
+    @Test
+    fun medanIntervalDikoersi() {
+        val bawaan = dataDari(sah())
+        assertEquals(5, bawaan.syncInterval)
+        assertEquals(1, bawaan.cameraInterval)
+        assertEquals(1, dataDari(sah(mapOf("interval" to 0))).syncInterval)
+        assertEquals(1440, dataDari(sah(mapOf("interval" to 99999))).syncInterval)
+        assertEquals(30, dataDari(sah(mapOf("interval" to 30))).syncInterval)
+        assertEquals(0, dataDari(sah(mapOf("camera" to -1))).cameraInterval)
+        assertEquals(60, dataDari(sah(mapOf("camera" to 61))).cameraInterval)
+    }
+
+    @Test
+    fun medanPinDanTandaJatuh() {
+        val bawa = dataDari(sah(mapOf("accessPin" to "123456")))
+        assertEquals("123456", bawa.accessPin)
+        assertTrue(!bawa.pinDropped)
+        val jatuh = dataDari(sah(mapOf("accessPin" to "abc")))
+        assertEquals("", jatuh.accessPin)
+        assertTrue(jatuh.pinDropped)
+        val pendek = dataDari(sah(mapOf("accessPin" to "12345")))
+        assertTrue(pendek.pinDropped)
+        val tanpa = dataDari(sah())
+        assertEquals("", tanpa.accessPin)
+        assertTrue(!tanpa.pinDropped)
+    }
+
     private fun hex(bytes: ByteArray): String = bytes.joinToString("") { "%02x".format(it) }
 
     @Test
