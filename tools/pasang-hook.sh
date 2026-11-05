@@ -7,6 +7,24 @@ ROOT="$(git rev-parse --show-toplevel)"
 TERKONFIGURASI="$(git config --get core.hooksPath || true)"
 
 # core.hooksPath boleh absolut, relatif terhadap root repo, atau lewat ~/.
+# Rumah pengguna berjalan: $HOME bila terisi; kosong ->
+# entri passwd (meniru Git), lewat getent lalu awk.
+rumah_sendiri() {
+    if [ -n "$HOME" ]; then
+        printf '%s' "$HOME"
+        return
+    fi
+    pengguna_kait="$(id -un 2>/dev/null)" || pengguna_kait=""
+    rumah_kait=""
+    if [ -n "$pengguna_kait" ]; then
+        rumah_kait="$(getent passwd "$pengguna_kait" 2>/dev/null | cut -d: -f6)"
+        if [ -z "$rumah_kait" ] && [ -r /etc/passwd ]; then
+            rumah_kait="$(awk -F: -v u="$pengguna_kait" '$1 == u { print $6 }' /etc/passwd 2>/dev/null)" || rumah_kait=""
+        fi
+    fi
+    printf '%s' "$rumah_kait"
+}
+
 direktori_kait() {
     case "$1" in
         "~")
@@ -30,7 +48,7 @@ direktori_kait() {
                 fi
                 printf '%s' "$rumah_kait"
             fi ;;
-        "~"/*) printf '%s/%s' "$HOME" "${1#\~/}" ;;
+        "~"/*) printf '%s/%s' "$(rumah_sendiri)" "${1#\~/}" ;;
         "~"*)
             # Bentuk ~pengguna/ (issue #1403): Git
             # mengembangkannya ke rumah pengguna itu, bukan
