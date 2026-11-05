@@ -231,7 +231,7 @@ object A11yMonitor {
             // lalu lanjutkan sesi mulai tengah malam ini.
             val startDay = TimeFmt.dayKey(startWall)
             val todayKey = TimeFmt.dayKey(nowWall)
-            val todayStart = A11yUsageMath.dayStartWallMillis(nowWall)
+            val todayStart = A11yUsageMath.dayStartWallMillis(nowWall, java.util.TimeZone.getDefault())
             val slotDay = try { manager.a11yUsageDate } catch (_: Exception) { "" }
             // Slot cadangan ikut sah (issue #1037): loadUsage
             // di bawah memulihkan dari cadangan bila tanggal
@@ -243,7 +243,7 @@ object A11yMonitor {
                 // mulai (issue #780): sebelumnya sampai tengah malam
                 // hari ini, sehingga sesi yang mulai ≥2 hari lalu
                 // menagih seluruh hari antaranya ke hari mulai.
-                val spanEnd = A11yUsageMath.splitBoundaryWallMillis(startWall, todayStart)
+                val spanEnd = A11yUsageMath.splitBoundaryWallMillis(startWall, todayStart, java.util.TimeZone.getDefault())
                 val span = spanEnd - startWall
                 val todayUsage = usage
                 usage = loadUsage(context, startDay)
@@ -885,7 +885,7 @@ object A11yMonitor {
         if (loaded && previousDay.isNotEmpty() && today != previousDay) {
             val nowWall = System.currentTimeMillis()
             val nowElapsed = SystemClock.elapsedRealtime()
-            val dayStart = A11yUsageMath.dayStartWallMillis(nowWall)
+            val dayStart = A11yUsageMath.dayStartWallMillis(nowWall, java.util.TimeZone.getDefault())
             var splitAtMidnight = false
             var segmentsSaved = false
             // Penjaga lompatan jam dinding (issue #761): pemecahan per
@@ -899,7 +899,7 @@ object A11yMonitor {
             val elapsedSpan = nowElapsed - currentStartElapsed
             val clockJumped = wallSpan - elapsedSpan > 3_600_000L
             if (currentPackage.isNotEmpty() && currentStartElapsed > 0L && currentStartWall in 1L until dayStart && dayStart <= nowWall && !clockJumped) {
-                val boundaries = A11yUsageMath.splitBoundariesWallMillis(currentStartWall, dayStart)
+                val boundaries = A11yUsageMath.splitBoundariesWallMillis(currentStartWall, dayStart, java.util.TimeZone.getDefault())
                 val elapsedAtFirst = nowElapsed - (nowWall - boundaries.first())
                 if (elapsedAtFirst > currentStartElapsed) {
                     var segDay = previousDay

@@ -9106,7 +9106,7 @@ class MonitoringService : Service() {
     private fun firstUnlockTodayMs(now: Long): Long {
         if (!com.redeye.parentalmonitor.utils.UsageAccess.granted(this)) return 0L
         val manager = usageStatsManager ?: return 0L
-        val start = com.redeye.parentalmonitor.utils.A11yUsageMath.dayStartWallMillis(now)
+        val start = com.redeye.parentalmonitor.utils.A11yUsageMath.dayStartWallMillis(now, java.util.TimeZone.getDefault())
         var first = 0L
         try {
             val cursor = manager.queryEvents(start, now) ?: return 0L
@@ -9287,7 +9287,7 @@ class MonitoringService : Service() {
             val key: String
             val minute: Int
             if (minuteOfDay < 5 * 60) {
-                key = todayKey(com.redeye.parentalmonitor.utils.A11yUsageMath.previousDayStartWallMillis(now))
+                key = todayKey(com.redeye.parentalmonitor.utils.A11yUsageMath.previousDayStartWallMillis(now, java.util.TimeZone.getDefault()))
                 minute = minuteOfDay + 1440
             } else {
                 key = todayKey(now)
@@ -9623,7 +9623,7 @@ class MonitoringService : Service() {
         val fu = firstUnlockOverride ?: try { firstUnlockTodayMs(now) } catch (_: Exception) { 0L }
         return UsageDayData(rows, a11yRows, fu) {
             try {
-                usageRowsBetween(com.redeye.parentalmonitor.utils.A11yUsageMath.dayStartWallMillis(now), now)
+                usageRowsBetween(com.redeye.parentalmonitor.utils.A11yUsageMath.dayStartWallMillis(now, java.util.TimeZone.getDefault()), now)
             } catch (_: Exception) {
                 null
             }
@@ -9653,7 +9653,7 @@ class MonitoringService : Service() {
         val a11yRows = data.a11yRows
         val rows = data.rows
         if (rows != null && rows.isNotEmpty()) {
-            val dayStart = com.redeye.parentalmonitor.utils.A11yUsageMath.dayStartWallMillis(now)
+            val dayStart = com.redeye.parentalmonitor.utils.A11yUsageMath.dayStartWallMillis(now, java.util.TimeZone.getDefault())
             val dayRows = data.dayRows
             if (dayRows != null) {
                 todayMs = dayRows.sumOf { it.second }
@@ -9662,7 +9662,7 @@ class MonitoringService : Service() {
                     topLabel = top.first
                     topMs = top.second
                 }
-                val rowsY = try { usageRowsBetween(com.redeye.parentalmonitor.utils.A11yUsageMath.previousDayStartWallMillis(now), dayStart) } catch (_: Exception) { null }
+                val rowsY = try { usageRowsBetween(com.redeye.parentalmonitor.utils.A11yUsageMath.previousDayStartWallMillis(now, java.util.TimeZone.getDefault()), dayStart) } catch (_: Exception) { null }
                 if (rowsY != null) {
                     // Jendela yang sama kemarin (issue #1426):
                     // persen sorotan dulu membandingkan hari ini
@@ -9670,7 +9670,7 @@ class MonitoringService : Service() {
                     // kemarin PENUH — digest pagi/susulan selalu
                     // mengklaim turun besar palsu. Kini kemarin
                     // dipotong pada jam yang sama.
-                    val awalKemarin = com.redeye.parentalmonitor.utils.A11yUsageMath.previousDayStartWallMillis(now)
+                    val awalKemarin = com.redeye.parentalmonitor.utils.A11yUsageMath.previousDayStartWallMillis(now, java.util.TimeZone.getDefault())
                     val rowsYW = try { usageRowsBetween(awalKemarin, awalKemarin + (now - dayStart)) } catch (_: Exception) { null }
                     yesterdayWindowMs = rowsYW?.sumOf { it.second } ?: 0L
                     if (topLabel.isNotEmpty()) {
@@ -9794,7 +9794,7 @@ class MonitoringService : Service() {
         if (awaitingOwnerLogin()) return false
         try {
             val now = System.currentTimeMillis()
-            val eventScan = try { usageSummaryScan(24, com.redeye.parentalmonitor.utils.A11yUsageMath.dayStartWallMillis(now)) } catch (_: Exception) { Triple(null, 0L, 0) }
+            val eventScan = try { usageSummaryScan(24, com.redeye.parentalmonitor.utils.A11yUsageMath.dayStartWallMillis(now, java.util.TimeZone.getDefault())) } catch (_: Exception) { Triple(null, 0L, 0) }
             val eventSummary = eventScan.first
             val dayData = usageDayData(now, eventSummary?.let { eventScan.second })
             val since = now - 24 * 60 * 60_000L
@@ -9889,7 +9889,7 @@ class MonitoringService : Service() {
                 }
                 return
             }
-            val yesterday = todayKey(com.redeye.parentalmonitor.utils.A11yUsageMath.previousDayStartWallMillis(now))
+            val yesterday = todayKey(com.redeye.parentalmonitor.utils.A11yUsageMath.previousDayStartWallMillis(now, java.util.TimeZone.getDefault()))
             if (DigestSchedule.nightCatchUpDue(done, yesterday, key, h) ||
                 DigestSchedule.nightZoneShiftCatchUpDue(done, yesterday, h, doneAt, now, doneOff, off.toLong())) {
                 if (awaitingOwnerLogin()) return
@@ -9992,7 +9992,7 @@ class MonitoringService : Service() {
                 set
             }
             if (keys != null && keys.isEmpty()) return FreqResult(m, false)
-            val since = com.redeye.parentalmonitor.utils.A11yUsageMath.dayStartWallMillis(System.currentTimeMillis())
+            val since = com.redeye.parentalmonitor.utils.A11yUsageMath.dayStartWallMillis(System.currentTimeMillis(), java.util.TimeZone.getDefault())
             try {
                 val rows = smsRepository.getRecentSmsSinceLight(since, 200)
                 if (rows.size >= 200) capped = true
@@ -10324,7 +10324,7 @@ class MonitoringService : Service() {
             val schoolFence = GeofenceLogic.configured(schoolLat, schoolLon, schoolRad)
             val inSchool = schoolFence && CurfewLogic.schoolHours(day, h)
             if (!(inCurfew && homeFence) && !inSchool) return
-            val key = todayKey(if (h < 5) com.redeye.parentalmonitor.utils.A11yUsageMath.previousDayStartWallMillis(now) else now)
+            val key = todayKey(if (h < 5) com.redeye.parentalmonitor.utils.A11yUsageMath.previousDayStartWallMillis(now, java.util.TimeZone.getDefault()) else now)
             if (key.isEmpty()) return
             val curfewDone = try { preferencesManager.curfewAlertDate } catch (_: Exception) { "" }
             val schoolDone = try { preferencesManager.schoolAlertDate } catch (_: Exception) { "" }

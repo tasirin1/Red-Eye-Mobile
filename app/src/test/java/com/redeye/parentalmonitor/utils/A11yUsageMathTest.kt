@@ -6,18 +6,11 @@ import org.junit.Test
 class A11yUsageMathTest {
 
     private val hour = 3_600_000L
-    private var zonaAsal: java.util.TimeZone? = null
-
-    @org.junit.Before
-    fun pakaiZonaUtc() {
-        zonaAsal = java.util.TimeZone.getDefault()
-        java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("UTC"))
-    }
-
-    @org.junit.After
-    fun kembalikanZona() {
-        java.util.TimeZone.setDefault(zonaAsal)
-    }
+    // Zona diteruskan eksplisit (issue #1619): uji tak
+    // lagi mengubah zona bawaan global proses, jadi
+    // hasil tak bergantung urutan jalan/rerun parsial.
+    private val utc = java.util.TimeZone.getTimeZone("UTC")
+    private val newYork = java.util.TimeZone.getTimeZone("America/New_York")
 
     @Test
     fun jamLokalMengikutiOffset() {
@@ -67,19 +60,19 @@ class A11yUsageMathTest {
 
     @Test
     fun awalHariMengikutiTanggalYangSama() {
-        assertEquals(1_793_232_000_000L, A11yUsageMath.dayStartWallMillis(1_793_281_530_123L))
-        assertEquals(1_793_232_000_000L, A11yUsageMath.dayStartWallMillis(1_793_318_399_999L))
+        assertEquals(1_793_232_000_000L, A11yUsageMath.dayStartWallMillis(1_793_281_530_123L, utc))
+        assertEquals(1_793_232_000_000L, A11yUsageMath.dayStartWallMillis(1_793_318_399_999L, utc))
     }
 
     @Test
     fun awalHariTepatTengahMalamMengembalikanDirinya() {
-        assertEquals(1_793_232_000_000L, A11yUsageMath.dayStartWallMillis(1_793_232_000_000L))
-        assertEquals(1_793_232_000_000L, A11yUsageMath.dayStartWallMillis(1_793_232_000_001L))
+        assertEquals(1_793_232_000_000L, A11yUsageMath.dayStartWallMillis(1_793_232_000_000L, utc))
+        assertEquals(1_793_232_000_000L, A11yUsageMath.dayStartWallMillis(1_793_232_000_001L, utc))
     }
 
     @Test
     fun awalHariSebelumTengahMalamMundurKeHariSebelumnya() {
-        assertEquals(1_793_145_600_000L, A11yUsageMath.dayStartWallMillis(1_793_231_999_999L))
+        assertEquals(1_793_145_600_000L, A11yUsageMath.dayStartWallMillis(1_793_231_999_999L, utc))
     }
 
     @Test
@@ -87,10 +80,10 @@ class A11yUsageMathTest {
         val day0 = 1_793_232_000_000L
         val hour = 3_600_000L
         val day = 86_400_000L
-        assertEquals(day0 + day, A11yUsageMath.splitBoundaryWallMillis(day0 + 23 * hour, day0 + day))
-        assertEquals(day0 + day, A11yUsageMath.splitBoundaryWallMillis(day0 + 23 * hour, day0 + 2 * day))
-        assertEquals(day0 + day, A11yUsageMath.splitBoundaryWallMillis(day0 + 1_800_000L, day0 + 2 * day))
-        assertEquals(day0 + day, A11yUsageMath.splitBoundaryWallMillis(day0, day0 + day))
+        assertEquals(day0 + day, A11yUsageMath.splitBoundaryWallMillis(day0 + 23 * hour, day0 + day, utc))
+        assertEquals(day0 + day, A11yUsageMath.splitBoundaryWallMillis(day0 + 23 * hour, day0 + 2 * day, utc))
+        assertEquals(day0 + day, A11yUsageMath.splitBoundaryWallMillis(day0 + 1_800_000L, day0 + 2 * day, utc))
+        assertEquals(day0 + day, A11yUsageMath.splitBoundaryWallMillis(day0, day0 + day, utc))
     }
 
     @Test
@@ -102,55 +95,43 @@ class A11yUsageMathTest {
         val day = 86_400_000L
         assertEquals(
             listOf(day0 + day, day0 + 2 * day),
-            A11yUsageMath.splitBoundariesWallMillis(day0 + 23 * hour, day0 + 2 * day)
+            A11yUsageMath.splitBoundariesWallMillis(day0 + 23 * hour, day0 + 2 * day, utc)
         )
         assertEquals(
             listOf(day0 + day, day0 + 2 * day, day0 + 3 * day),
-            A11yUsageMath.splitBoundariesWallMillis(day0 + 8 * hour, day0 + 3 * day)
+            A11yUsageMath.splitBoundariesWallMillis(day0 + 8 * hour, day0 + 3 * day, utc)
         )
         // Satu tengah malam: sama dengan splitBoundaryWallMillis tunggal.
         assertEquals(
             listOf(day0 + day),
-            A11yUsageMath.splitBoundariesWallMillis(day0 + 23 * hour, day0 + day)
+            A11yUsageMath.splitBoundariesWallMillis(day0 + 23 * hour, day0 + day, utc)
         )
     }
 
     @Test
     fun awalHariNilaiEkstremAman() {
-        assertEquals(0L, A11yUsageMath.dayStartWallMillis(0L))
-        assertEquals(-86_400_000L, A11yUsageMath.dayStartWallMillis(-1L))
-        assertEquals(-86_400_000L, A11yUsageMath.dayStartWallMillis(-86_400_000L))
+        assertEquals(0L, A11yUsageMath.dayStartWallMillis(0L, utc))
+        assertEquals(-86_400_000L, A11yUsageMath.dayStartWallMillis(-1L, utc))
+        assertEquals(-86_400_000L, A11yUsageMath.dayStartWallMillis(-86_400_000L, utc))
     }
 
     @Test
     fun awalKemarinSamaDenganAwalHariKurangSehariDiZonaTanpaDst() {
-        assertEquals(1_793_145_600_000L, A11yUsageMath.previousDayStartWallMillis(1_793_281_530_123L))
-        assertEquals(1_793_145_600_000L, A11yUsageMath.previousDayStartWallMillis(1_793_232_000_000L))
-        assertEquals(1_793_059_200_000L, A11yUsageMath.previousDayStartWallMillis(1_793_231_999_999L))
+        assertEquals(1_793_145_600_000L, A11yUsageMath.previousDayStartWallMillis(1_793_281_530_123L, utc))
+        assertEquals(1_793_145_600_000L, A11yUsageMath.previousDayStartWallMillis(1_793_232_000_000L, utc))
+        assertEquals(1_793_059_200_000L, A11yUsageMath.previousDayStartWallMillis(1_793_231_999_999L, utc))
     }
 
     @Test
     fun awalKemarinMengikutiKalenderPadaTransisiDst() {
-        val original = java.util.TimeZone.getDefault()
-        try {
-            java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("America/New_York"))
-            assertEquals(1_772_946_000_000L, A11yUsageMath.previousDayStartWallMillis(1_773_084_600_000L))
-            assertEquals(1_793_505_600_000L, A11yUsageMath.previousDayStartWallMillis(1_793_628_900_000L))
-        } finally {
-            java.util.TimeZone.setDefault(original)
-        }
+        assertEquals(1_772_946_000_000L, A11yUsageMath.previousDayStartWallMillis(1_773_084_600_000L, newYork))
+        assertEquals(1_793_505_600_000L, A11yUsageMath.previousDayStartWallMillis(1_793_628_900_000L, newYork))
     }
 
     @Test
     fun awalKemarinPadaJendelaSesudahSpringForward() {
-        val original = java.util.TimeZone.getDefault()
-        try {
-            java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("America/New_York"))
-            assertEquals(1_772_946_000_000L, A11yUsageMath.previousDayStartWallMillis(1_773_028_800_000L))
-            assertEquals(1_772_946_000_000L, A11yUsageMath.previousDayStartWallMillis(1_773_030_600_000L))
-            assertEquals(1_772_946_000_000L, A11yUsageMath.previousDayStartWallMillis(1_773_032_399_999L))
-        } finally {
-            java.util.TimeZone.setDefault(original)
-        }
+        assertEquals(1_772_946_000_000L, A11yUsageMath.previousDayStartWallMillis(1_773_028_800_000L, newYork))
+        assertEquals(1_772_946_000_000L, A11yUsageMath.previousDayStartWallMillis(1_773_030_600_000L, newYork))
+        assertEquals(1_772_946_000_000L, A11yUsageMath.previousDayStartWallMillis(1_773_032_399_999L, newYork))
     }
 }

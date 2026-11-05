@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Fungsi batas hari pada hitungan pemakaian kini menerima zona waktu secara eksplisit dari pemanggil, bukan membaca zona global — hasil untuk cap waktu lampau konsisten dan ujinya tak lagi mengubah zona bawaan proses (#1619).
+
 - Lapisan keputusan medan cadangan (penerimaan versi, koersi interval, penolakan medan kosong, tanda PIN gugur/versi baru) dipisah menjadi fungsi murni yang teruji JVM, menutup celah cakupan nol pada aturan parsing cadangan (#1618).
 
 - Pemberitahuan "perintah kedaluwarsa" kini dijatah maks satu per 60 detik dengan hitungan sisanya disisipkan pada pemberitahuan berikutnya, sehingga tumpukan perintah lama sesudah putus lama tidak lagi membanjiri chat dengan puluhan pesan yang sama (#1617).

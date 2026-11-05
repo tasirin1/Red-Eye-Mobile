@@ -55,8 +55,13 @@ object A11yUsageMath {
         return lo
     }
 
-    fun dayStartWallMillis(nowWall: Long): Long {
-        val cal = java.util.Calendar.getInstance()
+    // Zona waktu diteruskan pemanggil (issue #1619):
+    // fungsi batas hari dulu membaca zona GLOBAL
+    // untuk cap waktu lampau — kini eksplisit seperti
+    // fungsi malam yang berparameter offset, dan uji
+    // tak lagi mengubah TimeZone.setDefault global.
+    fun dayStartWallMillis(nowWall: Long, zone: java.util.TimeZone): Long {
+        val cal = java.util.Calendar.getInstance(zone)
         cal.timeInMillis = nowWall
         cal.set(java.util.Calendar.HOUR_OF_DAY, 0)
         cal.set(java.util.Calendar.MINUTE, 0)
@@ -65,26 +70,26 @@ object A11yUsageMath {
         return cal.timeInMillis
     }
 
-    fun previousDayStartWallMillis(nowWall: Long): Long {
-        val cal = java.util.Calendar.getInstance()
-        cal.timeInMillis = dayStartWallMillis(nowWall)
+    fun previousDayStartWallMillis(nowWall: Long, zone: java.util.TimeZone): Long {
+        val cal = java.util.Calendar.getInstance(zone)
+        cal.timeInMillis = dayStartWallMillis(nowWall, zone)
         cal.add(java.util.Calendar.DAY_OF_YEAR, -1)
         return cal.timeInMillis
     }
 
-    fun splitBoundaryWallMillis(sessionStartWall: Long, todayStartWall: Long): Long {
-        val cal = java.util.Calendar.getInstance()
-        cal.timeInMillis = dayStartWallMillis(sessionStartWall)
+    fun splitBoundaryWallMillis(sessionStartWall: Long, todayStartWall: Long, zone: java.util.TimeZone): Long {
+        val cal = java.util.Calendar.getInstance(zone)
+        cal.timeInMillis = dayStartWallMillis(sessionStartWall, zone)
         cal.add(java.util.Calendar.DAY_OF_YEAR, 1)
         val nextDayStart = cal.timeInMillis
         return if (nextDayStart < todayStartWall) nextDayStart else todayStartWall
     }
 
-    fun splitBoundariesWallMillis(sessionStartWall: Long, todayStartWall: Long): List<Long> {
+    fun splitBoundariesWallMillis(sessionStartWall: Long, todayStartWall: Long, zone: java.util.TimeZone): List<Long> {
         val out = ArrayList<Long>()
         var cursor = sessionStartWall
         while (true) {
-            val boundary = splitBoundaryWallMillis(cursor, todayStartWall)
+            val boundary = splitBoundaryWallMillis(cursor, todayStartWall, zone)
             out.add(boundary)
             if (boundary >= todayStartWall) break
             cursor = boundary
