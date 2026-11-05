@@ -2235,6 +2235,38 @@ def cek_secret_riwayat(gagal, rentang):
                 return
 
 
+def _pesan_terbelah(teks):
+    """Fragmen token di pesan commit (issue #1698).
+
+    Varian pesan memang TANPA pemadatan (#1425 —
+    pemadatan atas prosa yang mengutip id run/galat
+    pernah menuduh pesan sah), jadi token yang dipecah
+    beberapa aksara per baris lolos. Blok baris PENDEK
+    berurutan adalah bentuk mekanis yang tak mirip
+    prosa: sambung tiap blok >=6 baris yang masing-
+    masing <=8 aksara alfabet token, lalu nilai hasil
+    sambungannya dengan pemindai bersama. Prosa biasa
+    (baris panjang, atau baris pendek kurang dari 6
+    berurutan) tak pernah dinilai tersambung.
+    """
+    if not teks:
+        return False
+
+    def nilai(blok):
+        return len(blok) >= 6 and mengandung_token("".join(blok))
+
+    blok = []
+    for baris in teks.splitlines():
+        b = baris.strip()
+        if b and len(b) <= 8 and re.fullmatch(r"[A-Za-z0-9_+\/=.:-]+", b):
+            blok.append(b)
+        else:
+            if nilai(blok):
+                return True
+            blok = []
+    return nilai(blok)
+
+
 def cek_secret_pesan(gagal, rentang):
     """Pindai token di PESAN commit dalam rentang (issue #769).
 
@@ -2248,7 +2280,7 @@ def cek_secret_pesan(gagal, rentang):
         if not sha:
             continue
         pesan = jalan("git", "log", "-1", "--format=%B", sha)
-        if mengandung_token_pesan(pesan):
+        if mengandung_token_pesan(pesan) or _pesan_terbelah(pesan):
             gagal.append("Kemungkinan token bot asli di PESAN commit %s — "
                          "token di pesan commit hidup permanen di riwayat; "
                          "tulis ulang pesan itu sebelum push. Kredensial "
@@ -2283,7 +2315,7 @@ def cek_secret_pesan_semua(gagal):
             rekaman_list.append(inti)
     for rekaman in rekaman_list:
         sha, _, pesan = rekaman.partition("\x00")
-        if mengandung_token_pesan(pesan):
+        if mengandung_token_pesan(pesan) or _pesan_terbelah(pesan):
             gagal.append("Kemungkinan token bot asli di PESAN commit %s — "
                          "token di pesan commit hidup permanen di riwayat; "
                          "rotasi token itu. Kredensial hanya via input "
