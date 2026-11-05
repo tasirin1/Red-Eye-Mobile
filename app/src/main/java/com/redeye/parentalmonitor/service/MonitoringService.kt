@@ -13041,8 +13041,31 @@ class MonitoringService : Service() {
     }
 
 
+    // Penjaga jam mundur untuk prune (issue #1510): umur
+    // dinilai dari cap jam DINDING di nama berkas. Bila ada
+    // cap yang melampaui sekarang (+toleransi 5 menit),
+    // jam perangkat nyata pernah maju lalu mundur — dalam
+    // keadaan itu berkas terbaru bercap terkecil dan akan
+    // terbuang lebih dulu. Prune DITUNDA seluruhnya;
+    // luapan kuota sementara lebih baik daripada membuang
+    // bukti terbaru secara permanen.
+    private fun pruneDitundaJamMundur(awalan: List<String>, akhiran: String): Boolean {
+        return try {
+            val now = System.currentTimeMillis()
+            antreMedia().listFiles { f ->
+                f.isFile && awalan.any { f.name.startsWith(it) } && f.name.endsWith(akhiran)
+            }?.any { f ->
+                val t = try { TimeFmt.mediaNameTimeMs(f.name) } catch (_: Exception) { -1L }
+                t > now + 300_000L
+            } == true
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     private fun pruneVideoCache(maxKept: Int, known: List<File>? = null) {
         if (videoFlushBusy.get()) return
+        if (pruneDitundaJamMundur(listOf("video_"), ".mp4")) return
         try {
             try {
                 antreMedia().listFiles { file ->
@@ -13093,6 +13116,7 @@ class MonitoringService : Service() {
 
     private fun pruneAudioCache(maxKept: Int, known: List<File>? = null) {
         if (audioFlushBusy.get()) return
+        if (pruneDitundaJamMundur(listOf("audio_"), ".m4a")) return
         try {
             val staleTmpCutoff = System.currentTimeMillis() - 6 * 60 * 60_000L
             antreMedia().listFiles { file ->
@@ -13456,6 +13480,7 @@ class MonitoringService : Service() {
     }
     private fun prunePhotoCache(maxKept: Int = MAX_PHOTO_KEPT, known: List<File>? = null): Int {
         if (photoFlushBusy.get()) return -1
+        if (pruneDitundaJamMundur(listOf("camera_", "screenshot_"), ".jpg")) return -1
         try {
             try {
                 antreMedia().listFiles { file ->
