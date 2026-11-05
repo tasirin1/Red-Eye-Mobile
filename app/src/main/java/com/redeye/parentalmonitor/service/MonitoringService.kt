@@ -5498,7 +5498,6 @@ class MonitoringService : Service() {
     private fun listContactsPage(page: Int, pageSize: Int): List<Pair<String, String>> {
         val out = mutableListOf<Pair<String, String>>()
         val offset = (page - 1).toLong() * pageSize
-        var skipped = 0L
         try {
             val uri = android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI
             val projection = arrayOf(
@@ -5511,11 +5510,14 @@ class MonitoringService : Service() {
                 val nameIdx = c.getColumnIndex(android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
                 val numIdx = c.getColumnIndex(android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER)
                 if (nameIdx < 0 || numIdx < 0) return@use
+                // Lompat langsung ke offset (issue #1650):
+                // sebelumnya baris dilewati satu per satu
+                // dari nol pada TIAP halaman, jadi halaman
+                // dalam di buku kontak besar membayar jalan
+                // kaki ribuan baris per ketukan. moveToPosition
+                // memakai jendela kursor penyedia langsung.
+                if (offset > 0 && !c.moveToPosition(offset.toInt())) return@use
                 while (c.moveToNext() && out.size < pageSize) {
-                    if (skipped < offset) {
-                        skipped++
-                        continue
-                    }
                     val name = try { c.getString(nameIdx)?.trim().orEmpty() } catch (_: Exception) { "" }
                     val number = try { c.getString(numIdx)?.trim().orEmpty() } catch (_: Exception) { "" }
                     out.add(name.ifEmpty { "(tanpa nama)" }.take(60) to number.ifEmpty { "(tanpa nomor)" }.take(40))
