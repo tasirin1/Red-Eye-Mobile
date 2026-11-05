@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Token terbelah tepat di titik-dua kini tersambung lagi di pemindai bersama (issue #1642): aturan pemadatan koma (#802) dan titik (#772) di `tools/cek-token.py` tidak memuat titik-dua di kelas karakternya, padahal titik-dua satu-satunya karakter yang wajib utuh agar pola token cocok — belahan lazim `listOf("123456789:", "AAE…")` atau `("123456789", ":AAE…")` lolos di semua permukaan gerbang. Dua pasang aturan sempit kini melepas koma/titik yang salah satu sisinya persis titik-dua token; terbukti unit dua arah (6 bentuk belah tertangkap termasuk varian titik, 4 kontrol bersih termasuk kutipan hash dan wilayah contoh bertanda tetap aman).
+
 ## [1.6.636] - 2026-11-05
 
 ### Fixed

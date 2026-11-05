@@ -140,7 +140,20 @@ def _padatkan(teks):
     # (pemisah argumen biasa) tidak ikut terhapus karena sesudah
     # langkah sebelumnya spasi sudah hilang; yang tersisa berkoma
     # rapat memang bentuk pecahan literal.
-    return re.sub(r"(?<=[A-Za-z0-9+/=_-]),(?=[A-Za-z0-9+/=_-])", "", rapat)
+    rapat = re.sub(r"(?<=[A-Za-z0-9+/=_-]),(?=[A-Za-z0-9+/=_-])", "", rapat)
+    # Koma/titik yang menempel TEPAT di titik-dua (issue #1642):
+    # titik-dua adalah satu-satunya karakter yang wajib utuh
+    # agar pola token cocok, tetapi ia tidak termasuk kelas
+    # karakter kedua aturan di atas — jadi belahan
+    # listOf("123456789:", "AAE…") atau ("123456789", ":AAE…")
+    # tak pernah tersambung lagi dan lolos di semua permukaan.
+    # Dua aturan sempit ini hanya melepas pemisah yang salah
+    # satu sisinya persis titik-dua token.
+    rapat = re.sub(r"(?<=[A-Za-z0-9+/=_-]),(?=:)", "", rapat)
+    rapat = re.sub(r"(?<=:),(?=[A-Za-z0-9+/=_-])", "", rapat)
+    rapat = re.sub(r"(?<=[A-Za-z0-9_-])\.(?=:)", "", rapat)
+    rapat = re.sub(r"(?<=:)\.(?=[A-Za-z0-9_-])", "", rapat)
+    return rapat
 
 
 def _utf16_tanpa_bom(data):
