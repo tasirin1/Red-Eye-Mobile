@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Mode hemat baterai bawaan Android kini ikut dihormati: saat pemilik menyalakannya, perlambatan hemat daya yang sama berlaku untuk foto otomatis dan patroli.
+
 - Perintah /battery kini juga melaporkan status panas perangkat, sehingga kegagalan kamera atau rekam akibat perangkat kepanasan bisa dibedakan dari kerusakan.
 
 - Panggilan dari nomor tersembunyi kini tampil dengan label 'Nomor tersembunyi' di laporan, bukan penanda mentah seperti -1 yang membingungkan.

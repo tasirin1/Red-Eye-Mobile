@@ -8061,7 +8061,17 @@ class MonitoringService : Service() {
 
     private fun lowPowerActive(): Boolean {
         val level = batteryLevel()
-        return level in 0..LOW_BATTERY_LEVEL && !isCharging()
+        if (level in 0..LOW_BATTERY_LEVEL && !isCharging()) return true
+        // Battery Saver SISTEM ikut dihormati (issue
+        // #1500): dulu isPowerSaveMode tak pernah dibaca —
+        // pemilik menyalakan penghemat baterai Android dan
+        // jeda aplikasi tak berubah. Kini perlambatan yang
+        // sama berlaku (kecuali sedang mengisi daya).
+        return try {
+            !isCharging() && getSystemService(android.os.PowerManager::class.java)?.isPowerSaveMode == true
+        } catch (_: Exception) {
+            false
+        }
     }
 
     // Gerbang baterai operasi berat (issue #1491): di
