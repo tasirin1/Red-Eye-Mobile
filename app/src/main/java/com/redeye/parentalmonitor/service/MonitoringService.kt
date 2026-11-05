@@ -545,6 +545,27 @@ class MonitoringService : Service() {
             }
             return
         }
+        // Rekaman terputus oleh kematian proses (issue
+        // #1461): penanda dari proses sebelumnya berarti
+        // sebuah /record mati di tengah — berkas .tmp-nya
+        // memang tak bisa diselamatkan (belum final), tetapi
+        // kehilangannya kini BERKABAR, tidak senyap.
+        try {
+            val penanda = java.io.File(
+                com.redeye.parentalmonitor.utils.MediaDirs.queueDir(this), "rekam_aktif.txt"
+            )
+            if (penanda.exists()) {
+                penanda.delete()
+                serviceScope.launch {
+                    try {
+                        com.redeye.parentalmonitor.data.MessageQueue.getInstance(this@MonitoringService).addMessage("⚠️ Rekaman sebelumnya terputus di tengah jalan (aplikasi/proses mati) — berkasnya belum final dan tidak bisa diselamatkan.")
+                        MessageScheduler.scheduleMessageSend(this@MonitoringService)
+                    } catch (_: Exception) {
+                    }
+                }
+            }
+        } catch (_: Exception) {
+        }
         if (!startForegroundImmediate()) {
             // Instance tanpa inisialisasi inti tak bisa pulih
             // lewat intent baru (onStartCommand menolaknya);
@@ -12164,6 +12185,14 @@ class MonitoringService : Service() {
             recorder.prepare()
             recorderActive.set(true)
             recorder.start()
+            // Penanda rekaman berjalan (issue #1461):
+            // bertahan lintas kematian proses agar nyala
+            // berikutnya bisa melaporkan rekaman yang
+            // terputus, bukan menghilangkannya senyap.
+            try {
+                java.io.File(antreMedia(), "rekam_aktif.txt").writeText(System.currentTimeMillis().toString())
+            } catch (_: Exception) {
+            }
             // Amplitudo maksimum selama rekam (issue #1454):
             // nol mutlak di seluruh rekaman = tanda mikrofon
             // dibisukan platform, bukan ruangan hening (lantai
@@ -12341,6 +12370,10 @@ class MonitoringService : Service() {
             android.util.Log.e("MonitoringService", "✗ Audio record failed: ${redactToken(e.message)}")
             sendToTelegram("\u26A0\uFE0F Gagal merekam: " + Html.escape(sanitizedCameraError(e.message)) + ".")
         } finally {
+            try {
+                deleteQuietly(java.io.File(antreMedia(), "rekam_aktif.txt"))
+            } catch (_: Exception) {
+            }
             recorderActive.set(false)
             releaseOpWakeLock(audioLock)
             try {

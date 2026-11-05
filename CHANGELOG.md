@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Rekaman yang terputus karena aplikasi/proses mati di tengah kini dilaporkan saat aplikasi menyala lagi: sebelumnya berkas rekaman setengah jadi dibuang dan kehilangannya tak pernah sampai ke pemilik (berkasnya sendiri memang tidak bisa diselamatkan karena belum final).
+
 - Listener notifikasi kini memindai notifikasi yang masih aktif setiap kali tersambung: notifikasi yang muncul selama listener terlepas tidak lagi hilang tanpa jejak (yang sudah pernah diteruskan tetap ditahan penyaring duplikat).
 
 - Kata pantau pada notifikasi kini dinilai dari isi pesannya saja, bukan gabungan judul dan isi: kata yang kebetulan cocok dengan nama grup/percakapan tidak lagi membuat semua pesan dari grup itu bertanda pantau dan naik prioritas selamanya.
