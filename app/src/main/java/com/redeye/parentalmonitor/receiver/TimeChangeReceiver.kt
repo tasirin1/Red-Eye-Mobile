@@ -34,7 +34,7 @@ class TimeChangeReceiver : BroadcastReceiver() {
         // di executornya sendiri termasuk jalur tertolak.
         Background.runReceiver(pendingResult) {
             try {
-                Liveness.handleWakeUp(appContext, fromAlarm = false)
+                Liveness.handleWakeUp(appContext, fromAlarm = false, penandaWaktu = true)
             } catch (e: Exception) {
                 android.util.Log.e("TimeChangeReceiver", "Liveness wake-up failed", e)
             }

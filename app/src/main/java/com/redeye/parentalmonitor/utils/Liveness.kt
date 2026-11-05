@@ -257,11 +257,11 @@ object Liveness {
     // berbagi pool satu benang sehingga terserial sendiri.
     private val wakeLock = Any()
 
-    fun handleWakeUp(context: Context, fromAlarm: Boolean = false) {
-        synchronized(wakeLock) { handleWakeUpLocked(context, fromAlarm) }
+    fun handleWakeUp(context: Context, fromAlarm: Boolean = false, penandaWaktu: Boolean = false) {
+        synchronized(wakeLock) { handleWakeUpLocked(context, fromAlarm, penandaWaktu) }
     }
 
-    private fun handleWakeUpLocked(context: Context, fromAlarm: Boolean = false) {
+    private fun handleWakeUpLocked(context: Context, fromAlarm: Boolean = false, penandaWaktu: Boolean = false) {
         val manager = try {
             PreferencesManager.refreshInstance(context)
             PreferencesManager.getInstance(context)
@@ -325,7 +325,10 @@ object Liveness {
             // dan jangan kirim start kedua.
             return
         }
-        noteKillDetected()
+        // Bangun karena jam/zona berubah (issue #1684)
+        // BUKAN bukti layanan dibunuh: jangan kosongkan
+        // rentetan sehat / nyalakan mode waspada untuknya.
+        if (!penandaWaktu) noteKillDetected()
         schedule(context)
         try {
             if (fromAlarm && manager.liveTestPending) manager.liveTestByAlarm = true
