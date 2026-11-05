@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Loop penjaga di layanan penerus notifikasi kini berirama 5 menit selama layanan utama sehat (sebelumnya 60 detik); irama 60 detik dipertahankan hanya saat layanan utama mati dan perlu dihidupkan ulang (#1585).
+
 - Pencatatan penghitung pesan terbuang (drop) tidak lagi menulis ulang seluruh berkas antrean terenkripsi pada setiap catatan: persist penghitung kini ditunda ke mekanisme drain yang sama dengan antrean, sehingga badai pesan terbuang tidak lagi membayar satu penulisan penuh per kejadian (#1583).
 
 - Pemindaian kata pantau pada snapshot aksesibilitas tidak lagi memindai teks yang identik berulang kali dalam satu snapshot (baris daftar yang berulang cukup dipindai sekali); cakupan deteksi teks utuh tidak berubah (#1582).

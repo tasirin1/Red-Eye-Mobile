@@ -1025,7 +1025,13 @@ class NotificationForwarderService : NotificationListenerService() {
                     } catch (_: Exception) {
                         false
                     }
-                    delay(if (pausedLoop) 300_000L else 60_000L)
+                    // Irama melambat saat layanan utama
+                    // sehat (issue #1585): cek 60 detik hanya
+                    // berguna saat layanan mati (menghidupkan
+                    // ulang); selama ia hidup, cek berikutnya
+                    // cukup 5 menit — rantai bangun ketiga ini
+                    // tak perlu berdenyut semenit sekali.
+                    delay(if (pausedLoop || MonitoringService.isRunning) 300_000L else 60_000L)
                 } catch (e: kotlinx.coroutines.CancellationException) {
                     throw e
                 } catch (_: Exception) {
