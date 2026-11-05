@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Username bot hasil pengujian kini terikat pada token yang menghasilkannya: simpan luring tidak lagi bisa menulis username basi milik token lain ke prefs, yang sebelumnya membuat layanan salah memilah perintah beralamat @Bot tanpa koreksi diri (#1611).
+
 - Penyambungan sesi sesudah jendela transien (lembar berbagi/billing) kini membatasi celah yang diakru ke aplikasi asal maks 60 detik — penyambungan tanpa launch tambahan tetap berlaku sampai 10 menit, tetapi sela panjang tak lagi menggelembungkan angka pemakaian dan menit malam aplikasi asal (#1610).
 
 - Kanal screenshot aksesibilitas kini punya backoff: sesudah 3 kegagalan beruntun kanal dilewati selama 5 menit dan /screenshot langsung memakai fallback proyeksi, bukan menunggu sampai 20 detik pada callback yang menggantung setiap kali (#1609).

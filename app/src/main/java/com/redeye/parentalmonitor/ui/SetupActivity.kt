@@ -67,6 +67,10 @@ class SetupActivity : AppCompatActivity() {
     // disimpan — menulisnya langsung saat uji membuat nama bot yang
     // tak jadi dipakai menempel permanen di prefs.
     private var usernameBotTeruji: String = ""
+    // Token pasangan usernameBotTeruji (issue #1611):
+    // username hanya boleh ditulis ke prefs bila token
+    // yang baru disimpan adalah token yang menghasilkannya.
+    private var tokenBotTeruji: String = ""
     private val testSeq = java.util.concurrent.atomic.AtomicInteger(0)
     private val statusSeq = java.util.concurrent.atomic.AtomicInteger(0)
     private var statusJob: kotlinx.coroutines.Job? = null
@@ -413,7 +417,10 @@ class SetupActivity : AppCompatActivity() {
                 val meObj = meResp.body()?.result?.asJsonObject
                 botUsername = meObj?.get("username")?.asString.orEmpty()
                 botId = meObj?.get("id")?.asLong ?: 0L
-                if (botUsername.isNotEmpty()) usernameBotTeruji = botUsername
+                if (botUsername.isNotEmpty()) {
+                    usernameBotTeruji = botUsername
+                    tokenBotTeruji = token
+                }
             } catch (_: Exception) {
             }
             val enc = try { java.net.URLEncoder.encode(chatId, "UTF-8") } catch (_: Exception) { chatId }
@@ -470,9 +477,16 @@ class SetupActivity : AppCompatActivity() {
     // Tulis username bot teruji ke prefs (issue #875): dipanggil
     // HANYA dari jalur yang baru saja berhasil menyimpan kredensial
     // milik bot itu, agar nama di prefs selalu milik token tersimpan.
-    private fun simpanUsernameBotTeruji() {
+    private fun simpanUsernameBotTeruji(tokenTersimpan: String) {
         val u = usernameBotTeruji
-        if (u.isNotEmpty()) {
+        // Ikatan token (issue #1611): cabang simpan luring
+        // mencapai fungsi ini walau verifikasi token yang
+        // disimpan GAGAL — tanpa ikatan, username basi
+        // milik token lain yang diuji lebih dulu di sesi
+        // layar yang sama tertulis permanen untuk token
+        // tersimpan dan layanan salah memilah perintah
+        // beralamat @Bot (#843) tanpa koreksi diri.
+        if (u.isNotEmpty() && tokenBotTeruji.isNotEmpty() && tokenBotTeruji == tokenTersimpan) {
             try { prefs.botUsername = u } catch (_: Exception) { }
         }
     }
@@ -1115,7 +1129,7 @@ class SetupActivity : AppCompatActivity() {
                         loadedSyncInterval = interval
                         loadedCameraInterval = cameraInterval
                         clearPendingRestore()
-                        simpanUsernameBotTeruji()
+                        simpanUsernameBotTeruji(token)
                     }
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                         if (isFinishing || isDestroyed) return@withContext
@@ -1147,7 +1161,7 @@ class SetupActivity : AppCompatActivity() {
                 loadedSyncInterval = interval
                 loadedCameraInterval = cameraInterval
                 clearPendingRestore()
-                simpanUsernameBotTeruji()
+                simpanUsernameBotTeruji(token)
             }
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                 if (isFinishing || isDestroyed) return@withContext
@@ -1749,7 +1763,7 @@ class SetupActivity : AppCompatActivity() {
             val saved = try { prefs.saveCredentials(token, chatId, syncInterval, cameraInterval, restoreOwnerOverride(token, chatId), accessPin) } catch (_: Exception) { false }
             if (saved) {
                 clearPendingRestore()
-                simpanUsernameBotTeruji()
+                simpanUsernameBotTeruji(token)
             }
             saved
         }
