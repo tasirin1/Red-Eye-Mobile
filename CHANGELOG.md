@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.632] - 2026-11-05
+
 ### Fixed
 
 - Perkakas gerbang: pemeriksaan cepat kini menghormati penanda contoh token dan pengecualian hash yang sudah dikenal pemindai token utama, sehingga contoh terdokumentasi di isi berkas tidak lagi menggagalkan pemeriksaan.
