@@ -554,6 +554,14 @@ class MonitoringService : Service() {
             // tertahan menilai catatannya.
             ownerEpoch = try { preferencesManager.restoreEpochPersisted.toInt() } catch (_: Exception) { 0 }
         } catch (_: Exception) {
+            // Coba bentuk foreground dulu (issue #1555):
+            // instance ini bisa saja dibuat lewat
+            // startForegroundService — stopSelf tanpa
+            // startForeground sama sekali berisiko
+            // RemoteServiceException di perangkat nyata.
+            // Gagal pun tak lebih buruk dari sebelumnya:
+            // jaring di bawah tetap dijadwalkan.
+            try { startForegroundImmediate() } catch (_: Exception) { }
             try {
                 Liveness.schedule(this)
             } catch (_: Exception) {

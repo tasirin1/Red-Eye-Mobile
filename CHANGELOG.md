@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Jalur gagal awal saat layanan dibuat kini tetap berusaha membentuk notifikasi latar depan sebelum berhenti, menutup risiko galat sistem pada perangkat yang membuatnya lewat jalur layanan latar depan.
+
 - Titik acuan uji lompatan lokasi pagar tidak lagi bisa dimundurkan oleh titik lokasi lama dari cache, yang sebelumnya bisa meloloskan titik glitch berikutnya.
 
 - Balasan perintah sensitif yang dialihkan ke chat pribadi kini tetap menghormati blokir autentikasi dan jeda batas laju global, tidak melewatinya seperti sebelumnya.
