@@ -1982,6 +1982,42 @@ def cek_secret_pohon(gagal):
                          "SetupActivity" % path)
 
 
+def _kandidat_rapat(rapat):
+    """Kandidasi sapuan rapat atas isi yang newline-nya dibuang.
+
+    Blob besar dinilai per jendela tumpang-tindih (issue
+    #1675): pola run yang dicari panjangnya terbatas, jadi
+    jendela 64 KiB dengan tumpang-tindih 64 aksara pasti
+    memuat utuh setiap run yang menyeberangi batas jendela.
+    """
+    pola = r"[0-9]{6,}|[A-Za-z0-9+/=_-]{40,}"
+    if len(rapat) <= 65536:
+        return re.search(pola, rapat) is not None
+    langkah = 65536 - 64
+    for i in range(0, len(rapat), langkah):
+        if re.search(pola, rapat[i:i + 65536]):
+            return True
+    return False
+
+
+def _vonis_isi_besar(isi):
+    """Vonis pemindai bersama atas isi blob sapuan rapat.
+
+    Isi <=2 MiB dinilai utuh seperti sebelumnya; lebih
+    besar dari itu dinilai per jendela 2 MiB bertumpang-
+    tindih 8 KiB (issue #1675) agar blob raksasa tidak
+    menahan sapuan — bentang token terfragmentasi yang
+    muat di satu jendela tetap tertangkap utuh.
+    """
+    if len(isi) <= 2097152:
+        return mengandung_token(isi)
+    langkah = 2097152 - 8192
+    for i in range(0, len(isi), langkah):
+        if mengandung_token(isi[i:i + 2097152]):
+            return True
+    return False
+
+
 def cek_secret_riwayat(gagal, rentang):
     """Pindai token di pohon TIAP commit dalam rentang (issue #750).
 
@@ -2063,12 +2099,14 @@ def cek_secret_riwayat(gagal, rentang):
         # yang dipecah <=5 aksara/baris TERMASUK digit id-nya
         # menggugurkan alternatif digit >=6 maupun run >=40
         # sekaligus dan blob tak pernah jadi kandidat. Sapu
-        # berkas yang berubah di commit ini: blob kecil
-        # (<=64 KB) diuji kandidasinya pada isi yang newline-
-        # nya dibuang — run yang menyeberangi baris terlihat
-        # di sana. Kandidat bukan vonis: vonis tetap
-        # mengandung_token atas isi ASLI (pemadatan pemindai
-        # menyambung belahannya sendiri).
+        # berkas yang berubah di commit ini: kandidasinya
+        # diuji pada isi yang newline-nya dibuang — run yang
+        # menyeberangi baris terlihat di sana. Kandidat bukan
+        # vonis: vonis tetap mengandung_token atas isi ASLI
+        # (pemadatan pemindai menyambung belahannya sendiri).
+        # Blob besar TIDAK lagi dilewati (issue #1675):
+        # kandidasi + vonisnya per jendela (lihat
+        # _kandidat_rapat/_vonis_isi_besar).
         berubah_kandidat = jalan("git", "diff-tree", "--no-commit-id",
                                  "--name-only", "-z", "-r", "--root",
                                  "-m", sha) or ""
@@ -2077,15 +2115,15 @@ def cek_secret_riwayat(gagal, rentang):
             if not path:
                 continue
             mentah = jalan_biner("git", "show", "%s:%s" % (sha, path))
-            if mentah is None or len(mentah) > 65536:
+            if mentah is None:
                 continue
             isi = _dekode(mentah)
             if isi is None:
                 continue
             rapat = isi.replace("\r", "").replace("\n", "")
-            if not re.search(r"[0-9]{6,}|[A-Za-z0-9+/=_-]{40,}", rapat):
+            if not _kandidat_rapat(rapat):
                 continue
-            if mengandung_token(isi):
+            if _vonis_isi_besar(isi):
                 gagal.append("Kemungkinan token bot asli (base64/terbelah) "
                              "di %s pada commit %s (riwayat rentang) — "
                              "token tetap hidup di riwayat walau sudah "
