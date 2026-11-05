@@ -499,7 +499,7 @@ object A11yMonitor {
     // kedua peta dibangun ulang malas dari PackageManager.
     fun releaseCaches() {
         try { synchronized(labels) { labels.clear() } } catch (_: Exception) { }
-        try { synchronized(launchable) { launchable.clear() } } catch (_: Exception) { }
+        try { synchronized(labels) { launchable.clear() } } catch (_: Exception) { } // monitor SAMA dengan semua akses operasional launchable (issue #1667): dulu synchronized(launchable) sendiri, tak saling mengecualikan dengan isLaunchable/invalidatePackageCache
     }
 
     private fun watchedPackages(manager: PreferencesManager): Set<String> {
