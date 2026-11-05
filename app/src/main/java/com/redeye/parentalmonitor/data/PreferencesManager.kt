@@ -44,7 +44,7 @@ class PreferencesManager(context: Context) {
     // baru yang memang belum berisi apa pun.
     val credentialsLikelyLost: Boolean
         get() = !storageEncrypted && try {
-            java.io.File(appContext.filesDir.parentFile, "shared_prefs/secure_prefs.xml").exists()
+            java.io.File(appContext.filesDir.parentFile, "shared_prefs/${PREFS_NAME}.xml").exists()
         } catch (_: Exception) {
             false
         }
@@ -689,7 +689,7 @@ class PreferencesManager(context: Context) {
                 try {
                     val app = context.applicationContext
                     app.deleteSharedPreferences(PREFS_NAME)
-                    app.deleteSharedPreferences("encrypted_queue")
+                    app.deleteSharedPreferences(MessageQueue.QUEUE_PREFS_NAME)
                 } catch (e: Exception) {
                     android.util.Log.w("PreferencesManager", "Gagal menghapus prefs terenkripsi", e)
                     return StorageRecovery.FAILED
