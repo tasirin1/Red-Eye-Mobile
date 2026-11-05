@@ -43,10 +43,30 @@ object MediaDirs {
                         n.startsWith("video_") || n.startsWith("audio_")
                     if (!media) return@forEach
                     val dst = File(tujuan, n)
-                    if (dst.exists()) return@forEach
+                    // Tujuan yang ada BERSAMA sumbernya hanya
+                    // bisa sisa salinan parsial gagal lampau
+                    // (migrasi utuh menghapus sumber) — buang
+                    // agar tak menghalangi selamanya (issue
+                    // #1455).
+                    if (dst.exists()) {
+                        try { dst.delete() } catch (_: Exception) { }
+                    }
                     if (!f.renameTo(dst)) {
-                        f.copyTo(dst, overwrite = false)
-                        f.delete()
+                        // Salin ke nama sementara; ganti nama
+                        // hanya sesudah utuh. Gagal di tengah
+                        // tak lagi meninggalkan berkas terpotong
+                        // di antrean (issue #1455).
+                        val tmp = File(tujuan, n + ".mig")
+                        try {
+                            f.copyTo(tmp, overwrite = true)
+                            if (tmp.renameTo(dst)) {
+                                f.delete()
+                            } else {
+                                tmp.delete()
+                            }
+                        } catch (_: Exception) {
+                            try { tmp.delete() } catch (_: Exception) { }
+                        }
                     }
                 } catch (_: Exception) {
                 }
