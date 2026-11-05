@@ -1316,10 +1316,6 @@ object A11yMonitor {
         }
     }
 
-    private fun protectionActive(manager: PreferencesManager): Boolean {
-        return monitoringActive(manager)
-    }
-
     @Suppress("DEPRECATION")
     private fun recycleNode(node: AccessibilityNodeInfo) {
         if (android.os.Build.VERSION.SDK_INT >= 33) return
