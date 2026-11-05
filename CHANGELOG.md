@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Pengecualian hash-diikuti-kata pada pemindai token diperluas ke bentuk prosa wajar (kapital di kata berikutnya, garis bawah, angka) — kutipan log berisi hash yang diikuti kalimat biasa tidak lagi tertuduh token.
+
 - Skrip cek cepat kini membaca nama berkas non-ASCII (aksen/emoji) dengan benar pada pindaian pohon — berkas bernama seperti itu tidak lagi tertuduh tanpa bisa dikonfirmasi.
 
 - Skrip cek cepat kini mengenali berkas teks yang memuat satu byte kosong (NUL) sebagai teks — contoh token bertanda di dalamnya tidak lagi tertuduh sebagai "berkas biner", sementara biner sungguhan tetap berlaku vonis mentahnya.

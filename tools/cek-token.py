@@ -58,14 +58,31 @@ def _pola_mentah_cocok(teks):
         # menjadi ekor campuran ('<sha40>gagal') sehingga
         # pengecualian di atas kalah di permukaan berkas.
         # Ekor yang 40/64 aksara pertamanya hex murni dan
-        # sisanya huruf kecil semua adalah hash + kata
+        # dilanjutkan kata prosa adalah hash + kata
         # berikutnya, bukan token (ekor token asli 35
         # aksara campuran entropi tinggi).
         lolos_hash_kata = False
         for n in (40, 64):
             if len(ekor) > n and _POLA_HEX.match(ekor[:n]):
                 sisa = ekor[n:]
-                if sisa.isalpha() and sisa.islower():
+                # Kata pertama sesudah hash (issue #1568):
+                # syarat lama (seluruh sisa huruf kecil)
+                # terlalu sempit — 'GagalTotal', 'Gagal
+                # total', 'gagal_total', 'gagal 2 kali',
+                # 'gagal2x' tetap tertuduh padahal permukaan
+                # pesan bersih untuk teks yang sama. Nilai
+                # deret huruf PEMBUKA sisa saja (huruf apa
+                # pun) sepanjang wajar sebuah kata (<=30):
+                # gerbang hex 40/64 di atas sudah menying-
+                # kirkan token asli secara praktis, sisanya
+                # adalah prosa yang terpadatkan.
+                kata = 0
+                for c in sisa:
+                    if c.isalpha():
+                        kata += 1
+                    else:
+                        break
+                if 1 <= kata <= 30:
                     lolos_hash_kata = True
                     break
         if lolos_hash_kata:
