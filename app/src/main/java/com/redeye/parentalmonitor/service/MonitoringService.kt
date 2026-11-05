@@ -8697,6 +8697,19 @@ class MonitoringService : Service() {
     // Menjumlah nightMillis hari ini saja membuang paruh
     // 22.00-24.00 kemarin yang tersimpan di peta harinya.
     private fun lastNightMillis(todayRows: List<A11yMonitor.AppUsage>): Long {
+        // Jendela berjalan (issue #1628): pada 22.00-24.00
+        // "malam ini" adalah malam yang BARU dimulai —
+        // paruhnya adalah nightLateMillis HARI INI yang
+        // terakumulasi sampai sekarang. Rumus jendela
+        // tuntas di bawah memakainya kemarin, sehingga
+        // pemakaian sejak 22.00 tak terlihat sama sekali
+        // sampai lewat tengah malam.
+        val jam = try {
+            java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+        } catch (_: Exception) {
+            -1
+        }
+        if (jam >= 22) return todayRows.sumOf { it.nightLateMillis }
         val awalHariIni = todayRows.sumOf { it.nightMillis - it.nightLateMillis }
         val akhirKemarin = try { A11yMonitor.yesterdayUsage(this).sumOf { it.nightLateMillis } } catch (_: Exception) { 0L }
         return awalHariIni + akhirKemarin

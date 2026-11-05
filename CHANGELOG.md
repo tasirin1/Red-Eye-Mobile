@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Baris "Malam ini" pada ringkasan layar kini memakai jendela malam yang sedang berjalan pada pukul 22.00–24.00 (paruh malam hari ini), bukan jendela tuntas kemarin yang membuang pemakaian sejak 22.00 (#1628).
+
 - Kanal riwayat verifikasi-path kini membaca daftar nama git dalam format -z di ketiga salurannya, sehingga token di berkas bernama non-ASCII/petik tidak lagi terlewat diam-diam dari pemindaian riwayat (#1627).
 
 - Mode rentang CI pada verifikasi-path kini mengonfirmasi tuduhan token atas fragmen diff terhadap isi penuh berkas berubah (meniru konfirmasi cek-cepat), sehingga rotasi nilai kontrol di wilayah bertanda contoh tidak lagi dihukum di CI padahal lolos di lokal (#1626).
