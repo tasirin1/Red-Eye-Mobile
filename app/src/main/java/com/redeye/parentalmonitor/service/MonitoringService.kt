@@ -12503,6 +12503,7 @@ class MonitoringService : Service() {
                 return MediaSendOutcome.KEPT
             }
             android.util.Log.w("MonitoringService", "$label rejected (400), dropping file")
+            bersihkanCatatanUnggah(file)
             deleteQuietly(file)
             return MediaSendOutcome.DROPPED
         }
@@ -12516,6 +12517,7 @@ class MonitoringService : Service() {
             // media selamanya. Kabar drop ke owner dirumuskan
             // netral-sebab supaya tak mengklaim 400 di sini.
             android.util.Log.w("MonitoringService", "$label too large (413), dropping file")
+            bersihkanCatatanUnggah(file)
             deleteQuietly(file)
             return MediaSendOutcome.DROPPED
         }
@@ -13617,6 +13619,14 @@ class MonitoringService : Service() {
             // terhenti tidur dalam di tengah jalan — pola yang
             // sama seperti foto pada #1208, batasnya mengikuti
             // callTimeout klien media.
+            // Penanda tak-pasti ditulis SEBELUM kirim (issue
+            // #1671): dulu hanya cabang gagal yang menulisnya,
+            // jadi kematian proses sesudah server menerima
+            // tetapi sebelum berkas dihapus mengirim ulang
+            // media TANPA label duplikat. Caption di atas
+            // sudah terbentuk dari keadaan jurnal sebelumnya,
+            // jadi label percobaan ini tidak berubah.
+            catatUnggahTakPasti(audioFile)
             val audioLock = acquireOpWakeLock("audio", 600_000L)
             val response = try {
                 TelegramMediaClient.api.sendAudio(url, chatIdBody, caption, audioPart, menuBarBody())
@@ -13859,6 +13869,14 @@ class MonitoringService : Service() {
             // Kunci terjaga selama unggahan (issue #1265):
             // sama seperti audio di atas — jalur flush tak
             // memegang kunci rekam yang membentang.
+            // Penanda tak-pasti ditulis SEBELUM kirim (issue
+            // #1671): dulu hanya cabang gagal yang menulisnya,
+            // jadi kematian proses sesudah server menerima
+            // tetapi sebelum berkas dihapus mengirim ulang
+            // media TANPA label duplikat. Caption di atas
+            // sudah terbentuk dari keadaan jurnal sebelumnya,
+            // jadi label percobaan ini tidak berubah.
+            catatUnggahTakPasti(videoFile)
             val videoLock = acquireOpWakeLock("video", 600_000L)
             val response = try {
                 TelegramMediaClient.api.sendVideo(url, chatIdBody, caption, videoPart, menuBarBody())
@@ -14378,6 +14396,14 @@ class MonitoringService : Service() {
             // 120 dtk melepas perlindungan tidur dalam di
             // tengah unggahan lambat yang masih sah — keluarga
             // ketidakcocokan anggaran yang sama dengan #1232.
+            // Penanda tak-pasti ditulis SEBELUM kirim (issue
+            // #1671): dulu hanya cabang gagal yang menulisnya,
+            // jadi kematian proses sesudah server menerima
+            // tetapi sebelum berkas dihapus mengirim ulang
+            // media TANPA label duplikat. Caption di atas
+            // sudah terbentuk dari keadaan jurnal sebelumnya,
+            // jadi label percobaan ini tidak berubah.
+            catatUnggahTakPasti(photoFile)
             val photoLock = acquireOpWakeLock("photo", 600_000L)
             val response = try {
                 TelegramMediaClient.api.sendPhoto(url, chatIdBody, caption, photoPart, menuBarBody())
