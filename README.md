@@ -58,7 +58,7 @@ Buat orang tua memantau HP anaknya sendiri — bukan buat iseng. Dari luar, apli
 
 Bagi pengelola repo, APK diterbitkan dengan dua cara:
 
-1. Cara rilis: `push` tag `vX.Y.Z` → muncul di halaman Releases sebagai `redeye-vX.Y.Z-debug.apk` dan `redeye-vX.Y.Z-release.apk`. Bila secret keystore rilis diisi, varian release ditandatangani keystore itu; tanpa secret pun build tetap jalan dan varian release memakai debug key. Build hanya gagal tegas bila berkas keystore ada tapi password/alias-nya tidak diisi.
+1. Cara rilis: `push` tag `vX.Y.Z` → muncul di halaman Releases sebagai `redeye-vX.Y.Z-release.apk` saja (varian debug tidak diterbitkan ke Releases; ambil dari artifacts Actions bila perlu). Bila secret keystore rilis diisi, varian release ditandatangani keystore itu; tanpa secret pun build tetap jalan dan varian release memakai debug key. Build hanya gagal tegas bila berkas keystore ada tapi password/alias-nya tidak diisi.
 2. Cara coba cepat: tab Actions > Build APK > Run workflow (atau `push` ke `main`) → unduh dari artifacts `apks`: `redeye-debug.apk` + `redeye-release.apk` (tanpa keystore rilis, varian release memakai debug key).
 
 Secret opsional (Settings > Secrets and variables > Actions): `SYNC_INTERVAL` (interval sync menit, default `5`), `ANDROID_KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`. Tanpa secret pun build tetap jalan. Token bot TIDAK pernah dibake ke APK — selalu diisi manual di aplikasi.

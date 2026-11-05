@@ -16,7 +16,7 @@ Aturan kerja untuk semua agen/kontributor di repo ini. Lingkup: seluruh tree rep
 - Satu-satunya workflow adalah `.github/workflows/build.yml`. Setiap run membangun kedua APK standar sekaligus: `redeye-debug.apk` dan `redeye-release.apk`.
 - Pemicu: push ke `main` / buka PR ke `main`, push tag `v*`, atau manual via Actions > Build APK > Run workflow. Run yang tersalip otomatis dibatalkan (`concurrency`; push tag rilis dikecualikan agar tak terpotong).
 - Ambil hasil dari tab Actions > Artifacts (`apks`).
-- Push tag `vX.Y.Z` otomatis menerbitkan GitHub Release berisi kedua APK berversi (`redeye-vX.Y.Z-debug.apk`, `redeye-vX.Y.Z-release.apk`).
+- Push tag `vX.Y.Z` otomatis menerbitkan GitHub Release berisi HANYA APK release berversi (`redeye-vX.Y.Z-release.apk`) — sejak issue #1448/v1.6.626 varian debug (debuggable) tidak diterbitkan ke Releases, hanya tersedia sebagai artifact Actions `apks`.
 - Secret opsional `SYNC_INTERVAL` diisi via GitHub Secrets — dibaca workflow sebagai env dan diteruskan ke Gradle property (`-P` / env). Kredensial bot tidak lewat CI sama sekali; konfigurasi selalu input manual di aplikasi.
 
 ## 3. Alur Konfigurasi Bot (Wajib)
