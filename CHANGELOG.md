@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Perkakas gerbang: cache isi berkas acuan kini ikut dibersihkan di antara dua pemeriksaan dalam satu proses, menyusul pembersihan keadaan lain sebelumnya.
+
 - Perintah bersihkan media kini juga meminta konfirmasi dua tahap seperti buang antrean: penghapusan media belum-terkirim tidak lagi terjadi dalam satu ketukan.
 
 - Balasan perintah sensitif (kontak, SMS terakhir, pelacakan, dll.) kini kembali ke chat pribadi tempat perintah diketik bila chat tujuan utama adalah grup, agar isinya tidak terlihat anggota grup lain.

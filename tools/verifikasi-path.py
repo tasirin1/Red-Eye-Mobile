@@ -3131,6 +3131,11 @@ def utama():
     REF_POHON = None
     _isi_strings_wajib = None
     baca.cache_clear()
+    # Cache baris benih (issue #1545): kuncinya hanya
+    # path, isinya blob REF_BENIH — mengganti ref di
+    # antara dua lari tanpa membersihkannya membuat
+    # _keadaan_sebelum_baris menilai berkas benih lama.
+    _cache_benih.clear()
     gagal = []
     peringatan = []
     diff = ""
