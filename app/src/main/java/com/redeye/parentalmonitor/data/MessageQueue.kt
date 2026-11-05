@@ -299,13 +299,18 @@ class MessageQueue private constructor(context: Context) {
             while (overCapLocked(queue, priority)) {
                 evictOldestLocked(queue)
             }
-            val persisted = persistLocked(queue, force = true, syncOnMain = true)
+            val persisted = persistLocked(queue)
             return persisted && queue.any { it === item }
         }
     }
 
     // Kontrak nilai kembali (issue #778): true HANYA bila seluruh batch
-    // selamat dari eviksi dan terpersisten. Semantik lama "satu selamat
+    // selamat dari eviksi dan terpersisten. Persist kini lewat jalur
+    // debounce standar persistLocked (issue #1570): tulis pertama sesudah
+    // masa tenang tetap sinkron; ledakan tambah di dalam jendela 2 detik
+    // digabung menjadi satu tulis drain yang dijamin tertulis (dirty +
+    // retry sampai berhasil), bukan satu tulis penuh paksa per pesan.
+    // Setengah kontrak eviksi tidak berubah. Semantik lama "satu selamat
     // = true" membuat pemanggil menandai seluruh batch berhasil —
     // notifikasi yang tereviksi tertandai sudah diteruskan dan potongan
     // laporan memajukan kursor sumbernya. Pada keberhasilan sebagian
@@ -353,7 +358,7 @@ class MessageQueue private constructor(context: Context) {
                 evictedBatch++
             }
             if (evictedBatch > 0) persistDropCountsLocked()
-            val persistedBatch = persistLocked(queue, force = true, syncOnMain = true)
+            val persistedBatch = persistLocked(queue)
             return addedBatch.map { item -> persistedBatch && queue.any { it === item } }
         }
     }
