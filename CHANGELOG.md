@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Alat verifikasi kini mengenali tema pustaka berawalan Theme_ secara umum: style tema dari dependensi baru menghasilkan peringatan yang benar, bukan vonis gagal 'yatim' yang menyesatkan.
+
 - Batas diam-diam 200 commit pada pemeriksaan pesan pra-push dicabut: semua pesan commit yang belum ter-push kini diperiksa, bukan hanya 200 terakhir.
 
 - Pemeriksaan pesan commit pra-push kini menilai terhadap remote tujuan (origin) saja: commit yang sudah ter-push ke remote cadangan lain tidak lagi lolos dari pemeriksaan.

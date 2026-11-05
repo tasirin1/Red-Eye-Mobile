@@ -586,6 +586,11 @@ AWALAN_STYLE_PUSTAKA = (
     "Widget_", "ThemeOverlay_", "TextAppearance_", "Animation_",
     "ShapeAppearance_", "ShapeAppearanceOverlay_", "Platform_",
     "Theme_Material", "Theme_AppCompat", "Theme_Design",
+    # Awalan Theme_ umum (issue #1488): tema aplikasi ini
+    # berkeluarga Tema_ (Indonesia), jadi Theme_* selalu
+    # milik pustaka — tanpanya Theme_<PustakaBaru> tetap
+    # GAGAL 'yatim' alih-alih peringatan #1468.
+    "Theme_",
 )
 
 # Penanda ruang-nama pustaka untuk penyempitan #1442:
