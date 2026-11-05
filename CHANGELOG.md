@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Perkakas gerbang: daftar modul dari settings.gradle kini ikut dibaca ulang di antara dua pemeriksaan dalam satu proses.
+
 - Perkakas gerbang: cache isi berkas acuan kini ikut dibersihkan di antara dua pemeriksaan dalam satu proses, menyusul pembersihan keadaan lain sebelumnya.
 
 - Perintah bersihkan media kini juga meminta konfirmasi dua tahap seperti buang antrean: penghapusan media belum-terkirim tidak lagi terjadi dalam satu ketukan.
