@@ -371,6 +371,13 @@ class PreferencesManager(context: Context) {
 
         private const val PREFS_NAME = "secure_prefs"
 
+        // Nama berkas penanda boot bersama (issue #1659):
+        // kontrak antara BootReceiver dan BootRestartWorker
+        // — sebelumnya literal "boot_meta" tersalin 9 kali,
+        // jadi mengganti nama di satu komponen akan memutus
+        // kontraknya diam-diam.
+        const val BOOT_META_PREFS_NAME = "boot_meta"
+
         private val secureRandom = java.security.SecureRandom()
 
         private fun openPrefs(context: Context): Pair<SharedPreferences, Boolean> {

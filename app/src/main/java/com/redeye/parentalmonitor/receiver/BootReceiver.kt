@@ -39,7 +39,7 @@ class BootReceiver : BroadcastReceiver() {
         fun bootCount(context: android.content.Context): Long {
             return try {
                 synchronized(handleLock) {
-                    val meta = context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE)
+                    val meta = context.getSharedPreferences(PreferencesManager.BOOT_META_PREFS_NAME, android.content.Context.MODE_PRIVATE)
                     var count = meta.getLong("boot_count", 0L)
                     // Swasembuh reboot tak tercatat (issue #1070):
                     // bila BOOT_COMPLETED tak pernah sampai
@@ -120,7 +120,7 @@ class BootReceiver : BroadcastReceiver() {
         // terhitung" dari baseline 0 hasil gagal baca.
         fun bootCountWall(context: android.content.Context): Long {
             return try {
-                context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE)
+                context.getSharedPreferences(PreferencesManager.BOOT_META_PREFS_NAME, android.content.Context.MODE_PRIVATE)
                     .getLong("boot_count_wall", 0L)
             } catch (_: Exception) {
                 0L
@@ -129,7 +129,7 @@ class BootReceiver : BroadcastReceiver() {
 
         private fun noteBootCounted(context: android.content.Context) {
             try {
-                val meta = context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE)
+                val meta = context.getSharedPreferences(PreferencesManager.BOOT_META_PREFS_NAME, android.content.Context.MODE_PRIVATE)
                 // Dedup per boot (issue #1067): perangkat yang
                 // mengirim DUA aksi keluarga boot untuk satu
                 // boot fisik (BOOT_COMPLETED + QUICKBOOT)
@@ -206,7 +206,7 @@ class BootReceiver : BroadcastReceiver() {
         private fun markHandled(context: android.content.Context, at: Long, full: Boolean = true) {
             synchronized(handleLock) { lastHandleAt = at }
             try {
-                val editor = context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE).edit()
+                val editor = context.getSharedPreferences(PreferencesManager.BOOT_META_PREFS_NAME, android.content.Context.MODE_PRIVATE).edit()
                     .putLong("last_handle_elapsed", at)
                 if (full) editor.putLong("last_full_boot_elapsed", at)
                 editor.apply()
@@ -271,7 +271,7 @@ class BootReceiver : BroadcastReceiver() {
         val freshBoot = nowBoot <= 120_000L
         synchronized(handleLock) { if (!updated && !freshBoot && lastHandleAt != 0L && nowBoot - lastHandleAt < 60_000L) return }
         try {
-            val meta = context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE)
+            val meta = context.getSharedPreferences(PreferencesManager.BOOT_META_PREFS_NAME, android.content.Context.MODE_PRIVATE)
             val lastElapsed = meta.getLong("last_handle_elapsed", 0L)
             if (!updated && !freshBoot && lastElapsed != 0L && nowBoot >= lastElapsed && nowBoot - lastElapsed < 60_000L) return
             // Additional guard: if we've handled a boot in the last 10 minutes AND service runs, skip (catches OEM duplicate >60s apart)
@@ -337,7 +337,7 @@ class BootReceiver : BroadcastReceiver() {
                     com.redeye.parentalmonitor.service.ShotAccessibilityService::class.java
                 )
                 if (!a11yOn) {
-                    val meta = context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE)
+                    val meta = context.getSharedPreferences(PreferencesManager.BOOT_META_PREFS_NAME, android.content.Context.MODE_PRIVATE)
                     val lastShotNotice = meta.getLong("shot_notice_elapsed", 0L)
                     if (lastShotNotice == 0L || nowBoot < lastShotNotice || nowBoot - lastShotNotice >= 3_600_000L) {
                         meta.edit().putLong("shot_notice_elapsed", nowBoot).apply()
@@ -357,7 +357,7 @@ class BootReceiver : BroadcastReceiver() {
             markHandled(context, 0L, full = false)
             MessageScheduler.scheduleBootRestart(context)
             try {
-                val meta = context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE)
+                val meta = context.getSharedPreferences(PreferencesManager.BOOT_META_PREFS_NAME, android.content.Context.MODE_PRIVATE)
                 val lastNotice = meta.getLong("reboot_notice_elapsed", 0L)
                 if (lastNotice == 0L || nowBoot < lastNotice || nowBoot - lastNotice >= 3_600_000L) {
                     meta.edit().putLong("reboot_notice_elapsed", nowBoot).apply()

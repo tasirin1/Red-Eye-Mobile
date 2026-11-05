@@ -244,7 +244,7 @@ class BootRestartWorker(
         if (lastAt != 0L && nowResume - lastAt < 3 * 60 * 60_000L) return
         val nowWall = System.currentTimeMillis()
         try {
-            val meta = context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE)
+            val meta = context.getSharedPreferences(PreferencesManager.BOOT_META_PREFS_NAME, android.content.Context.MODE_PRIVATE)
             val lastWall = meta.getLong(markerKey, 0L)
             val sinceLast = nowWall - lastWall
             if (lastWall != 0L && sinceLast > -3 * 60 * 60_000L && sinceLast < 3 * 60 * 60_000L) return
@@ -274,7 +274,7 @@ class BootRestartWorker(
             manager.notify(notifId, notification)
             lastReminderAt[markerKey] = nowResume
             try {
-                context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE).edit().putLong(markerKey, nowWall).apply()
+                context.getSharedPreferences(PreferencesManager.BOOT_META_PREFS_NAME, android.content.Context.MODE_PRIVATE).edit().putLong(markerKey, nowWall).apply()
             } catch (_: Exception) {
             }
         } catch (_: Exception) {
