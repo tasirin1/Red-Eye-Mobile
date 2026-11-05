@@ -60,3 +60,18 @@
     <init>();
     <fields>;
 }
+
+# Log rilis distrip (issue #1639): semua panggilan
+# android.util.Log dibuang dari build rilis. Beberapa
+# situs membawa throwable utuh yang tumpukan jejaknya
+# bisa memuat konteks internal, dan pada aplikasi
+# anti-maling logcat adalah permukaan baca nyata lewat
+# ADB/akses fisik/root. Build debug tidak terpengaruh.
+-assumenosideeffects class android.util.Log {
+    public static int v(...);
+    public static int d(...);
+    public static int i(...);
+    public static int w(...);
+    public static int e(...);
+    public static int wtf(...);
+}

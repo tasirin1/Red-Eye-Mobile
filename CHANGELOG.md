@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Build rilis kini membuang semua panggilan android.util.Log lewat aturan ProGuard, sehingga stack trace internal tidak lagi bisa dibaca dari logcat perangkat (#1639).
+
 - onDestroy tidak lagi membatalkan Liveness saat baca prefs gagal: kegagalan baca kini dibedakan dari berhenti sengaja, sehingga jaring kebangkitan tercepat tak hilang karena gangguan sesaat (#1637).
 
 - Cabang else onStartCommand kini mengembalikan START_STICKY, sejajar kemungkinan pemeriksaan asinkronnya menyalakan monitoring — instance aktif tak lagi berisiko kehilangan penghidupan ulang sistem (#1636).
