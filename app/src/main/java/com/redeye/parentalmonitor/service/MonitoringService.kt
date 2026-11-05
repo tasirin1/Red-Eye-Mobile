@@ -6794,10 +6794,19 @@ class MonitoringService : Service() {
         return withContext(Dispatchers.IO) {
             try {
                 val locationManager = locationManagerSvc ?: return@withContext null
-                val wanted = if (hasFineLocation()) listOf(
-                    android.location.LocationManager.GPS_PROVIDER,
+                // Tingkat akurasi per pemanggil (issue #1591):
+                // pemanggil kasar (coarseOk) yang penyedia
+                // jaringannya menyala memakai jalur jaringan
+                // SAJA — GPS tak dinyalakan sama sekali untuk
+                // vonis yang cukup dengan posisi kasar. Bila
+                // penyedia jaringan mati (mode 'perangkat
+                // saja'), GPS tetap ikut seperti biasa agar
+                // tak ada jalur yang kehilangan lokasi utuh.
+                val networkOn = try { locationManager.isProviderEnabled(android.location.LocationManager.NETWORK_PROVIDER) } catch (_: Exception) { false }
+                val wanted = if (!hasFineLocation() || (coarseOk && networkOn)) listOf(
                     android.location.LocationManager.NETWORK_PROVIDER
                 ) else listOf(
+                    android.location.LocationManager.GPS_PROVIDER,
                     android.location.LocationManager.NETWORK_PROVIDER
                 )
                 val providers = wanted.filter {
