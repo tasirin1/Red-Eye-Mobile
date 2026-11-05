@@ -838,7 +838,13 @@ object A11yMonitor {
         ensurePrefs(app)
         synchronized(gate) {
             ensureLoadedLocked(app)
-            val yesterday = TimeFmt.dayKey(System.currentTimeMillis() - 86_400_000L)
+            // Kemarin kalender, bukan now-24 jam tetap
+            // (issue #1660): sesudah hari 23 jam (DST/geser
+            // offset ke timur), pada 00.00-01.00 kunci
+            // now-86_400_000 menunjuk hari sebelum kemarin,
+            // sehingga paruh akhir malam terakhir terbaca
+            // dari slot yang salah.
+            val yesterday = TimeFmt.dayKey(A11yUsageMath.previousDayStartWallMillis(System.currentTimeMillis(), java.util.TimeZone.getDefault()))
             return loadUsage(app, yesterday).values.map { it.copy() }
                 .filter { it.millis > 0L || it.launches > 0 }
                 .sortedByDescending { it.millis }
