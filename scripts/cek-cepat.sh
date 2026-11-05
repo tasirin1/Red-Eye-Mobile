@@ -214,9 +214,9 @@ sisa_kontrol=$( { git ls-files -z; git diff --cached --name-only -z; } | tr -d '
 if [ "$sisa_kontrol" -gt 0 ]; then
   echo "GAGAL: nama berkas mengandung karakter kontrol (newline/tab di nama dilarang)"; gagal=1;
 fi
-# core.quotepath=false pada grep pohon (issue #1567): nama non-ASCII
-# yang terpetik git tak bisa dibuka konfirmasi_berkas sehingga tuduhannya berdiri.
-pohon_token=$(git -c core.quotepath=false grep -l -E '[0-9]{6,}:[A-Za-z0-9_-]{35,}' -- . 2>/dev/null | while IFS= read -r f; do
+# core.quotepath=false + -z pada grep pohon (issue #1567, #1621): nama
+# non-ASCII serta nama ber-"/\ yang terpetik git tak bisa dibuka konfirmasi_berkas.
+pohon_token=$(git -c core.quotepath=false grep -l -z -E '[0-9]{6,}:[A-Za-z0-9_-]{35,}' -- . 2>/dev/null | while IFS= read -r -d '' f; do
   [ -n "$f" ] || continue
   if konfirmasi_berkas "$f"; then printf '%s ' "$f"; fi
 done || true)

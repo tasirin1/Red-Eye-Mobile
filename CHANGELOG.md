@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Pindai pohon pada gerbang kini membaca nama berkas berformat NUL, sehingga berkas bernama mengandung tanda petik atau garis miring terbalik tidak lagi tertuduh token hanya karena namanya tak bisa dibuka pemeriksa (#1621).
+
 - Tuduhan token atas fragmen baris-tambah pada gerbang kini dikonfirmasi ulang terhadap isi staged penuh tiap berkas, sehingga merotasi nilai kontrol pemindai di dalam wilayah bertanda contoh tidak lagi selalu tertuduh (#1620).
 
 - Fungsi batas hari pada hitungan pemakaian kini menerima zona waktu secara eksplisit dari pemanggil, bukan membaca zona global — hasil untuk cap waktu lampau konsisten dan ujinya tak lagi mengubah zona bawaan proses (#1619).
