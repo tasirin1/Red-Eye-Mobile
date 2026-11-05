@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Cek nama berkas terlarang di kedua gerbang kini membuang spasi/titik di ujung nama sebelum pencocokan, sehingga keystore bernama seperti "kunci.p12 " (spasi di akhir) tidak lagi lolos semua lapisan cek nama (#1640).
+
 - Build rilis kini membuang semua panggilan android.util.Log lewat aturan ProGuard, sehingga stack trace internal tidak lagi bisa dibaca dari logcat perangkat (#1639).
 
 - onDestroy tidak lagi membatalkan Liveness saat baca prefs gagal: kegagalan baca kini dibedakan dari berhenti sengaja, sehingga jaring kebangkitan tercepat tak hilang karena gangguan sesaat (#1637).

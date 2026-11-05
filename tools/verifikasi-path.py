@@ -1790,7 +1790,11 @@ def cek_aturan_repo(gagal, berubah):
         if any(ord(ch) < 32 or ord(ch) == 127 for ch in path):
             gagal.append("Nama berkas mengandung karakter kontrol: %r" % path)
             continue
-        rendah = path.lower()
+        # Spasi/titik di ujung nama dibuang sebelum
+        # pencocokan akhiran (issue #1640): "kunci.p12 "
+        # adalah nama sah di git tetapi lolos semua
+        # endswith ekstensi terlarang.
+        rendah = path.lower().rstrip(" .")
         sudah_dilarang = False
         # Penghapusan berkas terlarang adalah REMEDIASI, bukan
         # pelanggaran (issue #1290): path yang tak ada lagi di
@@ -2343,7 +2347,11 @@ def cek_secret_terabaikan(gagal, peringatan):
             awalan = bagian[:i]
             if i == 0 or tuple(awalan) in modul:
                 continue
-        rendah = path.lower()
+        # Spasi/titik di ujung nama dibuang sebelum
+        # pencocokan akhiran (issue #1640): "kunci.p12 "
+        # adalah nama sah di git tetapi lolos semua
+        # endswith ekstensi terlarang.
+        rendah = path.lower().rstrip(" .")
         if rendah.endswith((".apk", ".aab", ".ap_", ".dex", ".jks",
                             ".keystore", ".p12", ".pfx", ".pem", ".key")) or adalah_env(rendah) or \
                 rendah == "local.properties" or rendah.endswith("/local.properties"):
