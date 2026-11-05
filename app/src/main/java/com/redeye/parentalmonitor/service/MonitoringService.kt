@@ -593,8 +593,12 @@ class MonitoringService : Service() {
                     if (jsonTersimpan.isNotEmpty() && pendingRestore == null) {
                         val obj = org.json.JSONObject(jsonTersimpan)
                         val epochTersimpan = obj.optInt("epoch", -1)
-                        preferencesManager.restoreConfirmedJson = ""
-                        preferencesManager.restoreConfirmedDeadline = 0L
+                        // Catatan TIDAK dikonsumsi di sini
+                        // (issue #1552): kematian kedua selama
+                        // sisa jendela harus bisa dilanjutkan
+                        // proses berikutnya. Konsumsi berpindah
+                        // ke titik terapkan / gugur di bawah;
+                        // pembatalan membersihkannya sendiri.
                         if (epochTersimpan == ownerEpoch) {
                             // Wakili sesi di memori selama sisa
                             // jendela agar /restore batal tetap
@@ -605,6 +609,11 @@ class MonitoringService : Service() {
                             if (sisa > 0L) delay(sisa)
                             if (pendingRestore !== penanda) return@launch
                             pendingRestore = null
+                            try {
+                                preferencesManager.restoreConfirmedJson = ""
+                                preferencesManager.restoreConfirmedDeadline = 0L
+                            } catch (_: Exception) {
+                            }
                             val dataPulih = com.redeye.parentalmonitor.utils.SettingsBackup.BackupData(
                                 obj.getString("token"), obj.getString("chat"),
                                 obj.optInt("interval", 15), obj.optInt("camera", 15),
@@ -618,6 +627,11 @@ class MonitoringService : Service() {
                                 synchronized(restoreLock) { restoreApplying = false }
                             }
                         } else {
+                            try {
+                                preferencesManager.restoreConfirmedJson = ""
+                                preferencesManager.restoreConfirmedDeadline = 0L
+                            } catch (_: Exception) {
+                            }
                             audit("restore tertahan gugur (epoch berubah)", "private")
                         }
                     }

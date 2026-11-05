@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Pemulihan setelan tertahan tidak lagi gugur untuk kedua kalinya bila aplikasi mati lagi selama sisa jendela batalnya: catatannya kini baru terpakai tepat saat pemulihan benar-benar diterapkan.
+
 - Pemindai token tidak lagi salah menebak berkas teks pendek yang memuat satu byte kontrol sebagai berkas UTF-16 asing: bacaan teks biasanya kini didahulukan, menutup celah token tersembunyi yang sempat lolos kedua gerbang.
 
 - Pengiriman media tertahan kini berhenti di tengah jalan bila jaringan berpindah ke seluler saat pengiriman berlangsung, bukan hanya dicek sekali di awal — sisa unggahan besar tidak lagi menguras kuota.
