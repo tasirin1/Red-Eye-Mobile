@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Fixed
+
+- Jendela pengalih balasan perintah sensitif kini dipegang dengan hitung pemegang: perintah kontrol yang masuk lebih dulu dan selesai belakangan tidak lagi bisa meruntuhkan pengalih yang sedang aktif dan membocorkan balasan/media sensitif ke chat terkonfigurasi (#1622).
+
 ## [1.6.635] - 2026-11-05
 
 ### Fixed

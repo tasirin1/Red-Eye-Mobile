@@ -332,6 +332,8 @@ class MonitoringService : Service() {
     // risiko silang yang lebih besar. Jendela dibatasi
     // lamanya dispatch perintah itu sendiri.
     private var replyOverrideChatId = ""
+    private val replyOverrideLock = Any()
+    private var replyOverrideHolders = 0
     @Volatile
     private var ownerEpoch = 0
     // Klaim terapkan restore harus atomik terhadap batal/
@@ -4226,9 +4228,25 @@ class MonitoringService : Service() {
         // perintah ini diproses, kiriman dialihkan ke
         // chat privat peminta dan TIDAK diantrekan ke
         // chat terkonfigurasi bila gagal.
-        val overrideSebelumnya = replyOverrideChatId
         val chatKonfig = try { preferencesManager.chatId } catch (_: Exception) { "" }
-        replyOverrideChatId = if (command in SENSITIVE_COMMANDS && privateChat && senderId.isNotEmpty() && chatKonfig.isNotEmpty() && senderId != chatKonfig) senderId else overrideSebelumnya
+        // Klaim jendela override (issue #1622): nilai tak
+        // lagi disimpan-dipulihkan buta per perintah —
+        // perintah kontrol yang masuk lebih dulu dan
+        // selesai belakangan dulu menulis kembali potret
+        // kosongnya di tengah perintah sensitif dari
+        // domain kunci lain, meruntuhkan pengalih dan
+        // membocorkan balasan/media sensitif ke chat
+        // terkonfigurasi. Kini hanya perintah sensitif
+        // yang memegang jendela (hitung pemegang): nilai
+        // dipasang pemegang pertama, dibersihkan
+        // pemegang terakhir; perintah lain tak menyentuh.
+        val pegangOverride = command in SENSITIVE_COMMANDS && privateChat && senderId.isNotEmpty() && chatKonfig.isNotEmpty() && senderId != chatKonfig
+        if (pegangOverride) {
+            synchronized(replyOverrideLock) {
+                if (replyOverrideHolders == 0) replyOverrideChatId = senderId
+                replyOverrideHolders++
+            }
+        }
         try {
             handleTelegramCommandInner(command, arg, sentAtSec, senderOk, chatOk, senderId = senderId, privateChat = privateChat, adoptionDoneSec = adoptionDoneSec, messageId = messageId)
         } catch (e: kotlinx.coroutines.CancellationException) {
@@ -4242,7 +4260,15 @@ class MonitoringService : Service() {
             } catch (_: Exception) {
             }
         } finally {
-            replyOverrideChatId = overrideSebelumnya
+            if (pegangOverride) {
+                synchronized(replyOverrideLock) {
+                    replyOverrideHolders--
+                    if (replyOverrideHolders <= 0) {
+                        replyOverrideHolders = 0
+                        replyOverrideChatId = ""
+                    }
+                }
+            }
         }
     }
 
