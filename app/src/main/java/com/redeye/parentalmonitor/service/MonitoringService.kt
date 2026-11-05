@@ -2599,6 +2599,8 @@ class MonitoringService : Service() {
     private var conflictNoticeAtElapsed = 0L
     @Volatile
     private var offsetFailCount = 0
+    private var badRequestFailCount = 0
+    private var badRequestNoticeAtElapsed = 0L
     @Volatile
     private var serverClockOffsetMs = 0L
     @Volatile
@@ -2864,6 +2866,35 @@ class MonitoringService : Service() {
                     } else {
                         android.util.Log.w("MonitoringService", "getUpdates offset rejected, backing off without offset reset")
                     }
+                    commandBackoffUntil = android.os.SystemClock.elapsedRealtime() + backoffMs
+                } else {
+                    // 400 non-offset (issue #1634): dulu lolos
+                    // tanpa backoff dan tanpa kabar, jadi 400
+                    // persisten berumusan lain membuat poll
+                    // berputar tiap 10-30 detik selamanya
+                    // dalam senyap — satu-satunya keluarga
+                    // kegagalan poll tanpa eskalasi. Kini
+                    // sejajar keluarga lain: backoff 60 detik,
+                    // dan pada kegagalan ke-3 backoff 5 menit
+                    // + kabar yang dibatasi sekali per jam
+                    // (pola kabar konflik #847).
+                    badRequestFailCount++
+                    var backoffMs = 60_000L
+                    if (badRequestFailCount >= 3) {
+                        badRequestFailCount = 0
+                        backoffMs = 300_000L
+                        val now400 = android.os.SystemClock.elapsedRealtime()
+                        if (now400 - badRequestNoticeAtElapsed > 3_600_000L) {
+                            badRequestNoticeAtElapsed = now400
+                            serviceScope.launch {
+                                try {
+                                    sendToTelegram("⚠️ <b>Polling perintah ditolak Telegram (400)</b> berulang kali dengan sebab selain offset. Perintah mungkin tertahan; bila berlanjut, periksa token bot dan parameter polling.")
+                                } catch (_: Exception) {
+                                }
+                            }
+                        }
+                    }
+                    android.util.Log.w("MonitoringService", "getUpdates rejected 400 (non-offset), backing off")
                     commandBackoffUntil = android.os.SystemClock.elapsedRealtime() + backoffMs
                 }
             } catch (_: Exception) {
