@@ -1293,6 +1293,12 @@ object A11yMonitor {
         val out = ArrayList<String>()
         var hasPassword = false
         var fullHit: String? = null
+        // Teks yang sudah dipindai kata pantau dalam snapshot
+        // ini (issue #1582): baris berulang di daftar (label
+        // dan cap waktu yang sama) dulu membayar lowercase +
+        // pindai penuh yang sama berkali-kali — hasil untuk
+        // teks yang identik selalu sama, jadi cukup sekali.
+        val sudahPindai = HashSet<String>()
         val queue = java.util.ArrayDeque<AccessibilityNodeInfo>()
         queue.add(root)
         var nodes = 0
@@ -1306,14 +1312,14 @@ object A11yMonitor {
                     if (!text.isNullOrEmpty()) {
                         // Uji kata pantau atas teks UTUH sebelum
                         // dipotong untuk snapshot (issue #830).
-                        if (fullHit == null && keywords.isNotEmpty()) {
+                        if (fullHit == null && keywords.isNotEmpty() && sudahPindai.add(text)) {
                             fullHit = try { AppWatch.hit(keywords, text) } catch (_: Exception) { null }
                         }
                         out.add(text.take(SCAN_TEXT_MAX_CHARS))
                     }
                     val desc = try { node.contentDescription?.toString()?.trim() } catch (_: Exception) { null }
                     if (!desc.isNullOrEmpty() && desc != text) {
-                        if (fullHit == null && keywords.isNotEmpty()) {
+                        if (fullHit == null && keywords.isNotEmpty() && sudahPindai.add(desc)) {
                             fullHit = try { AppWatch.hit(keywords, desc) } catch (_: Exception) { null }
                         }
                         out.add(desc.take(SCAN_TEXT_MAX_CHARS))
