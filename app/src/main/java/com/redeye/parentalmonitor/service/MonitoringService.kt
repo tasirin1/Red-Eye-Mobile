@@ -12060,22 +12060,43 @@ class MonitoringService : Service() {
                     // (±2,8 KB) + setPixels per baris.
                     val src = plane.buffer
                     val rowBytes = width * 4
-                    val rowArr = ByteArray(rowBytes)
                     val rowInts = IntArray(width)
-                    for (y in 0 until height) {
-                        src.position(y * plane.rowStride)
-                        val slice = src.slice()
-                        slice.limit(rowBytes)
-                        slice.get(rowArr)
-                        for (x in 0 until width) {
-                            val o = x * 4
-                            val r = rowArr[o].toInt() and 0xFF
-                            val g = rowArr[o + 1].toInt() and 0xFF
-                            val b = rowArr[o + 2].toInt() and 0xFF
-                            val al = rowArr[o + 3].toInt() and 0xFF
-                            rowInts[x] = (al shl 24) or (r shl 16) or (g shl 8) or b
+                    if (plane.rowStride % 4 == 0) {
+                        // Jalur cepat (issue #1631): baca baris
+                        // sebagai IntBuffer little-endian secara
+                        // massal lalu tukar kanal R/B per piksel
+                        // (int LE dari byte RGBA = 0xAABBGGRR;
+                        // bitmap butuh 0xAARRGGBB). Hasil piksel
+                        // dibuktikan setara rumus byte per byte.
+                        // Tanpa alokasi slice() per baris.
+                        val intSrc = src.duplicate().order(java.nio.ByteOrder.LITTLE_ENDIAN).asIntBuffer()
+                        val rowIntsStride = plane.rowStride / 4
+                        for (y in 0 until height) {
+                            intSrc.position(y * rowIntsStride)
+                            intSrc.get(rowInts)
+                            for (x in 0 until width) {
+                                val v = rowInts[x]
+                                rowInts[x] = ((v and 0xFF) shl 16) or (v and 0xFF00) or ((v ushr 16) and 0xFF) or (v and (0xFF shl 24))
+                            }
+                            bmp.setPixels(rowInts, 0, width, 0, y, width, 1)
                         }
-                        bmp.setPixels(rowInts, 0, width, 0, y, width, 1)
+                    } else {
+                        val rowArr = ByteArray(rowBytes)
+                        for (y in 0 until height) {
+                            src.position(y * plane.rowStride)
+                            val slice = src.slice()
+                            slice.limit(rowBytes)
+                            slice.get(rowArr)
+                            for (x in 0 until width) {
+                                val o = x * 4
+                                val r = rowArr[o].toInt() and 0xFF
+                                val g = rowArr[o + 1].toInt() and 0xFF
+                                val b = rowArr[o + 2].toInt() and 0xFF
+                                val al = rowArr[o + 3].toInt() and 0xFF
+                                rowInts[x] = (al shl 24) or (r shl 16) or (g shl 8) or b
+                            }
+                            bmp.setPixels(rowInts, 0, width, 0, y, width, 1)
+                        }
                     }
                 } else {
                     try { bmp.recycle() } catch (_: Exception) { }

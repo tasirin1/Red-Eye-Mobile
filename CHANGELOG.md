@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Jalur screenshot berstride padding kini membaca baris sebagai IntBuffer massal dan menukar kanal R/B per piksel (hasil piksel setara, dibuktikan), tanpa alokasi slice per baris — biaya CPU jepretan di perangkat berpadding turun tanpa mengembalikan buffer bingkai penuh (#1631).
+
 - Tidur panjang loop monitor kini diiris per 5 menit (sejajar irama cek berkala), bukan per 30 detik — kebangkitan timer saat perangkat diam turun dari s.d. 40 menjadi s.d. 4 per tidur 20 menit (#1630).
 
 - Layar status Setup kini menilai aksesibilitas dari tercantum DAN terhubung (seperti permukaan status lain sejak #1606), bukan tercantum saja (#1629).
