@@ -631,7 +631,7 @@ class NotificationForwarderService : NotificationListenerService() {
             return
         }
         kunciTumpukanAktif = sbnKey
-        postTimeTumpukanAktif = try { sbn.postTime } catch (_: Exception) { 0L }
+        postTimeTumpukanAktif = sbnPostTime
         val nf = try { notifTitleText(notification) } finally { kunciTumpukanAktif = ""; postTimeTumpukanAktif = 0L }
         val title = nf.title
         val text = nf.text
