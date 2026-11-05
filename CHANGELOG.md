@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Alternatif kurung terdalam pada slot anotasi alat verifikasi kini juga sadar-string (string berisi kurung di tingkat mana pun tertangkap), dan batas kedalaman slot itu kini dituliskan di komentar desainnya.
+
 - Sesudah monitoring dimulai, aplikasi kini menyebut dengan jelas akses apa saja yang masih mati (aksesibilitas, listener notifikasi, akses penggunaan, admin perangkat, tangkap layar) dalam satu dialog: sebelumnya kelimanya hanya tampil sebagai baris status kecil, sehingga monitoring bisa terasa aktif padahal fitur intinya tidak bekerja.
 
 - Ikatan pemilik pada hasil impor cadangan tidak lagi hilang diam-diam bila aplikasi mati dan dibuat ulang di tengah pemulihan: untuk cadangan tanpa PIN akses, kecocokan chat yang tersimpan kini cukup untuk memulihkan pemilik impor (cadangan ber-PIN tetap tertahan aman seperti sebelumnya).

@@ -2941,10 +2941,14 @@ def cek_uji_baru(peringatan, diff):
     # Nama
     # berawalan huruf besar (kelas/konstruktor) dilewati,
     # seperti di cek_uji_ubah.
+    # Batas slot anotasi (issue #1467): argumen anotasi
+    # diterima sampai kurung bersarang DUA tingkat dan
+    # string di semua tingkat; sarang tiga tingkat lolos
+    # (batas terdokumentasi, bukan keheningan tak disengaja).
     pola_fun = re.compile(
-        r"^\s*(?:@\w+(?:\((?:[^()\"]|\"[^\"]*\"|\((?:[^()\"]|\"[^\"]*\"|\([^()]*\))*\))*\))?\s+)*(?:\w+\s+)*?fun\s+(?:<.*>\s*)?(?:[\w]+(?:\.[\w]+)*(?:<.+>)?\.)?(\w+)\s*\(")
+        r"^\s*(?:@\w+(?:\((?:[^()\"]|\"[^\"]*\"|\((?:[^()\"]|\"[^\"]*\"|\((?:[^()\"]|\"[^\"]*\")*\))*\))*\))?\s+)*(?:\w+\s+)*?fun\s+(?:<.*>\s*)?(?:[\w]+(?:\.[\w]+)*(?:<.+>)?\.)?(\w+)\s*\(")
     pola_java = re.compile(
-        r"^\s*(?:(?:public|private|protected|static|final|abstract|synchronized)\s+|@\w+(?:\((?:[^()\"]|\"[^\"]*\"|\((?:[^()\"]|\"[^\"]*\"|\([^()]*\))*\))*\))?\s+)*"
+        r"^\s*(?:(?:public|private|protected|static|final|abstract|synchronized)\s+|@\w+(?:\((?:[^()\"]|\"[^\"]*\"|\((?:[^()\"]|\"[^\"]*\"|\((?:[^()\"]|\"[^\"]*\")*\))*\))*\))?\s+)*"
         r"(?:void|int|long|boolean|double|float|byte|short|char|(?:[\w.]*[A-Z][\w<>\[\],.?]*|[\w]+\.[\w.<>\[\],?]*))(?:\[\])*\s+(\w+)\s*\(")
     sudah = set()
     for _, baris in tambah_kode(diff):
