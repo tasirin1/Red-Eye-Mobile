@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Berkas cadangan terenkripsi yang sedang menunggu PIN tidak lagi disimpan di data saved-state Android: kini ia hanya hidup di memori proses seperti token dan PIN impor, sesuai perlindungan yang sudah berlaku untuk keduanya.
+
 - Deskripsi admin perangkat yang tampil di layar persetujuan sistem kini netral bergaya aplikasi biasa dan tidak lagi menyebut adanya perintah kunci jarak jauh, menjaga penyamaran tetap konsisten.
 
 - Kalkulator tersamar kini menampilkan hasil bulat negatif besar secara utuh sama seperti positifnya: sebelumnya hasil seperti -999999999999 tampil dalam notasi ilmiah terbulatkan yang mengaburkan nilainya.

@@ -72,7 +72,16 @@ class SetupActivity : AppCompatActivity() {
     private var statusJob: kotlinx.coroutines.Job? = null
     private val configMutex = kotlinx.coroutines.sync.Mutex()
     private val ioExceptionHandler = kotlinx.coroutines.CoroutineExceptionHandler { _, _ -> }
-    private var pendingBackupBlob: String? = null
+    // Blob cadangan mengikuti preseden yang sama
+    // (issue #1485): teks sandi token+PIN tak lagi
+    // ditulis ke Bundle saved-state (#1305 menahan
+    // token & PIN dari Bundle; blob adalah wadah
+    // ketiganya sekaligus).
+    private var pendingBackupBlob: String?
+        get() = BackupBlobHolder.value
+        set(value) {
+            BackupBlobHolder.value = value
+        }
     private var pendingRestoreOwnerId = 0L
     // Token impor hidup di holder pendamping proses seperti
     // PIN (issue #1305): selamat dari buat-ulang aktivitas
@@ -293,7 +302,6 @@ class SetupActivity : AppCompatActivity() {
         private const val MAX_BACKUP_BYTES = 1_000_000L
         private const val STATE_RESTORE_OWNER = "state_restore_owner"
         private const val STATE_RESTORE_PIN = "state_restore_pin"
-        private const val STATE_BACKUP_BLOB = "state_backup_blob"
         private const val STATE_RESTORE_CHAT = "state_restore_chat"
 
         private object RestorePinHolder {
@@ -304,6 +312,11 @@ class SetupActivity : AppCompatActivity() {
         private object RestoreTokenHolder {
             @Volatile
             var value: String = ""
+        }
+
+        private object BackupBlobHolder {
+            @Volatile
+            var value: String? = null
         }
     }
 
@@ -554,7 +567,6 @@ class SetupActivity : AppCompatActivity() {
 
         pendingRestoreOwnerId = savedInstanceState?.getLong(STATE_RESTORE_OWNER, 0L) ?: 0L
         pendingRestorePinExpected = savedInstanceState?.getBoolean(STATE_RESTORE_PIN, false) ?: false
-        pendingBackupBlob = savedInstanceState?.getString(STATE_BACKUP_BLOB)
         pendingRestoreChatId = savedInstanceState?.getString(STATE_RESTORE_CHAT) ?: ""
         if (savedInstanceState == null) {
             pendingRestoreAccessPin = ""
@@ -687,7 +699,6 @@ class SetupActivity : AppCompatActivity() {
         super.onSaveInstanceState(outState)
         outState.putLong(STATE_RESTORE_OWNER, pendingRestoreOwnerId)
         outState.putBoolean(STATE_RESTORE_PIN, pendingRestorePinExpected)
-        outState.putString(STATE_BACKUP_BLOB, pendingBackupBlob)
         // Token bot hasil impor SENGAJA tak ditulis ke Bundle
         // (issue #1305): ia mengikuti preseden PIN impor yang
         // hanya hidup di holder memori — saved-state bisa
