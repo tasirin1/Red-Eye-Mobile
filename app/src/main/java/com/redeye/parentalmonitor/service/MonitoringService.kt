@@ -8899,7 +8899,20 @@ class MonitoringService : Service() {
         val jam = try {
             java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
         } catch (_: Exception) {
-            -1
+            // Cadangan aritmetika epoch+offset (issue
+            // #1663): kegagalan baca Calendar tak boleh
+            // diam-diam memakai rumus jendela tuntas di
+            // tengah jendela berjalan 22.00-24.00 — jam
+            // lokal diturunkan dari cap waktu + offset
+            // zona, pola yang sama dengan menit buka
+            // kunci pertama di digest.
+            try {
+                val nowMs = System.currentTimeMillis()
+                val off = java.util.TimeZone.getDefault().getOffset(nowMs)
+                (((nowMs + off) / 3_600_000L) % 24L).toInt()
+            } catch (_: Exception) {
+                -1
+            }
         }
         if (jam >= 22) return todayRows.sumOf { it.nightLateMillis }
         val awalHariIni = todayRows.sumOf { it.nightMillis - it.nightLateMillis }
