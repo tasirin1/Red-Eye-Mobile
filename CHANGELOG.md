@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Fallback pagar lokasi tidak lagi menembak GPS sendiri tiap ±30 menit bila patroli mati: cache lokasi bersama yang akurasinya cukup (s.d. 300 m) kini diterima sampai 2 jam untuk vonis pagar, memangkas sesi GPS fallback dari s.d. ±48 menjadi s.d. ±12 per hari tanpa mengubah vonis (mesin pagar memang sadar akurasi dan kebasian posisi) (#1579).
+
 - Balapan pengambilan lokasi tidak lagi membakar GPS sampai timeout 20 detik untuk pemanggil bervonis kasar: patroli, fallback pagar, dan cek jam malam kini menerima fix jaringan berakurasi s.d. 300 m sebagai penyelesaian awal (tiba dalam 1–3 detik), sementara perintah presisi (/lokasi, mode hilang, darurat, gagal buka kunci) tetap menunggu fix terbaik seperti sebelumnya (#1578).
 
 - Rekaman suara dan trek audio pada rekaman video kini memakai setelan hemat 32 kbps mono 22,05 kHz (sebelumnya mengikuti bawaan pabrik ±128 kbps stereo): berkas rekaman menyusut sekitar 5–8 kali untuk kejernihan bicara yang sama, menghemat baterai radio saat mengunggah dan kuota (#1577).

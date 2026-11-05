@@ -9410,8 +9410,20 @@ class MonitoringService : Service() {
             var accuracyM = -1f
             var dariCache = false
             var fixAtMs = 0L
-            val pos = if (cached != null && locAge in 0..(30 * 60_000L)) {
-                accuracyM = try { preferencesManager.lastLocAccM } catch (_: Exception) { -1f }
+            // Penerimaan cache diperpanjang khusus jalur
+            // fallback (issue #1579): cache bersama lazimnya
+            // diterima <=30 menit, tetapi fallback pagar
+            // adalah konsumen GPS mandiri — patroli mati
+            // berarti ia menembak fetch sendiri ±tiap 30
+            // menit (s.d. ±48 sesi GPS/hari) hanya untuk
+            // vonis kasar. Bila akurasi cache <=300 m, cache
+            // diterima s.d. 2 jam: mesin vonis pagar memang
+            // sadar akurasi & kebasian (#1532/#1554) dan
+            // jemput tetap dilarang dari cache.
+            val accCache = try { preferencesManager.lastLocAccM } catch (_: Exception) { -1f }
+            val batasCacheMs = if (accCache > 0f && accCache <= LOCATION_COARSE_SETTLE_M) 2 * 60 * 60_000L else 30 * 60_000L
+            val pos = if (cached != null && locAge in 0..batasCacheMs) {
+                accuracyM = accCache
                 dariCache = true
                 fixAtMs = lastLocAtMs
                 cached
