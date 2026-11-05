@@ -11709,6 +11709,21 @@ class MonitoringService : Service() {
             return null
         }
         val reader = try { ensureShotSession() } catch (_: Exception) { null } ?: return null
+        try {
+            return grabProjectionFrame(reader)
+        } finally {
+            // Permukaan jepretan dilepas tiap percobaan
+            // (issue #1575): VirtualDisplay cermin +
+            // 2 buffer ImageReader (±9,2 MB gralloc) tak
+            // lagi berdiri permanen di antara perintah.
+            // Proyeksi hasil izin di ScreenCapture tetap
+            // hidup — sesi dibangun lagi dari sana pada
+            // jepretan berikutnya.
+            try { releaseShotSurface() } catch (_: Exception) { }
+        }
+    }
+
+    private suspend fun grabProjectionFrame(reader: ImageReader): File? {
         val width: Int
         val height: Int
         synchronized(shotSessionLock) {
