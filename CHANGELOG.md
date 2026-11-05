@@ -4,6 +4,8 @@
 
 ### Fixed
 
+- Saklar cek uji pada mode rentang alat verifikasi tidak lagi dimatikan oleh ketiadaan direktori uji di pohon ujung rentang: keadaan itu justru berarti cakupan uji nol dan setiap metode baru paling layak diperingatkan.
+
 - Peringatan proteksi tamper kini hanya mengklaim 'layar ditutup' bila aksi menutup layarnya benar-benar berhasil: sebelumnya hasil aksi itu tidak diperiksa, sehingga kegagalan (mis. layanan aksesibilitas sedang terputus) tetap dilaporkan seolah perlindungan berhasil.
 
 - Tombol salin tautan pasangan di Setup kini punya penjaga sedang-berjalan: ketukan ganda sebelumnya menumpuk dua dialog tautan yang sama (dan dua panggilan jaringan).

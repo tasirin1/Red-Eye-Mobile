@@ -3118,12 +3118,14 @@ def utama():
         # hidup di isi commit tengah lalu terhapus di ujung.
         cek_secret_riwayat(gagal, "HEAD")
 
-    # Keberadaan direktori uji dinilai dari POHON yang
-    # diperiksa (issue #1422): pada mode rentang, berkas
-    # kerja checkout yang kebetulan tanpa dir-uji menelan
-    # seluruh cek uji (keluarga #1400, satu tingkat di atas
-    # disebut_di_uji yang sudah diperbaiki).
-    ada_uji = bool(_jalan_pohon("app/src/test")) if REF_POHON else os.path.isdir(UJI)
+    # Keberadaan direktori uji pada mode berkas kerja
+    # dinilai dari berkas kerja (issue #1422: checkout tanpa
+    # dir-uji menelan seluruh cek uji, keluarga #1400).
+    # Pada mode RENTANG saklar tidak mematikan cek (arah
+    # terbalik #1439): himpunan uji dibaca dari pohon, dan
+    # pohon ujung TANPA dir-uji berarti cakupan nol —
+    # keadaan yang justru paling layak diperingatkan.
+    ada_uji = True if REF_POHON else os.path.isdir(UJI)
     cek_xml(gagal)
     cek_acuan_yatim(gagal)
     cek_manifest(gagal)
