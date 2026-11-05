@@ -8316,7 +8316,7 @@ class MonitoringService : Service() {
             if (a11y.isNotEmpty()) {
                 val night = a11y.sumOf { it.nightMillis }
                 if (night > 0L) {
-                    appendLine("Malam ini (aksesibilitas): " + ReportFormat.durationText(night))
+                    appendLine("Malam ini (aksesibilitas, 22.00–06.00): " + ReportFormat.durationText(night))
                     appendLine("Catatan: baris malam (aksesibilitas) dihitung sejak 00:00, bukan $hours jam terakhir.")
                 }
             }
@@ -8339,7 +8339,7 @@ class MonitoringService : Service() {
                 val shown = rows.take(6).sumOf { it.millis }
                 appendLine("dan " + (rows.size - 6) + " aplikasi lain: " + ReportFormat.durationText(total - shown))
             }
-            if (night > 0L) appendLine("Pemakaian malam: " + ReportFormat.durationText(night))
+            if (night > 0L) appendLine("Pemakaian malam (22.00–06.00): " + ReportFormat.durationText(night))
             val now = A11yMonitor.currentAppLabel()
             if (now.isNotEmpty()) appendLine("Sekarang: " + Html.escape(now))
             if (hours < 24) appendLine("Catatan: data aksesibilitas dihitung sejak 00:00, bukan $hours jam terakhir.")

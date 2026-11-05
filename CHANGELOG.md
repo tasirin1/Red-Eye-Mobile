@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Baris statistik malam pada laporan pemakaian kini menyebut jendelanya (22.00–06.00) agar tidak tertukar dengan definisi malam pada laporan begadang (23.00–05.00).
+
 - Pemulihan setelan dari cadangan tidak lagi gugur diam-diam bila aplikasi mati di tengah jendela batal 60 detik: pemulihan yang sudah terkonfirmasi kini disimpan dan diterapkan saat layanan menyala lagi.
 
 - Notifikasi peringatan kredensial hilang kini memakai slot dan jeda pengingatnya sendiri: sebelumnya berbagi dengan pengingat gagal masuk, sehingga peringatannya bisa tertelan jeda pengingat lain.
