@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.634] - 2026-11-05
+
 ### Fixed
 
 - Sinyal tekanan memori sistem (trim kritis / low memory) kini juga melepas cache yang dapat dibangun ulang — label aplikasi dan cache JSON antrean, total sekitar 1 MB — bukan hanya membilas antrean, memberi proses ruang bernapas sebelum sistem membunuhnya (#1598).
