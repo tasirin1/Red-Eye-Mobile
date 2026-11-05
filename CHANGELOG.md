@@ -4,6 +4,8 @@
 
 ### Fixed
 
+- Jendela bangun tak terlihat sesudah reboot kini tidak lagi menelan ketukan pengguna atau menjeda aplikasi di bawahnya selama beberapa detik pertama: jendelanya kini dinyatakan tidak menerima sentuhan dan fokus.
+
 - Permintaan lokasi yang tidak mengizinkan data basi kini tetap memakai titik terakhir yang masih sangat segar (di bawah dua menit) saat semua penyedia lokasi mati: sebelumnya jalur itu langsung menyerah sehingga satu siklus patroli bisa terlewat walau titik segar tersedia.
 
 - Permintaan lokasi kini berjalan berseri lewat satu kunci bersama: sebelumnya pemanggil dari berbagai pekerjaan latar bisa menjalankan dua sesi GPS 20 detik bersamaan dan memboroskan baterai tanpa manfaat.

@@ -18,6 +18,20 @@ class FgsWakeActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Jangan menelan ketukan (issue #1435): jendela ini
+        // layar-penuh dan tak terlihat; tanpa kedua flag ini
+        // ia menangkap sentuhan pengguna dan mem-pause
+        // aplikasi di bawahnya selama masa hidupnya —
+        // lazimnya tepat sesudah reboot, saat pengguna mulai
+        // memakai HP. Aktivitas tetap terlihat oleh sistem
+        // (syarat tipe FGS), hanya tak menerima sentuh/fokus.
+        try {
+            window.addFlags(
+                android.view.WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
+                    android.view.WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+            )
+        } catch (_: Exception) {
+        }
         requestTypeRefresh()
         mainHandler.removeCallbacks(finishRunnable)
         mainHandler.postDelayed(finishRunnable, SAFETY_MS)
