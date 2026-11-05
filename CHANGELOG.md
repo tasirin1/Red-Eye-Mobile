@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Teks toast "tersimpan offline" kini jujur soal isi simpanannya — kredensial & interval dari kolom saat ini ikut tersimpan tanpa verifikasi — bukan lagi mengklaim "interval saja, kredensial tak berubah" (#1616).
+
 - Kegagalan verifikasi karena jaringan kini tampil sebagai teks ramah "tak ada jaringan", bukan lagi pesan galat host mentah berbahasa Inggris di toast pengguna (#1615).
 
 - Ekspor cadangan kini menolak interval ketikan yang tidak sah dengan toast yang sama seperti Simpan/Tes, bukan lagi diam-diam menulis interval tersimpan lama yang berbeda dari yang terlihat di kolom (#1614).
