@@ -285,6 +285,9 @@ class SetupActivity : AppCompatActivity() {
 
     private val shotRequestBusy = java.util.concurrent.atomic.AtomicBoolean(false)
     private val pairingLinkBusy = java.util.concurrent.atomic.AtomicBoolean(false)
+    // Penjaga dialog PIN bersama (issue #1613): satu
+    // dialog verifikasi PIN akses pada satu waktu.
+    private val pinGateBusy = java.util.concurrent.atomic.AtomicBoolean(false)
 
     private val screenCaptureLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -804,6 +807,16 @@ class SetupActivity : AppCompatActivity() {
     }
 
     private fun verifyStoredAccessPin(action: () -> Unit) {
+        // Satu dialog PIN pada satu waktu (issue #1613):
+        // ketuk ganda pada Simpan (atau tombol sensitif
+        // lain) selagi dialog PIN pertama terbuka dulu
+        // menumpuk dialog kedua — gerbang seq simpan baru
+        // menggigit SESUDAH gerbang PIN, jadi stack-nya
+        // lolos. Panggilan kedua kini diabaikan selama
+        // dialog pertama belum selesai; askPin menjamin
+        // callback-nya terpanggil tepat satu kali di
+        // semua jalan keluar, jadi penjaga selalu lepas.
+        if (!pinGateBusy.compareAndSet(false, true)) return
         // Anggaran lockout SENDIRI untuk PIN akses (issue #767): rahasia
         // ini beda dari PIN cadangan, jadi kegagalan/keberhasilan restore
         // tak boleh mengunci atau mereset gerbang kredensial di sini.
@@ -811,23 +824,33 @@ class SetupActivity : AppCompatActivity() {
         // karena keduanya memeriksa PIN cadangan yang sama.
         val storedPin = try { prefs.accessPin } catch (_: Exception) { "" }
         if (storedPin.isEmpty()) {
-            action()
+            try { action() } finally { pinGateBusy.set(false) }
             return
         }
         val lockUntil = try { prefs.accessPinLockoutUntil } catch (_: Exception) { 0L }
         if (com.redeye.parentalmonitor.utils.RestorePinGate.locked(lockUntil, System.currentTimeMillis(), try { prefs.accessPinLockoutElapsedStart } catch (_: Exception) { 0L }, android.os.SystemClock.elapsedRealtime())) {
+            pinGateBusy.set(false)
             Toast.makeText(this, getString(R.string.restore_pin_locked), Toast.LENGTH_LONG).show()
             return
         }
-        askPin(getString(R.string.setup_verify_pin_title), false) { pin ->
-            if (pin == null) return@askPin
-            if (!com.redeye.parentalmonitor.utils.AccessPin.verify(storedPin, pin)) {
-                val newLock = prefs.registerAccessPinFailure().second
-                Toast.makeText(this, getString(if (newLock > 0L) R.string.restore_pin_locked else R.string.setup_bad_access_pin), Toast.LENGTH_LONG).show()
-                return@askPin
+        try {
+            askPin(getString(R.string.setup_verify_pin_title), false) { pin ->
+                try {
+                    if (pin == null) return@askPin
+                    if (!com.redeye.parentalmonitor.utils.AccessPin.verify(storedPin, pin)) {
+                        val newLock = prefs.registerAccessPinFailure().second
+                        Toast.makeText(this, getString(if (newLock > 0L) R.string.restore_pin_locked else R.string.setup_bad_access_pin), Toast.LENGTH_LONG).show()
+                        return@askPin
+                    }
+                    prefs.resetAccessPinGate()
+                    action()
+                } finally {
+                    pinGateBusy.set(false)
+                }
             }
-            prefs.resetAccessPinGate()
-            action()
+        } catch (e: Exception) {
+            pinGateBusy.set(false)
+            throw e
         }
     }
 

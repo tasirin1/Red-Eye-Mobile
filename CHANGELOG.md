@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Dialog verifikasi PIN akses kini tunggal: ketuk ganda pada Simpan atau tombol sensitif lain selagi dialog PIN terbuka tidak lagi menumpuk dialog kedua di belakangnya (#1613).
+
 - Tes koneksi Setup kini memeriksa hak kirim bot berstatus restricted: bot yang dibisukan di grup tidak lagi lulus sebagai "terhubung" padahal semua laporannya akan ditolak Telegram (#1612).
 
 - Username bot hasil pengujian kini terikat pada token yang menghasilkannya: simpan luring tidak lagi bisa menulis username basi milik token lain ke prefs, yang sebelumnya membuat layanan salah memilah perintah beralamat @Bot tanpa koreksi diri (#1611).
