@@ -1628,6 +1628,13 @@ class MonitoringService : Service() {
 
     private val credsLock = Any()
     private val fenceLock = Any()
+
+    // Jangkar fix terakhir yang DITERIMA untuk vonis pagar
+    // (issue #1532): uji kewajaran lompatan terhadap fix
+    // glitch. Hanya diperbarui oleh fix yang lolos uji.
+    @Volatile private var lastFenceFixLat = 0.0
+    @Volatile private var lastFenceFixLon = 0.0
+    @Volatile private var lastFenceFixAtMs = 0L
     @Volatile
     private var loopConfigGen = 0
     private fun refreshCreds() {
@@ -8876,6 +8883,29 @@ class MonitoringService : Service() {
 
     private suspend fun checkGeofence(lat: Double, lon: Double, accuracyM: Float = -1f, izinkanJemput: Boolean = true, fixAtMs: Long = 0L) {
         try {
+            // Uji kewajaran lompatan (issue #1532): transisi
+            // pagar dulu diputuskan SATU fix — fix jaringan/
+            // Wi-Fi yang akurasi terlaporkannya bagus tetapi
+            // posisinya meleset ratusan meter–km membalik
+            // state, memicu alert palsu, dan mengunci fakta
+            // harian. Jalur kendaraan sudah menuntut dua
+            // sampel untuk alasan yang sama (#921). Kini fix
+            // yang menyiratkan kecepatan >60 m/dtk dari fix
+            // terakhir yang diterima (lompatan >300 m)
+            // diabaikan utuh; fix berikutnya dinilai terhadap
+            // jangkar yang sama sehingga koreksinya lolos.
+            val fixWall = if (fixAtMs > 0L) fixAtMs else System.currentTimeMillis()
+            if (lastFenceFixAtMs > 0L && fixWall > lastFenceFixAtMs) {
+                val lompat = ReportFormat.distanceMeters(lastFenceFixLat, lastFenceFixLon, lat, lon)
+                val dtDtk = (fixWall - lastFenceFixAtMs) / 1000.0
+                if (lompat > 300f && dtDtk > 0.0 && lompat / dtDtk > 60.0) {
+                    android.util.Log.w("MonitoringService", "Fix pagar dicurigai glitch (lompat ${lompat.toInt()} m dalam ${dtDtk.toInt()} dtk) — diabaikan")
+                    return
+                }
+            }
+            lastFenceFixLat = lat
+            lastFenceFixLon = lon
+            lastFenceFixAtMs = fixWall
             // Pagar bersarang (issue #853): sekolah di dalam radius
             // rumah membuat transisi keluar rumah tak pernah terjadi,
             // jadi fakta berangkat harian hilang; dan dua pagar
