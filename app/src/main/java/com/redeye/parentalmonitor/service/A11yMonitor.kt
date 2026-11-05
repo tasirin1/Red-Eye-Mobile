@@ -990,6 +990,16 @@ object A11yMonitor {
         var done = false
         synchronized(gate) {
             ensureLoadedLocked(context)
+            // Bendera panas dijepret sekali per transisi
+            // (issue #1581): monitoringActive menyusun 4 get
+            // prefs terenkripsi dan dulu dinilai dua kali
+            // dalam satu transisi (jalur tamper + jalur
+            // berhenti), a11yAppAlert dua kali juga. Nilai
+            // tak bisa berubah di tengah blok gate yang
+            // sama, jadi jepretan ini setia.
+            val tamperOn = try { manager.a11yTamperEnabled } catch (_: Exception) { false }
+            val activeNow = monitoringActive(manager)
+            val appAlertOn = try { manager.a11yAppAlert } catch (_: Exception) { false }
             // Percobaan ulang pemulihan sesi (issue #1373):
             // restore di attach bisa gagal menilai karena
             // jendela depan sesaat tak cocok/tak terbaca;
@@ -999,7 +1009,7 @@ object A11yMonitor {
             if (currentPackage.isEmpty()) {
                 try { restoreOpenSessionLocked(context) } catch (_: Exception) { }
             }
-            if (manager.a11yTamperEnabled && protectionActive(manager)) {
+            if (tamperOn && activeNow) {
                 val reason = TamperGuard.reason(pkg, cls, texts, context.packageName, selfLabel)
                 // Tenggang hanya dinilai bila ada alasan tamper
                 // (issue #1064): dulu inSetupGrace dievaluasi
@@ -1019,7 +1029,7 @@ object A11yMonitor {
                     done = true
                 }
             }
-            if (!done && !nilaiSaja && !monitoringActive(manager)) {
+            if (!done && !nilaiSaja && !activeNow) {
                 val terakru = finishSessionLocked(nowWall, nowElapsed)
                 // Persist mengikuti jatah normal (issue #1010):
                 // paksa di sini membuat SETIAP transisi activity
@@ -1096,13 +1106,13 @@ object A11yMonitor {
                 // dikenal) — ia masuk himpunan tanpa kabar dan
                 // tak akan pernah memicu alert aplikasi baru.
                 val firstOpen = if (seeded && !sambungTransien) manager.rememberA11yApp(pkg) else false
-                if (seeded && firstOpen && manager.a11yAppAlert) {
+                if (seeded && firstOpen && appAlertOn) {
                     if (isNightHour(nowWall)) {
                         if (nightUndo == null) nightUndo = captureNightStamp(manager, pkg, nowElapsed)
                         stampNightAlert(manager, pkg, nowWall, nowElapsed)
                     }
                     alertText = "\uD83D\uDCE6 <b>Aplikasi baru dibuka</b>\n" + Html.escape(currentLabel) + "\n<code>" + pkg + "</code>"
-                } else if (!sambungTransien && manager.a11yAppAlert && isNightHour(nowWall) && nightAlertAgeMs(manager, nowWall, nowElapsed) >= NIGHT_ALERT_GAP_MS) {
+                } else if (!sambungTransien && appAlertOn && isNightHour(nowWall) && nightAlertAgeMs(manager, nowWall, nowElapsed) >= NIGHT_ALERT_GAP_MS) {
                     if (nightUndo == null) nightUndo = captureNightStamp(manager, pkg, nowElapsed)
                     stampNightAlert(manager, pkg, nowWall, nowElapsed)
                     alertText = "\uD83C\uDF19 <b>Aplikasi dibuka malam</b>\n" + Html.escape(currentLabel) + "\n<code>" + pkg + "</code>\n" + TimeFmt.short(nowWall)

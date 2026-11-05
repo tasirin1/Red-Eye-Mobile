@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Pemrosesan transisi jendela aksesibilitas tidak lagi membaca ulang bendera prefs terenkripsi berkali-kali dalam satu transisi: status monitoring, tamper, dan alert aplikasi kini dijepret sekali di awal transisi (sebelumnya status monitoring saja disusun dua kali dari 4 baca terenkripsi), menghemat CPU di dalam kunci serial layanan (#1581).
+
 - Loop patroli kini punya backoff kegagalan lokasi seperti fallback pagar: sesudah dua kegagalan beruntun, pengambilan lokasi dilewati 10 menit, lalu 20, lalu 30 menit (reset saat berhasil) — di tempat tanpa sinyal GPS, sesi lokasi 20 detik yang pasti gagal tidak lagi dibayar di setiap putaran patroli (#1580).
 
 - Fallback pagar lokasi tidak lagi menembak GPS sendiri tiap ±30 menit bila patroli mati: cache lokasi bersama yang akurasinya cukup (s.d. 300 m) kini diterima sampai 2 jam untuk vonis pagar, memangkas sesi GPS fallback dari s.d. ±48 menjadi s.d. ±12 per hari tanpa mengubah vonis (mesin pagar memang sadar akurasi dan kebasian posisi) (#1579).
