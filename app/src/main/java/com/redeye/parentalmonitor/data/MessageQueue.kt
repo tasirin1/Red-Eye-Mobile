@@ -22,6 +22,7 @@ class MessageQueue private constructor(context: Context) {
     private val expiredDrops = java.util.concurrent.atomic.AtomicLong(0L)
     private val exhaustedDrops = java.util.concurrent.atomic.AtomicLong(0L)
     private val rejectedDrops = java.util.concurrent.atomic.AtomicLong(0L)
+    private val corruptDrops = java.util.concurrent.atomic.AtomicLong(0L)
 
     @Volatile
     private var dropsDirty = false
@@ -40,6 +41,7 @@ class MessageQueue private constructor(context: Context) {
     private var persistedPriorityDrops = 0L
     private var persistedExhaustedDrops = 0L
     private var persistedRejectedDrops = 0L
+    private var persistedCorruptDrops = 0L
     // Jumlah yang sudah DIAMBIL pelapor tetapi persist hasil
     // ambilnya GAGAL (issue #1332): cakram fisik masih memuat
     // angka itu, jadi gabungan pulih (loadDropCountsLocked
@@ -54,6 +56,7 @@ class MessageQueue private constructor(context: Context) {
     private var takenUnpersistedPriorityDrops = 0L
     private var takenUnpersistedExhaustedDrops = 0L
     private var takenUnpersistedRejectedDrops = 0L
+    private var takenUnpersistedCorruptDrops = 0L
     @Volatile
     private var restoreFailLogged = false
     private var restoringDrops = false
@@ -124,6 +127,7 @@ class MessageQueue private constructor(context: Context) {
         private const val KEY_PRIORITY_DROPS = "priority_drops"
         private const val KEY_EXHAUSTED_DROPS = "exhausted_drops"
         private const val KEY_REJECTED_DROPS = "rejected_drops"
+        private const val KEY_CORRUPT_DROPS = "corrupt_drops"
         // Batas ukuran antrean & SATU pesan (issue #842/#926)
         // kini di utils/QueueCap & utils/MessageTrim agar
         // terkunci uji (issue #977).
@@ -152,6 +156,7 @@ class MessageQueue private constructor(context: Context) {
             val previousPriorityDrops = priorityDrops.get()
             val previousExhaustedDrops = exhaustedDrops.get()
             val previousRejectedDrops = rejectedDrops.get()
+            val previousCorruptDrops = corruptDrops.get()
             val previousDropsDirty = dropsDirty
             return try {
                 val restored = PreferencesManager.openEncryptedPrefs(appContext, QUEUE_PREFS_NAME)
@@ -210,6 +215,7 @@ class MessageQueue private constructor(context: Context) {
                 priorityDrops.set(previousPriorityDrops)
                 exhaustedDrops.set(previousExhaustedDrops)
                 rejectedDrops.set(previousRejectedDrops)
+                corruptDrops.set(previousCorruptDrops)
                 dropsDirty = previousDropsDirty
                 volatileQueue.clear()
                 volatileQueue.addAll(pending)
@@ -375,11 +381,13 @@ class MessageQueue private constructor(context: Context) {
             val priority = bacaKunci(KEY_PRIORITY_DROPS)
             val exhausted = bacaKunci(KEY_EXHAUSTED_DROPS)
             val rejected = bacaKunci(KEY_REJECTED_DROPS)
+            val corrupt = bacaKunci(KEY_CORRUPT_DROPS)
             persistedOverflowDrops = overflow
             persistedExpiredDrops = expired
             persistedPriorityDrops = priority
             persistedExhaustedDrops = exhausted
             persistedRejectedDrops = rejected
+            persistedCorruptDrops = corrupt
             if (add) {
                 // Tambah isi cakram (issue #1315, mengoreksi
                 // selisih baseline #1297): pada satu-satunya
@@ -414,6 +422,7 @@ class MessageQueue private constructor(context: Context) {
                     priorityDrops.addAndGet((priority - takenUnpersistedPriorityDrops).coerceAtLeast(0L))
                     exhaustedDrops.addAndGet((exhausted - takenUnpersistedExhaustedDrops).coerceAtLeast(0L))
                     rejectedDrops.addAndGet((rejected - takenUnpersistedRejectedDrops).coerceAtLeast(0L))
+                    corruptDrops.addAndGet((corrupt - takenUnpersistedCorruptDrops).coerceAtLeast(0L))
                 }
                 dropsDirty = true
             } else {
@@ -422,6 +431,7 @@ class MessageQueue private constructor(context: Context) {
                 priorityDrops.set(priority)
                 exhaustedDrops.set(exhausted)
                 rejectedDrops.set(rejected)
+                corruptDrops.set(corrupt)
                 dropsDirty = false
             }
         } catch (_: Exception) {
@@ -434,13 +444,14 @@ class MessageQueue private constructor(context: Context) {
         takenUnpersistedPriorityDrops = 0L
         takenUnpersistedExhaustedDrops = 0L
         takenUnpersistedRejectedDrops = 0L
+        takenUnpersistedCorruptDrops = 0L
     }
 
     private fun persistDropCountsLocked(): Boolean {
         if (volatileOnly) return false
         var saved = false
         try {
-            val editor = sharedPreferences?.edit()?.putLong(KEY_OVERFLOW_DROPS, overflowDrops.get())?.putLong(KEY_EXPIRED_DROPS, expiredDrops.get())?.putLong(KEY_PRIORITY_DROPS, priorityDrops.get())?.putLong(KEY_EXHAUSTED_DROPS, exhaustedDrops.get())?.putLong(KEY_REJECTED_DROPS, rejectedDrops.get())
+            val editor = sharedPreferences?.edit()?.putLong(KEY_OVERFLOW_DROPS, overflowDrops.get())?.putLong(KEY_EXPIRED_DROPS, expiredDrops.get())?.putLong(KEY_PRIORITY_DROPS, priorityDrops.get())?.putLong(KEY_EXHAUSTED_DROPS, exhaustedDrops.get())?.putLong(KEY_REJECTED_DROPS, rejectedDrops.get())?.putLong(KEY_CORRUPT_DROPS, corruptDrops.get())
             saved = editor?.commit() == true
             if (saved) {
                 persistedOverflowDrops = overflowDrops.get()
@@ -448,6 +459,7 @@ class MessageQueue private constructor(context: Context) {
                 persistedPriorityDrops = priorityDrops.get()
                 persistedExhaustedDrops = exhaustedDrops.get()
                 persistedRejectedDrops = rejectedDrops.get()
+                persistedCorruptDrops = corruptDrops.get()
                 // Cakram kini persis memori (issue #1332):
                 // tak ada lagi ambilan yang belum terpersist.
                 clearTakenUnpersistedLocked()
@@ -471,6 +483,7 @@ class MessageQueue private constructor(context: Context) {
         priorityDrops.set((priorityDrops.get() - (persistedPriorityDrops - takenUnpersistedPriorityDrops).coerceAtLeast(0L)).coerceAtLeast(0L))
         exhaustedDrops.set((exhaustedDrops.get() - (persistedExhaustedDrops - takenUnpersistedExhaustedDrops).coerceAtLeast(0L)).coerceAtLeast(0L))
         rejectedDrops.set((rejectedDrops.get() - (persistedRejectedDrops - takenUnpersistedRejectedDrops).coerceAtLeast(0L)).coerceAtLeast(0L))
+        corruptDrops.set((corruptDrops.get() - (persistedCorruptDrops - takenUnpersistedCorruptDrops).coerceAtLeast(0L)).coerceAtLeast(0L))
         dropsDirty = true
     }
 
@@ -687,11 +700,13 @@ class MessageQueue private constructor(context: Context) {
             priorityDrops.set(0L)
             exhaustedDrops.set(0L)
             rejectedDrops.set(0L)
+            corruptDrops.set(0L)
             persistedOverflowDrops = 0L
             persistedExpiredDrops = 0L
             persistedPriorityDrops = 0L
             persistedExhaustedDrops = 0L
             persistedRejectedDrops = 0L
+            persistedCorruptDrops = 0L
             dropsDirty = false
             clearTakenUnpersistedLocked()
             val wipe = if (volatileOnly) {
@@ -709,7 +724,7 @@ class MessageQueue private constructor(context: Context) {
                 persistVersion++
                 pendingSnapshot = null
                 val removed = try {
-                    wipe?.edit()?.remove(KEY_QUEUE)?.remove(KEY_QUEUE_BAK)?.remove(KEY_OVERFLOW_DROPS)?.remove(KEY_EXPIRED_DROPS)?.remove(KEY_PRIORITY_DROPS)?.remove(KEY_EXHAUSTED_DROPS)?.remove(KEY_REJECTED_DROPS)?.remove(KEY_WIPE_PENDING)?.commit() == true
+                    wipe?.edit()?.remove(KEY_QUEUE)?.remove(KEY_QUEUE_BAK)?.remove(KEY_OVERFLOW_DROPS)?.remove(KEY_EXPIRED_DROPS)?.remove(KEY_PRIORITY_DROPS)?.remove(KEY_EXHAUSTED_DROPS)?.remove(KEY_REJECTED_DROPS)?.remove(KEY_CORRUPT_DROPS)?.remove(KEY_WIPE_PENDING)?.commit() == true
                 } catch (_: Exception) {
                     false
                 }
@@ -717,7 +732,7 @@ class MessageQueue private constructor(context: Context) {
                     wipe?.edit()?.putString(KEY_QUEUE, "[]")?.putString(KEY_QUEUE_BAK, "[]")?.remove(KEY_WIPE_PENDING)
                         ?.putLong(KEY_OVERFLOW_DROPS, 0L)?.putLong(KEY_EXPIRED_DROPS, 0L)
                         ?.putLong(KEY_PRIORITY_DROPS, 0L)?.putLong(KEY_EXHAUSTED_DROPS, 0L)
-                        ?.putLong(KEY_REJECTED_DROPS, 0L)?.commit() == true
+                        ?.putLong(KEY_REJECTED_DROPS, 0L)?.putLong(KEY_CORRUPT_DROPS, 0L)?.commit() == true
                 } catch (_: Exception) {
                     false
                 }
@@ -786,11 +801,37 @@ class MessageQueue private constructor(context: Context) {
         if (!tertunda) return false
         try {
             synchronized(persistMutex) {
-                sharedPreferences?.edit()?.remove(KEY_QUEUE)?.remove(KEY_QUEUE_BAK)?.remove(KEY_OVERFLOW_DROPS)?.remove(KEY_EXPIRED_DROPS)?.remove(KEY_PRIORITY_DROPS)?.remove(KEY_EXHAUSTED_DROPS)?.remove(KEY_REJECTED_DROPS)?.remove(KEY_WIPE_PENDING)?.commit()
+                sharedPreferences?.edit()?.remove(KEY_QUEUE)?.remove(KEY_QUEUE_BAK)?.remove(KEY_OVERFLOW_DROPS)?.remove(KEY_EXPIRED_DROPS)?.remove(KEY_PRIORITY_DROPS)?.remove(KEY_EXHAUSTED_DROPS)?.remove(KEY_REJECTED_DROPS)?.remove(KEY_CORRUPT_DROPS)?.remove(KEY_WIPE_PENDING)?.commit()
             }
         } catch (_: Exception) {
         }
         return true
+    }
+
+    // Penyelamatan per elemen (issue #1520): mengurai
+    // larik JSON antrean elemen demi elemen. Mengembalikan
+    // (pesan terselamatkan, jumlah elemen rusak), atau
+    // null bila teksnya bukan larik JSON sama sekali
+    // (jumlah hilang tak bisa dinilai dari blob itu).
+    private fun salvagePerElemen(teks: String?): Pair<MutableList<QueuedMessage>, Int>? {
+        if (teks.isNullOrBlank()) return null
+        val akar = try {
+            com.google.gson.JsonParser.parseString(teks)
+        } catch (_: Exception) {
+            return null
+        }
+        if (!akar.isJsonArray) return null
+        val selamat = mutableListOf<QueuedMessage>()
+        var rusak = 0
+        for (el in akar.asJsonArray) {
+            try {
+                val item = gson.fromJson(el, QueuedMessage::class.java)
+                if (item != null) selamat.add(item) else rusak++
+            } catch (_: Exception) {
+                rusak++
+            }
+        }
+        return selamat to rusak
     }
 
     private fun readLocked(): MutableList<QueuedMessage> {
@@ -833,17 +874,48 @@ class MessageQueue private constructor(context: Context) {
                 parsed
             }
         } catch (e: Exception) {
+            // Penyelamatan per elemen + hitungan hilang
+            // (issue #1520): parse all-or-nothing dulu
+            // membuang SELURUH antrean gara-gara satu
+            // elemen rusak, dan kehilangannya tak dihitung
+            // di mana pun. Kini elemen yang masih terbaca
+            // diselamatkan, yang rusak DIHITUNG ke kategori
+            // corruptDrops dan dilaporkan seperti kategori
+            // drop lain; cadangan utuh tetap jalan terakhir.
             val bakJson = try { sharedPreferences?.getString(KEY_QUEUE_BAK, null) } catch (_: Exception) { null }
-            val recovered: MutableList<QueuedMessage> = try {
-                if (bakJson == null) mutableListOf()
-                else gson.fromJson(bakJson, arrayType)?.toMutableList() ?: mutableListOf()
-            } catch (_: Exception) {
-                mutableListOf()
-            }
-            if (bakJson != null) {
-                android.util.Log.w("MessageQueue", "Queue storage corrupt, recovered ${recovered.size} message(s) from backup")
+            val selamatUtama = salvagePerElemen(json)
+            val recovered: MutableList<QueuedMessage>
+            if (selamatUtama != null && (selamatUtama.first.isNotEmpty() || selamatUtama.second > 0)) {
+                recovered = selamatUtama.first
+                if (selamatUtama.second > 0) {
+                    try { noteCorruptDrops(selamatUtama.second.toLong()) } catch (_: Exception) { }
+                }
+                android.util.Log.w("MessageQueue", "Queue storage corrupt, salvaged ${recovered.size} message(s), lost ${selamatUtama.second}")
             } else {
-                android.util.Log.w("MessageQueue", "Queue storage corrupt, clearing poison blob: ${com.redeye.parentalmonitor.utils.Redact.token(e.message)}")
+                val utuh: MutableList<QueuedMessage>? = try {
+                    if (bakJson == null) null
+                    else gson.fromJson(bakJson, arrayType)?.toMutableList()
+                } catch (_: Exception) {
+                    null
+                }
+                if (utuh != null) {
+                    recovered = utuh
+                    android.util.Log.w("MessageQueue", "Queue storage corrupt, recovered ${recovered.size} message(s) from backup")
+                } else {
+                    val selamatBak = salvagePerElemen(bakJson)
+                    recovered = selamatBak?.first ?: mutableListOf()
+                    val hilang = selamatBak?.second ?: 0
+                    if (hilang > 0) {
+                        try { noteCorruptDrops(hilang.toLong()) } catch (_: Exception) { }
+                    } else if (!json.isNullOrBlank() || !bakJson.isNullOrBlank()) {
+                        // Kedua blob tak terbaca sama sekali:
+                        // jumlah pastinya tak diketahui — catat
+                        // 1 sebagai batas bawah agar kejadiannya
+                        // tetap terhitung & terlaporkan.
+                        try { noteCorruptDrops(1L) } catch (_: Exception) { }
+                    }
+                    android.util.Log.w("MessageQueue", "Queue storage corrupt, salvaged ${recovered.size} message(s) from backup elements, lost $hilang")
+                }
             }
             try {
                 persistLocked(recovered, force = true, syncOnMain = true, replaceBackup = true)
@@ -1114,6 +1186,7 @@ class MessageQueue private constructor(context: Context) {
                 priorityDrops -> takenUnpersistedPriorityDrops += n
                 exhaustedDrops -> takenUnpersistedExhaustedDrops += n
                 rejectedDrops -> takenUnpersistedRejectedDrops += n
+                corruptDrops -> takenUnpersistedCorruptDrops += n
             }
         }
         return n
@@ -1200,6 +1273,30 @@ class MessageQueue private constructor(context: Context) {
         synchronized(lock) {
             takenUnpersistedRejectedDrops = (takenUnpersistedRejectedDrops - by).coerceAtLeast(0L)
             noteDropLocked(rejectedDrops, by, true)
+        }
+    }
+
+    // Kategori drop keenam (issue #1520): pesan yang
+    // hilang karena data antrean RUSAK — dulu kehilangan
+    // ini satu-satunya yang tak dihitung/dilaporkan.
+    fun noteCorruptDrops(by: Long) {
+        if (by <= 0L) return
+        synchronized(lock) {
+            noteDropLocked(corruptDrops, by, true)
+        }
+    }
+
+    fun takeCorruptDrops(): Long {
+        synchronized(lock) {
+            return takeDropsLocked(corruptDrops)
+        }
+    }
+
+    fun restoreCorruptDrops(by: Long) {
+        if (by <= 0L) return
+        synchronized(lock) {
+            takenUnpersistedCorruptDrops = (takenUnpersistedCorruptDrops - by).coerceAtLeast(0L)
+            noteDropLocked(corruptDrops, by, true)
         }
     }
 

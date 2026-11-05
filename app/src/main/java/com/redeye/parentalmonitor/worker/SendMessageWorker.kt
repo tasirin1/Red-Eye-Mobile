@@ -463,6 +463,7 @@ class SendMessageWorker(
         var prioTaken = 0L
         var exhaustedTaken = 0L
         var rejectedTaken = 0L
+        var corruptTaken = 0L
         val sameCreds = credsSame(runToken, runChatId)
         // Generasi antrean saat pengambilan (issue #822): bila
         // /clearqueue berjalan di tengah laporan ini, restore di
@@ -540,6 +541,17 @@ class SendMessageWorker(
             } catch (_: Exception) {
             }
         }
+        if (!queueCleared && sameCreds) {
+            try {
+                val corrupt = messageQueue.takeCorruptDrops()
+                if (corrupt > 0L) {
+                    corruptTaken = corrupt
+                    dropTotal += corrupt.toInt()
+                    dropParts.add("$corrupt hilang (data antrean rusak)")
+                }
+            } catch (_: Exception) {
+            }
+        }
         if (!queueCleared && dropTotal > 0 && sameCreds) {
             val reported = try {
                 sendDropNotice(dropTotal, runToken, runChatId, dropSample, dropParts.joinToString("; "))
@@ -570,6 +582,10 @@ class SendMessageWorker(
                 }
                 try {
                     messageQueue.restoreRejectedDrops(rejectedTaken)
+                } catch (_: Exception) {
+                }
+                try {
+                    messageQueue.restoreCorruptDrops(corruptTaken)
                 } catch (_: Exception) {
                 }
                 }
