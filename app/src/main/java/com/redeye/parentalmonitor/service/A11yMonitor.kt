@@ -138,6 +138,12 @@ object A11yMonitor {
     private var nightAlertedPackage = ""
     private var suspendedPackage = ""
     private var suspendedLabel = ""
+    // Sesi yang terpotong jendela transien (issue #1511):
+    // paket asal + sejak kapan (elapsed) — kembali ke
+    // paket yang sama dalam 10 menit menyambung sesi
+    // (celah teratribusi ke asal, tanpa launch baru).
+    private var transienPackage = ""
+    private var transienSejakElapsed = 0L
     private var launcherPackage = ""
     private var launcherPackageAt = 0L
     private var knownSeeded = false
@@ -970,9 +976,43 @@ object A11yMonitor {
                 done = true
             }
             if (!done && !nilaiSaja && (pkg == context.packageName || pkg == launcherPkg || !launchable)) {
+                // Jendela transien murni (lembar berbagi,
+                // billing Play, systemui): sesi asal
+                // disimpan untuk penyambungan (issue #1511).
+                // Jendela milik sendiri/peluncur adalah
+                // akhir sesi yang sah — stash dibersihkan.
+                if (!launchable && pkg != context.packageName && pkg != launcherPkg) {
+                    if (currentPackage.isNotEmpty()) {
+                        transienPackage = currentPackage
+                        transienSejakElapsed = nowElapsed
+                    }
+                } else {
+                    transienPackage = ""
+                    transienSejakElapsed = 0L
+                }
                 val terakru = finishSessionLocked(nowWall, nowElapsed)
                 persistSnapshot = persistSnapshotLocked(terakru)
                 done = true
+            }
+            // Penyambungan transien (issue #1511): kembali
+            // ke paket asal dalam 10 menit — celah selama
+            // jendela transien tampil diakru ke aplikasi
+            // asal dan sesi baru TANPA launch tambahan.
+            var sambungTransien = false
+            if (!done && !nilaiSaja && pkg != currentPackage &&
+                transienPackage.isNotEmpty() && pkg == transienPackage &&
+                transienSejakElapsed > 0L && nowElapsed - transienSejakElapsed in 0..600_000L) {
+                currentPackage = pkg
+                currentStartElapsed = transienSejakElapsed
+                currentStartWall = nowWall - (nowElapsed - transienSejakElapsed)
+                accrueSessionLocked(nowWall, nowElapsed)
+                currentPackage = ""
+                currentStartElapsed = 0L
+                sambungTransien = true
+            }
+            if (transienPackage.isNotEmpty() && pkg != transienPackage) {
+                transienPackage = ""
+                transienSejakElapsed = 0L
             }
             if (!done && !nilaiSaja && pkg != currentPackage) {
                 // Akru sesi yang baru selesai wajib ikut memaksa
@@ -989,7 +1029,7 @@ object A11yMonitor {
                 try { manager.setA11yOpenSession(pkg, nowWall, nowElapsed) } catch (_: Exception) { }
                 val row = usage.getOrPut(pkg) { AppUsage(label = currentLabel) }
                 row.label = currentLabel
-                row.launches += 1
+                if (!sambungTransien) row.launches += 1
                 val seeded = manager.a11yKnownSeeded
                 // Belum seeded -> JANGAN mengingat (issue #1355):
                 // mengingat pada jendela seed-gagal menelan
@@ -997,14 +1037,14 @@ object A11yMonitor {
                 // tak pernah memicu alert untuk yang sudah
                 // dikenal) — ia masuk himpunan tanpa kabar dan
                 // tak akan pernah memicu alert aplikasi baru.
-                val firstOpen = if (seeded) manager.rememberA11yApp(pkg) else false
+                val firstOpen = if (seeded && !sambungTransien) manager.rememberA11yApp(pkg) else false
                 if (seeded && firstOpen && manager.a11yAppAlert) {
                     if (isNightHour(nowWall)) {
                         if (nightUndo == null) nightUndo = captureNightStamp(manager, pkg, nowElapsed)
                         stampNightAlert(manager, pkg, nowWall, nowElapsed)
                     }
                     alertText = "\uD83D\uDCE6 <b>Aplikasi baru dibuka</b>\n" + Html.escape(currentLabel) + "\n<code>" + pkg + "</code>"
-                } else if (manager.a11yAppAlert && isNightHour(nowWall) && nightAlertAgeMs(manager, nowWall, nowElapsed) >= NIGHT_ALERT_GAP_MS) {
+                } else if (!sambungTransien && manager.a11yAppAlert && isNightHour(nowWall) && nightAlertAgeMs(manager, nowWall, nowElapsed) >= NIGHT_ALERT_GAP_MS) {
                     if (nightUndo == null) nightUndo = captureNightStamp(manager, pkg, nowElapsed)
                     stampNightAlert(manager, pkg, nowWall, nowElapsed)
                     alertText = "\uD83C\uDF19 <b>Aplikasi dibuka malam</b>\n" + Html.escape(currentLabel) + "\n<code>" + pkg + "</code>\n" + TimeFmt.short(nowWall)

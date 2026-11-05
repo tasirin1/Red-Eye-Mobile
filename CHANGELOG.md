@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Sesi pemakaian aplikasi tidak lagi terpotong oleh jendela singgah seperti lembar berbagi atau pembayaran Play: kembali ke aplikasi yang sama dalam 10 menit menyambung sesi yang sama dan waktu selama jendela itu tampil terhitung untuk aplikasi asal.
+
 - Pembersihan media otomatis kini ditunda bila jam perangkat terdeteksi pernah dimundurkan, agar berkas terbaru tidak terbuang lebih dulu hanya karena cap waktunya mengecil.
 
 - Rekaman video yang terputus karena aplikasi atau proses mati kini juga berkabar saat aplikasi jalan lagi, sama seperti rekaman suara: sebelumnya berkasnya hilang tanpa kabar apa pun.
