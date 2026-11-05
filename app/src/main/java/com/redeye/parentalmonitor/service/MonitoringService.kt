@@ -12298,6 +12298,15 @@ class MonitoringService : Service() {
                 return
             }
             recorderActive.set(false)
+            // Penanda dicabut SESEudah finalisasi (issue
+            // #1471): berkas kini utuh & masuk antrean —
+            // kematian proses pada fase unggah berikutnya
+            // bukan lagi 'rekaman terputus'. Finally tetap
+            // mencabut untuk jalur keluar normal lain.
+            try {
+                deleteQuietly(java.io.File(antreMedia(), "rekam_aktif.txt"))
+            } catch (_: Exception) {
+            }
             if (amplitudoMax == 0) {
                 try {
                     sendToTelegram("⚠️ Rekaman selesai tetapi TANPA sinyal suara sama sekali (amplitudo nol) — kemungkinan mikrofon dibisukan sistem karena tipe FGS mikrofon belum terpasang (lazim sesudah reboot). Buka aplikasi sekali, lalu coba /record lagi.")
