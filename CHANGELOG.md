@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Perbaikan kerapian kode: komentar penjelasan sebuah setelan dalam kode dikembalikan menempel tepat di atas setelannya (sempat terpisah oleh sisipan fungsi lain).
+
 - Data antrean pesan yang rusak kini diselamatkan per pesan, bukan dibuang seluruhnya: pesan yang masih terbaca dipertahankan, yang rusak dihitung dan dilaporkan ke pemilik seperti kategori kehilangan lain.
 
 - Cakupan cadangan kini dinyatakan terus terang di semua permukaan: berkas cadangan hanya memuat kredensial dan interval utama — pesan selesai memuat di Setup, balasan pemulihan lewat bot, dan README kini menyebut setelan lain tetap bawaan dan perlu diperiksa sesudah pindah perangkat.
