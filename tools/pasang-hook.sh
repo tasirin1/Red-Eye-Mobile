@@ -7,38 +7,24 @@ ROOT="$(git rev-parse --show-toplevel)"
 TERKONFIGURASI="$(git config --get core.hooksPath || true)"
 
 # core.hooksPath boleh absolut, relatif terhadap root repo, atau lewat ~/.
-# Rumah pengguna berjalan: $HOME bila terisi; kosong ->
-# entri passwd (meniru Git), lewat getent lalu awk.
-rumah_sendiri() {
-    if [ -n "$HOME" ]; then
-        printf '%s' "$HOME"
-        return
-    fi
-    pengguna_kait="$(id -un 2>/dev/null)" || pengguna_kait=""
-    rumah_kait=""
-    if [ -n "$pengguna_kait" ]; then
-        rumah_kait="$(getent passwd "$pengguna_kait" 2>/dev/null | cut -d: -f6)"
-        if [ -z "$rumah_kait" ] && [ -r /etc/passwd ]; then
-            rumah_kait="$(awk -F: -v u="$pengguna_kait" '$1 == u { print $6 }' /etc/passwd 2>/dev/null)" || rumah_kait=""
-        fi
-    fi
-    printf '%s' "$rumah_kait"
-}
-
 direktori_kait() {
     case "$1" in
         "~")
-            # '~' polos (issue #1424): Git mengembangkannya
-            # ke rumah pengguna; tanpa lengan ini ia jatuh
-            # ke lengan ~pengguna dengan nama KOSONG dan
-            # terpasang ke direktori semu dalam repo.
-            # Penguraian rumah memakai helper rumah_sendiri
-            # (issue #1441 + #1451): rantai di dalamnya
-            # menampung kegagalan id/getent/awk dengan ||
-            # agar set -e tak membunuh naskah dalam senyap
-            # (penyakit #1407 yang sempat kambuh di sini).
-            printf '%s' "$(rumah_sendiri)" ;;
-        "~"/*) printf '%s/%s' "$(rumah_sendiri)" "${1#\~/}" ;;
+            # '~' polos (issue #1424 + koreksi #1452): Git
+            # menguraikan '~' dari $HOME APA ADANYA — terbukti
+            # terhadap git 2.43.0: HOME='' berarti kait dicari
+            # di akar filesystem, dan HOME TAK TERPASANG
+            # membuat Git fatal. Cadangan passwd yang dulu
+            # dipasang (#1441) menyimpang dari Git (sukses
+            # palsu); kini HOME diteruskan verbatim dan yang
+            # tak terpasang ditandai agar pemanggil membatalkan
+            # dengan pesan jelas.
+            if [ -z "${HOME+x}" ]; then
+                printf '%s' "__TAK_TERURAI__"
+            else
+                printf '%s' "$HOME"
+            fi ;;
+        "~"/*) printf '%s/%s' "$HOME" "${1#\~/}" ;;
         "~"*)
             # Bentuk ~pengguna/ (issue #1403): Git
             # mengembangkannya ke rumah pengguna itu, bukan
@@ -207,11 +193,11 @@ if [ -n "$TERKONFIGURASI" ]; then
     # Git hanya menjalankan kait di direktori core.hooksPath; pasang di sana,
     # bukan di .git/hooks yang akan diabaikan.
     HOOK_DIR="$(direktori_kait "$TERKONFIGURASI")"
-    if [ -z "$HOOK_DIR" ]; then
-        echo "Pemasangan kait dibatalkan: core.hooksPath = $TERKONFIGURASI tak bisa diuraikan (HOME kosong dan entri passwd tak ditemukan)." >&2
+    if [ "$HOOK_DIR" = "__TAK_TERURAI__" ] || { [ -z "${HOME+x}" ] && case "$TERKONFIGURASI" in "~"|"~"/*) true ;; *) false ;; esac; }; then
+        echo "Pemasangan kait dibatalkan: core.hooksPath = $TERKONFIGURASI memakai '~' tetapi HOME tak terpasang — Git sendiri gagal menguraikannya (fatal: failed to expand user dir)." >&2
         exit 1
     fi
-    if [ ! -d "$HOOK_DIR" ]; then
+    if [ -n "$HOOK_DIR" ] && [ ! -d "$HOOK_DIR" ]; then
         echo "PERINGATAN: core.hooksPath = $TERKONFIGURASI belum ada;"
         echo "  selama direktori itu tak ada, Git melewati SEMUA kait di sana."
         mkdir -p "$HOOK_DIR"

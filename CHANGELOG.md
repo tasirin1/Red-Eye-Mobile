@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Penguraian '~' pada pemasang kait dikoreksi mengikuti perilaku Git yang terbukti: Git memakai nilai HOME apa adanya (HOME kosong berarti kait dicari di akar filesystem; HOME tak terpasang membuat Git sendiri gagal), sehingga cadangan lewat entri passwd yang sempat ditambahkan kini dicabut karena memberi sukses palsu — dan perbaikan serupa untuk bentuk '~/...' ikut dibatalkan atas bukti yang sama.
+
 - Pemasang kait tidak lagi mati dalam senyap bila perintah pembaca nama pengguna tidak tersedia di lingkungan minimal: kegagalan itu kini ditampung dan pemasangan berhenti dengan pesan yang menjelaskan bahwa direktori rumah tak bisa diuraikan.
 
 - Pengenal deklarasi Java di alat verifikasi kini memakai slot anotasi yang sama canggihnya dengan pengenal Kotlin: anotasi bersarang dan tanda kurung di dalam string argumen tidak lagi membuatnya lolos dari peringatan uji.
