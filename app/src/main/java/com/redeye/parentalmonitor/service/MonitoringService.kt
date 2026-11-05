@@ -6127,7 +6127,15 @@ class MonitoringService : Service() {
                 }
             }
         }
-        sendToTelegram("📸 Ambil foto sekarang…")
+        // Argumen lensa MENGGANTI lensa bawaan persisten
+        // (issue #1501): balasan wajib menyebutnya — dulu
+        // hanya 'Ambil foto sekarang…' sehingga seluruh
+        // foto terjadwal sesudahnya senyap berpindah lensa.
+        if (lens.isNotEmpty()) {
+            sendToTelegram("📸 Ambil foto sekarang… (lensa bawaan kini " + (if (preferencesManager.cameraFacing == "front") "depan" else "belakang") + " — berlaku juga untuk foto terjadwal; kembalikan dengan /camera)")
+        } else {
+            sendToTelegram("📸 Ambil foto sekarang…")
+        }
         captureAndSendPhoto(reportResult = true)
     }
 

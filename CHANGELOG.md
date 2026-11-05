@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Balasan /photo dengan pilihan lensa kini menyebut bahwa lensa bawaan ikut berganti dan berlaku juga untuk foto terjadwal: sebelumnya perubahan tetap itu terjadi tanpa disebut sama sekali.
+
 - Mode hemat baterai bawaan Android kini ikut dihormati: saat pemilik menyalakannya, perlambatan hemat daya yang sama berlaku untuk foto otomatis dan patroli.
 
 - Perintah /battery kini juga melaporkan status panas perangkat, sehingga kegagalan kamera atau rekam akibat perangkat kepanasan bisa dibedakan dari kerusakan.
