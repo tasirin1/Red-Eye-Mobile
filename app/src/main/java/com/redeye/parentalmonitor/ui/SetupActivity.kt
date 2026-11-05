@@ -480,7 +480,16 @@ class SetupActivity : AppCompatActivity() {
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
-            VerifyOutcome.Error(redactToken(e.message))
+            // Pengecualian jaringan tampil sebagai teks
+            // ramah (issue #1615): pesan host mentah
+            // berbahasa Inggris ('Unable to resolve host
+            // ...') dulu bocor mentah ke toast pengguna
+            // Indonesia karena konsumen hanya memakai
+            // teks ramah bila rinciannya KOSONG. Rincian
+            // dikosongkan untuk keluarga IOException —
+            // konsumen menggantinya dengan teks
+            // 'tak ada jaringan' yang sudah ada.
+            if (e is java.io.IOException) VerifyOutcome.Error("") else VerifyOutcome.Error(redactToken(e.message))
         }
     }
 
