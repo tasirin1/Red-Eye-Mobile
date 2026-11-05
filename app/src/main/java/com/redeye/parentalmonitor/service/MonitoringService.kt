@@ -8978,6 +8978,13 @@ class MonitoringService : Service() {
                     // menyalakan listener sampai 20 detik hampir
                     // tiap putaran cek berkala (±5 menit).
                     geofenceFailStreak++
+                    // Kegagalan di sini ikut dihitung sebagai
+                    // kegagalan lokasi (issue #1481): dulu
+                    // jalur ini hanya mengatur tempo, sehingga
+                    // buta-lokasi total (patroli mati + GPS tak
+                    // pernah dapat fix) tak pernah mencapai
+                    // catatan health 'lokasi gagal >=5x'.
+                    bumpLocFailCount()
                     val mundurMenit = when {
                         geofenceFailStreak <= 1 -> 13L
                         geofenceFailStreak == 2 -> 10L

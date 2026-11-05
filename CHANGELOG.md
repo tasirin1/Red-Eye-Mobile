@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Kegagalan lokasi pada pemeriksaan pagar wilayah kini ikut tercatat sebagai kegagalan lokasi: buta lokasi total tidak lagi luput dari laporan kesehatan perangkat.
+
 - Perintah pagar wilayah (/home dan /school) kini menolak masukan koordinat berkoma-desimal yang ambigu (mis. -6,2,106) dengan contoh format yang benar: sebelumnya bentuk itu terurai menjadi koordinat yang sama sekali lain dan tetap lolos.
 
 - Laporan kewaspadaan kini selalu menyebut umur posisi yang dipakai untuk nilai 'di luar rumah': sebelumnya posisi sampai 6 jam bisa menopang nilai itu tanpa pembaca tahu posisinya sudah lama.
