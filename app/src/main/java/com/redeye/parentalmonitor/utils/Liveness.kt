@@ -301,7 +301,17 @@ object Liveness {
             // berturut. Satu kematian yang terdeteksi
             // mengosongkan rentetan lewat noteKillDetected.
             val streak = healthyStreak.incrementAndGet()
-            val urgent = SystemClock.elapsedRealtime() < urgentUntilElapsed.get()
+            var urgent = SystemClock.elapsedRealtime() < urgentUntilElapsed.get()
+            // Mode waspada berakhir lebih awal bila layanan
+            // terbukti stabil (issue #1586): tiga tembakan
+            // sehat beruntun pada irama waspada (±9 menit)
+            // berarti badai bunuh sudah lewat — sisa jendela
+            // 60 menitnya tak perlu dibakar pada irama
+            // 3 menit.
+            if (urgent && streak >= 3) {
+                urgentUntilElapsed.set(0L)
+                urgent = false
+            }
             if (urgent) {
                 schedule(context)
             } else {

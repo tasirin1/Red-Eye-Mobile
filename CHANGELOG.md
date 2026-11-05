@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Mode waspada Liveness (irama 3 menit sesudah layanan terdeteksi mati) kini berakhir lebih awal begitu layanan terbukti stabil — tiga pemeriksaan sehat beruntun (±9 menit) mengakhiri mode waspada, tidak menunggu jendela 60 menitnya habis (#1586).
+
 - Loop penjaga di layanan penerus notifikasi kini berirama 5 menit selama layanan utama sehat (sebelumnya 60 detik); irama 60 detik dipertahankan hanya saat layanan utama mati dan perlu dihidupkan ulang (#1585).
 
 - Pencatatan penghitung pesan terbuang (drop) tidak lagi menulis ulang seluruh berkas antrean terenkripsi pada setiap catatan: persist penghitung kini ditunda ke mekanisme drain yang sama dengan antrean, sehingga badai pesan terbuang tidak lagi membayar satu penulisan penuh per kejadian (#1583).
