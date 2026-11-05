@@ -1,29 +1,20 @@
 ## [Unreleased]
 
+## [1.6.626] - 2026-11-05
+
 ### Fixed
 
 - Slot argumen anotasi pada kedua pengenal deklarasi alat verifikasi kini menerima kurung bersarang dua tingkat di samping string: anotasi yang argumennya anotasi berargumen tidak lagi lolos dari peringatan uji di Kotlin maupun Java.
-
 - Penguraian '~' pada pemasang kait dikoreksi mengikuti perilaku Git yang terbukti: Git memakai nilai HOME apa adanya (HOME kosong berarti kait dicari di akar filesystem; HOME tak terpasang membuat Git sendiri gagal), sehingga cadangan lewat entri passwd yang sempat ditambahkan kini dicabut karena memberi sukses palsu — dan perbaikan serupa untuk bentuk '~/...' ikut dibatalkan atas bukti yang sama.
-
 - Pemasang kait tidak lagi mati dalam senyap bila perintah pembaca nama pengguna tidak tersedia di lingkungan minimal: kegagalan itu kini ditampung dan pemasangan berhenti dengan pesan yang menjelaskan bahwa direktori rumah tak bisa diuraikan.
-
 - Pengenal deklarasi Java di alat verifikasi kini memakai slot anotasi yang sama canggihnya dengan pengenal Kotlin: anotasi bersarang dan tanda kurung di dalam string argumen tidak lagi membuatnya lolos dari peringatan uji.
-
 - Penanda ruang-nama pada pengecualian style pustaka alat verifikasi kini wajib berupa segmen nama yang utuh dan dikenal, bukan substring di mana pun: nama berkedok seperti berakhiran nama sendiri sesudah kata pustaka kini tetap divonis.
-
 - Halaman rilis kini hanya memuat APK varian release: varian debug (yang bisa dibaca aplikasi lain lewat adb) sebelumnya ikut diterbitkan berdampingan dan berisiko salah pasang; varian debug tetap tersedia sebagai artefak hasil build di Actions.
-
 - Catatan foto tertahan yang rusak/tak terbaca kini dibatasi jumlahnya saat daftar dibersihkan: sebelumnya catatan seperti itu dipertahankan tanpa batas dan tak bisa dilepas atau dibersihkan oleh jalur mana pun, sehingga data rusak menumpuk permanen di penyimpanan.
-
 - Pengukuran cahaya kamera kini menunggu beberapa frame pratinjau sebelum menjepret, bukan menerima frame pertama: pada perangkat yang tidak melaporkan keadaan paparannya (atau yang meminta kilat), foto dulu bisa terambil sebelum paparan sempat mapan dan hasilnya terlalu gelap.
-
 - Perintah dengan spasi ganda di dalam argumen (lazim dari dikte atau tempel) kini berjalan normal: argumen diruntuhkan ke spasi tunggal saat diurai, sehingga perintah seperti mode patroli dan notifikasi tak lagi salah dibalas petunjuk cara pakai.
-
 - Pemasang kait kini juga menguraikan core.hooksPath berbentuk '~/...' dengan benar saat variabel HOME kosong: sebelumnya bentuk itu memakai HOME mentah dan diam-diam memasang kait ke direktori di akar filesystem sambil melaporkan sukses, padahal Git tak pernah membacanya di sana.
-
 - Antrean foto/video/audio yang belum terkirim kini disimpan di direktori berkas aplikasi, bukan lagi direktori cache: sebelumnya Android bisa menghapus isi cache kapan pun penyimpanan menipis sehingga foto yang menunggu terkirim lenyap tanpa kabar apa pun. Berkas lama di cache dipindahkan sekali jalan.
-
 ## [1.6.625] - 2026-11-05
 
 ### Fixed
