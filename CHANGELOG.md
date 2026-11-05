@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Penerusan notifikasi tidak lagi menelan pesan kedua yang isinya kebetulan sama dengan pesan sebelumnya: penyaring duplikat kini membedakan notifikasi yang sama dikirim ulang dari pesan baru berisi identik (mis. dua balasan 'ok' berurutan), keduanya kini sampai.
+
 - Dokumentasi repo (AGENTS dan README) diselaraskan dengan kebijakan rilis sekarang: halaman Releases hanya berisi APK varian release, bukan lagi kedua varian seperti yang masih tertulis.
 
 - Pemindahan antrean media dari cache kini menyalin lewat berkas sementara dan hanya mengganti nama sesudah salinan utuh: penyalinan yang gagal di tengah (mis. penyimpanan penuh) tidak lagi meninggalkan berkas terpotong yang menghalangi pemindahan berikutnya.

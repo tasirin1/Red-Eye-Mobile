@@ -33,7 +33,10 @@ class NotificationForwarderService : NotificationListenerService() {
             return size > 100
         }
     }
-    private val lastSent = object : LinkedHashMap<String, Long>(64, 0.75f, true) {
+    // Nilai: waktu kirim + postTime notifikasi sumber.
+    // postTime membedakan kirim-ulang notifikasi yang SAMA
+    // dari pesan BARU berisi identik (issue #1457).
+    private val lastSent = object : LinkedHashMap<String, Pair<Long, Long>>(64, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Long>): Boolean {
             return size > 100
         }
@@ -717,11 +720,17 @@ class NotificationForwarderService : NotificationListenerService() {
         // (issue #934): dulu cap ditulis di sini, sebelum kirim —
         // kirim yang gugur menelan kiriman ulang <10 detik.
         val capTerkirim = {
-            synchronized(lastSent) { lastSent[key] = now }
+            synchronized(lastSent) { lastSent[key] = now to sbnPostTime }
         }
         val alreadyHandled = synchronized(lastSent) {
-            val prev = lastSent[key] ?: 0L
-            val dupContent = prev > 0L && now - prev < 10_000L
+            val prev = lastSent[key]
+            // Duplikat konten hanya bila posting yang SAMA
+            // (postTime sama): dua pesan "ok" berurutan adalah
+            // posting berbeda dan harus sama-sama sampai
+            // (issue #1457). postTime tak dikenal (0) kembali
+            // ke perilaku lama berbasis waktu saja.
+            val dupContent = prev != null && now - prev.first < 10_000L &&
+                (sbnPostTime == 0L || prev.second == 0L || prev.second == sbnPostTime)
             val dupId = idHash.isNotEmpty() && isForwardedId(idHash)
             dupContent || dupId
         }
