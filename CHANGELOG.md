@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- PIN atau berkas cadangan yang dikirim sesudah sesi pemulihan kedaluwarsa kini ikut dihapus dari riwayat chat, tidak lagi tertinggal permanen.
+
 - Pemulihan cadangan kini memperingatkan bila berkas dibuat oleh versi aplikasi yang lebih baru, dan menyebut terang-terangan bila PIN di dalam cadangan dibuang karena tidak memenuhi syarat — bukan lagi dilaporkan seolah cadangan memang tak membawa PIN.
 
 - Penanda jeda 6 jam peringatan autentikasi/kredensial kini dicap hanya sesudah notifikasi benar-benar terpasang, bukan sebelumnya — kegagalan memasang tidak lagi membungkam peringatan berikutnya.

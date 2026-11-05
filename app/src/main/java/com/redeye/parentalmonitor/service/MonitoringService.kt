@@ -4682,6 +4682,18 @@ class MonitoringService : Service() {
         val pending = pendingRestore ?: return false
         if (SystemClock.elapsedRealtime() - pending.at > RESTORE_TTL_MS) {
             pendingRestore = null
+            // Pesan PIN/berkas yang tiba terlambat ikut
+            // dihapus (issue #1560): cabang ini dulu hanya
+            // membersihkan sesi, meninggalkan PIN cadangan
+            // permanen di riwayat chat — berbeda dengan
+            // PIN dalam sesi yang selalu dihapus.
+            val teksMasuk = message.text?.trim().orEmpty()
+            if (message.document != null || (teksMasuk.isNotEmpty() && !teksMasuk.startsWith("/"))) {
+                val tokenHapus = try { preferencesManager.botToken } catch (_: Exception) { "" }
+                if (tokenHapus.isNotEmpty()) {
+                    try { deleteIncomingMessage(chatId, message.messageId, tokenHapus) } catch (_: Exception) { }
+                }
+            }
             audit("restore kedaluwarsa", "private")
             sendToTelegram("⏳ Sesi pulihkan kedaluwarsa. Kirim /restore lagi.")
             return true
