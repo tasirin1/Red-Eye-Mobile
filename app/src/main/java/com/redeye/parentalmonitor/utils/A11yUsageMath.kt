@@ -12,7 +12,19 @@ object A11yUsageMath {
         return (inDay / 3_600_000L).toInt()
     }
 
-    fun nightOverlapMs(startMs: Long, endMs: Long, offsetAt: (Long) -> Int): Long {
+    fun nightOverlapMs(startMs: Long, endMs: Long, offsetAt: (Long) -> Int): Long =
+        nightOverlapInternal(startMs, endMs, offsetAt, lateOnly = false)
+
+    // Bagian malam yang jatuh pada 22.00-24.00 SAJA
+    // (issue #1607): jendela malam 22.00-06.00 menyeberangi
+    // tengah malam, jadi total satu malam utuh = bagian
+    // akhir hari kemarin + bagian awal (00.00-06.00) hari
+    // ini. Tanpa pemisahan ini laporan pagi hanya memuat
+    // paruh sesudah tengah malam.
+    fun nightLateOverlapMs(startMs: Long, endMs: Long, offsetAt: (Long) -> Int): Long =
+        nightOverlapInternal(startMs, endMs, offsetAt, lateOnly = true)
+
+    private fun nightOverlapInternal(startMs: Long, endMs: Long, offsetAt: (Long) -> Int, lateOnly: Boolean): Long {
         if (endMs <= startMs) return 0L
         var total = 0L
         var cursor = startMs
@@ -26,7 +38,7 @@ object A11yUsageMath {
                 val changeAt = firstOffsetChange(cursor, segmentEnd, offsetMs, offsetAt)
                 if (changeAt != null) segmentEnd = changeAt
             }
-            if (hour >= NIGHT_START_HOUR || hour < NIGHT_END_HOUR) total += segmentEnd - cursor
+            if (if (lateOnly) hour >= NIGHT_START_HOUR else (hour >= NIGHT_START_HOUR || hour < NIGHT_END_HOUR)) total += segmentEnd - cursor
             cursor = segmentEnd
         }
         return total

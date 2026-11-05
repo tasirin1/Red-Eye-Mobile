@@ -29,6 +29,10 @@ object A11yMonitor {
         var label: String = "",
         var millis: Long = 0L,
         var nightMillis: Long = 0L,
+        // Bagian nightMillis yang jatuh 22.00-24.00
+        // (issue #1607) — pasangan untuk menyusun total
+        // jendela malam yang menyeberangi tengah malam.
+        var nightLateMillis: Long = 0L,
         var launches: Int = 0
     )
 
@@ -793,6 +797,22 @@ object A11yMonitor {
         return parsed?.get(pkg)?.label?.trim().orEmpty()
     }
 
+    // Baris pemakaian KEMARIN dari slot persisten
+    // (issue #1607): laporan menyusun total jendela malam
+    // 22.00-06.00 terakhir dari paruh akhir kemarin +
+    // paruh awal hari ini.
+    fun yesterdayUsage(context: Context): List<AppUsage> {
+        val app = context.applicationContext
+        ensurePrefs(app)
+        synchronized(gate) {
+            ensureLoadedLocked(app)
+            val yesterday = TimeFmt.dayKey(System.currentTimeMillis() - 86_400_000L)
+            return loadUsage(app, yesterday).values.map { it.copy() }
+                .filter { it.millis > 0L || it.launches > 0 }
+                .sortedByDescending { it.millis }
+        }
+    }
+
     fun todayUsage(context: Context): List<AppUsage> {
         val app = context.applicationContext
         ensurePrefs(app)
@@ -1395,6 +1415,7 @@ object A11yMonitor {
             val row = usage.getOrPut(currentPackage) { AppUsage(label = currentLabel) }
             row.millis += chunk
             row.nightMillis += minOf(chunk, A11yUsageMath.nightOverlapMs(wallStart, wallStart + chunk) { ts -> offsetAt(ts) })
+            row.nightLateMillis += minOf(chunk, A11yUsageMath.nightLateOverlapMs(wallStart, wallStart + chunk) { ts -> offsetAt(ts) })
             wallStart += chunk
             remaining -= chunk
         }

@@ -8593,10 +8593,10 @@ class MonitoringService : Service() {
             }
             val a11y = a11yUsageRows()
             if (a11y.isNotEmpty()) {
-                val night = a11y.sumOf { it.nightMillis }
+                val night = lastNightMillis(a11y)
                 if (night > 0L) {
                     appendLine("Malam ini (aksesibilitas, 22.00–06.00): " + ReportFormat.durationText(night))
-                    appendLine("Catatan: baris malam (aksesibilitas) dihitung sejak 00:00, bukan $hours jam terakhir.")
+                    appendLine("Catatan: baris malam (aksesibilitas) adalah jendela 22.00–06.00 terakhir, bukan $hours jam terakhir.")
                 }
             }
             val now = A11yMonitor.currentAppLabel()
@@ -8604,9 +8604,20 @@ class MonitoringService : Service() {
         }.trimEnd()
     }
 
+    // Total jendela malam 22.00-06.00 TERAKHIR (issue
+    // #1607): paruh awal hari ini (nightMillis dikurangi
+    // bagian 22.00-24.00 hari ini) + paruh akhir kemarin.
+    // Menjumlah nightMillis hari ini saja membuang paruh
+    // 22.00-24.00 kemarin yang tersimpan di peta harinya.
+    private fun lastNightMillis(todayRows: List<A11yMonitor.AppUsage>): Long {
+        val awalHariIni = todayRows.sumOf { it.nightMillis - it.nightLateMillis }
+        val akhirKemarin = try { A11yMonitor.yesterdayUsage(this).sumOf { it.nightLateMillis } } catch (_: Exception) { 0L }
+        return awalHariIni + akhirKemarin
+    }
+
     private fun a11yScreenTime(hours: Int, rows: List<A11yMonitor.AppUsage>): String {
         val total = rows.sumOf { it.millis }
-        val night = rows.sumOf { it.nightMillis }
+        val night = lastNightMillis(rows)
         return buildString {
             appendLine("📱 <b>Ringkasan layar</b> (aksesibilitas, hari ini)")
             appendLine("Total: " + ReportFormat.durationText(total))
@@ -8621,7 +8632,7 @@ class MonitoringService : Service() {
             if (night > 0L) appendLine("Pemakaian malam (22.00–06.00): " + ReportFormat.durationText(night))
             val now = A11yMonitor.currentAppLabel()
             if (now.isNotEmpty()) appendLine("Sekarang: " + Html.escape(now))
-            if (hours < 24) appendLine("Catatan: data aksesibilitas dihitung sejak 00:00, bukan $hours jam terakhir.")
+            if (hours < 24) appendLine("Catatan: data aksesibilitas dihitung sejak 00:00 (baris malam = jendela 22.00–06.00 terakhir), bukan $hours jam terakhir.")
         }.trimEnd()
     }
 

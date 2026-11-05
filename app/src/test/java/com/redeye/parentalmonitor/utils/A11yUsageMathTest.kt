@@ -32,6 +32,17 @@ class A11yUsageMathTest {
     }
 
     @Test
+    fun malamAkhirHanyaMenghitungBagian22Sampai24() {
+        // Nilai harapan dibuktikan porting 1:1 logika
+        // jalannya ke Python (issue #1607).
+        assertEquals(2 * hour, A11yUsageMath.nightLateOverlapMs(22 * hour, 30 * hour) { 0 })
+        assertEquals(30 * 60_000L, A11yUsageMath.nightLateOverlapMs(21L * hour + 30 * 60_000L, 22L * hour + 30 * 60_000L) { 0 })
+        assertEquals(0L, A11yUsageMath.nightLateOverlapMs(5L * hour + 30 * 60_000L, 6L * hour + 30 * 60_000L) { 0 })
+        assertEquals(0L, A11yUsageMath.nightLateOverlapMs(20 * hour, 22 * hour) { 0 })
+        assertEquals(1 * hour, A11yUsageMath.nightLateOverlapMs(23 * hour, 25 * hour) { 0 })
+    }
+
+    @Test
     fun malamHanyaMenghitungBagianMalam() {
         assertEquals(30 * 60_000L, A11yUsageMath.nightOverlapMs(21L * hour + 30 * 60_000L, 22L * hour + 30 * 60_000L) { 0 })
         assertEquals(30 * 60_000L, A11yUsageMath.nightOverlapMs(5L * hour + 30 * 60_000L, 6L * hour + 30 * 60_000L) { 0 })
