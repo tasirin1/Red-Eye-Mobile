@@ -14,7 +14,22 @@ direktori_kait() {
             # ke $HOME; tanpa lengan ini ia jatuh ke lengan
             # ~pengguna dengan nama KOSONG dan terpasang ke
             # direktori semu dalam repo.
-            printf '%s' "$HOME" ;;
+            # HOME kosong (issue #1441): Git beralih ke
+            # entri passwd pengguna; tiru lewat rantai
+            # getent -> awk yang sama dengan lengan ~pengguna.
+            if [ -n "$HOME" ]; then
+                printf '%s' "$HOME"
+            else
+                pengguna_kait="$(id -un 2>/dev/null)"
+                rumah_kait=""
+                if [ -n "$pengguna_kait" ]; then
+                    rumah_kait="$(getent passwd "$pengguna_kait" 2>/dev/null | cut -d: -f6)"
+                    if [ -z "$rumah_kait" ] && [ -r /etc/passwd ]; then
+                        rumah_kait="$(awk -F: -v u="$pengguna_kait" '$1 == u { print $6 }' /etc/passwd 2>/dev/null)" || rumah_kait=""
+                    fi
+                fi
+                printf '%s' "$rumah_kait"
+            fi ;;
         "~"/*) printf '%s/%s' "$HOME" "${1#\~/}" ;;
         "~"*)
             # Bentuk ~pengguna/ (issue #1403): Git
@@ -184,6 +199,10 @@ if [ -n "$TERKONFIGURASI" ]; then
     # Git hanya menjalankan kait di direktori core.hooksPath; pasang di sana,
     # bukan di .git/hooks yang akan diabaikan.
     HOOK_DIR="$(direktori_kait "$TERKONFIGURASI")"
+    if [ -z "$HOOK_DIR" ]; then
+        echo "Pemasangan kait dibatalkan: core.hooksPath = $TERKONFIGURASI tak bisa diuraikan (HOME kosong dan entri passwd tak ditemukan)." >&2
+        exit 1
+    fi
     if [ ! -d "$HOOK_DIR" ]; then
         echo "PERINGATAN: core.hooksPath = $TERKONFIGURASI belum ada;"
         echo "  selama direktori itu tak ada, Git melewati SEMUA kait di sana."

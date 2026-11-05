@@ -4,6 +4,8 @@
 
 ### Fixed
 
+- Pemasang kait kini tetap bisa menguraikan core.hooksPath '~' saat variabel HOME kosong (mis. lingkungan cron minimal): ia beralih ke direktori rumah dari entri passwd pengguna seperti yang dilakukan Git, dan bila itu pun tak ditemukan pemasangan berhenti dengan pesan yang menjelaskan sebabnya, bukan kegagalan mkdir mentah.
+
 - Pemasang kait kini memperlakukan catatan rantai lama yang bernilai persis penanda kegagalan cadangan sebagai rantai rusak yang dibuang (dengan peringatan), bukan sebagai kegagalan cadangan: sebelumnya kait racikan tertentu bisa membatalkan pemasangan dengan pesan yang keliru.
 
 - Saklar cek uji pada mode rentang alat verifikasi tidak lagi dimatikan oleh ketiadaan direktori uji di pohon ujung rentang: keadaan itu justru berarti cakupan uji nol dan setiap metode baru paling layak diperingatkan.
