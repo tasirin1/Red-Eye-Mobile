@@ -1074,8 +1074,17 @@ object A11yMonitor {
         // oleh sistem mengulang alert yang sama. Pola meniru peta
         // alert kata kunci yang sudah persisten di berkas ini.
         val now = System.currentTimeMillis()
-        mainHandler.post {
-            try { a11yService?.performGlobalAction(AccessibilityService.GLOBAL_ACTION_HOME) } catch (_: Exception) { }
+        // Hasil aksi pulang kini diperiksa (issue #1438):
+        // dulu aksi dibuang hasilnya (dan ditunda lewat
+        // post) sementara alert selalu mengklaim layar
+        // ditutup — bila layanan sedang ter-unbind, klaim
+        // itu tak terbukti. Aksi dipanggil langsung dari
+        // alur peristiwa (utas utama) dan teks alert
+        // mengikuti hasilnya.
+        val layarDitutup = try {
+            a11yService?.performGlobalAction(AccessibilityService.GLOBAL_ACTION_HOME) ?: false
+        } catch (_: Exception) {
+            false
         }
         val manager = try { prefs ?: PreferencesManager.getInstance(context.applicationContext).also { prefs = it } } catch (_: Exception) { null }
         var prevTamper = -1L
@@ -1104,7 +1113,7 @@ object A11yMonitor {
             }
         }
         if (!allowed) return
-        val queued = sendAlert(context, "\uD83D\uDEE1\uFE0F <b>Proteksi tamper</b>\nPercobaan: " + Html.escape(reason) + "\nTindakan: layar ditutup")
+        val queued = sendAlert(context, "\uD83D\uDEE1\uFE0F <b>Proteksi tamper</b>\nPercobaan: " + Html.escape(reason) + if (layarDitutup) "\nTindakan: layar ditutup" else "\nTindakan: perintah menutup layar GAGAL dijalankan (layanan aksesibilitas mungkin sedang terputus)")
         if (!queued) {
             // Antre menolak (issue #811): kembalikan entri jeda yang
             // telanjur dicap + dipersisten, agar percobaan berikutnya

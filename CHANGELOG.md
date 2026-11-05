@@ -4,6 +4,8 @@
 
 ### Fixed
 
+- Peringatan proteksi tamper kini hanya mengklaim 'layar ditutup' bila aksi menutup layarnya benar-benar berhasil: sebelumnya hasil aksi itu tidak diperiksa, sehingga kegagalan (mis. layanan aksesibilitas sedang terputus) tetap dilaporkan seolah perlindungan berhasil.
+
 - Tombol salin tautan pasangan di Setup kini punya penjaga sedang-berjalan: ketukan ganda sebelumnya menumpuk dua dialog tautan yang sama (dan dua panggilan jaringan).
 
 - Dialog izin tangkap layar tidak lagi bisa terbit dua kali bila aktivitasnya dibuat ulang sistem di tengah permintaan (mis. pergantian bahasa perangkat): keadaan 'sudah minta' kini disimpan dan dipulihkan, sehingga instance baru cukup menunggu hasil yang memang akan diantar sistem kepadanya.
