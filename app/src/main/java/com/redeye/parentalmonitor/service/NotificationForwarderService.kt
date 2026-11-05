@@ -844,7 +844,10 @@ class NotificationForwarderService : NotificationListenerService() {
                         watchKeywordsList = AppWatch.parseKeywords(raw)
                         watchKeywordsRaw = raw
                     }
-                    val hit = AppWatch.hitLowered(watchKeywordsList, lowerJoined)
+                    // Bahan pantau isi-saja (issue #1459),
+                    // selaras isPriorityNotif.
+                    val bahanPantau = if (text.isNotEmpty()) text.lowercase(java.util.Locale.ROOT) else lowerJoined
+                    val hit = AppWatch.hitLowered(watchKeywordsList, bahanPantau)
                     if (hit != null) appendLine("⚠️ Watch: " + Html.escape(hit))
                 }
             } catch (_: Exception) {
@@ -1175,7 +1178,14 @@ class NotificationForwarderService : NotificationListenerService() {
                         watchKeywordsList = AppWatch.parseKeywords(raw)
                         watchKeywordsRaw = raw
                     }
-                    if (AppWatch.hitLowered(watchKeywordsList, lowText) != null) return true
+                    // Kata pantau dinilai atas ISI saja
+                    // (issue #1459): judul notifikasi chat
+                    // adalah nama grup/pengirim — kecocokan
+                    // di sana menandai SEMUA pesan grup itu
+                    // selamanya. Isi kosong -> judul jadi
+                    // satu-satunya bahan (perilaku lama).
+                    val bahanPantau = if (text.isNotEmpty()) text.lowercase(java.util.Locale.ROOT) else lowText
+                    if (AppWatch.hitLowered(watchKeywordsList, bahanPantau) != null) return true
                 }
             } catch (_: Exception) {
             }

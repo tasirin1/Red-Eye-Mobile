@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Kata pantau pada notifikasi kini dinilai dari isi pesannya saja, bukan gabungan judul dan isi: kata yang kebetulan cocok dengan nama grup/percakapan tidak lagi membuat semua pesan dari grup itu bertanda pantau dan naik prioritas selamanya.
+
 - Penerusan notifikasi kini juga membaca tumpukan pesan bergaya percakapan (MessagingStyle): bila beberapa pesan menumpuk dalam satu notifikasi, seluruh tumpukannya diteruskan, bukan hanya pesan terakhir.
 
 - Penerusan notifikasi tidak lagi menelan pesan kedua yang isinya kebetulan sama dengan pesan sebelumnya: penyaring duplikat kini membedakan notifikasi yang sama dikirim ulang dari pesan baru berisi identik (mis. dua balasan 'ok' berurutan), keduanya kini sampai.
