@@ -88,7 +88,7 @@ class ShotAccessibilityService : AccessibilityService() {
         // Identitas instans hidup (issue #1678): jepretan
         // yang sudah terposkan wajib memastikan layanan
         // yang sama masih terikat saat gilirannya jalan.
-        fun isCurrent(service: ShotAccessibilityService): Boolean = instance === service
+        fun isCurrent(service: android.accessibilityservice.AccessibilityService): Boolean = instance === service
 
         fun isEnabled(context: Context): Boolean =
             AccessibilityProbe.isEnabled(context, ShotAccessibilityService::class.java)
