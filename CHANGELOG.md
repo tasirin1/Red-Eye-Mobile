@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.638] - 2026-11-05
+
 ### Fixed
 - Metadata verifikasi dependensi Gradle kini terpasang (issue #1695): `gradle/verification-metadata.xml` (399 komponen, 710 artefak, sha256) dibuat dengan Gradle 8.9 asli lewat jalur Colab atas himpunan tugas CI (testDebugUnitTest, assembleDebug, assembleRelease, lintDebug, detekt) — bukan checksum karangan. Mulai sekarang CI menolak artefak dependensi yang checksum-nya tidak cocok dengan yang tercatat, jadi rantai pasok build terpin. Satu checksum (gson) diverifikasi silang ke Maven Central sebelum commit dan cocok persis.
 - Fragmen token di pesan commit kini tertangkap sapuan riwayat (issue #1698): varian pesan memang sengaja tanpa pemadatan (#1425 — pemadatan atas prosa yang mengutip id run/galat pernah menuduh pesan sah), jadi token yang dipecah beberapa aksara per baris lolos. Kini blok baris pendek berurutan (>=6 baris, tiap baris <=8 aksara alfabet token) — bentuk mekanis yang tak mirip prosa — disambung dan dinilai dengan pemindai bersama; prosa biasa tak pernah dinilai tersambung. Terbukti di kotak pasir: pesan berfragmen GAGAL disebut commit-nya, pesan mengutip id run + galat dan daftar baris pendek yang sah tetap LOLOS, begitu pula rentang terbit v1.6.636..v1.6.637.
