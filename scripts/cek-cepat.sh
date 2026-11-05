@@ -226,6 +226,65 @@ if [ -f tools/cek-token.py ]; then
     echo "GAGAL: kemungkinan token bot asli (base64/terbelah) ikut staged (hanya via input SetupActivity)"; gagal=1;
   fi
 fi
+# 4c. Belahan teks/biner (issue #1677): berkas biner staged tak
+# menyumbang baris "+" ke pemicu 4/4b, jadi paruh token yang
+# bersembunyi di dalamnya (dibungkus byte NUL) tak pernah
+# menyalakan penilaian. Pemindai juga tidak menyambung belahan
+# yang dipisah byte kontrol (NUL dsb. dianggap batas biner),
+# jadi bukti untuk jalur ini DITELANJANGI byte kontrolnya
+# dulu (kecuali \t\n\r), lalu dinilai per berkas dan sebagai
+# gabungan terpadatkan — pola tuduhan_staged_berdiri, atas
+# salinan bukti yang sudah ditelanjangi.
+tuduhan_biner_berdiri() {
+  cek_token_sehat || return 0
+  _berdiri=1
+  _daftar=$(mktemp)
+  _gabung=$(mktemp)
+  git diff --cached --name-only -z --diff-filter=d > "$_daftar" 2>/dev/null
+  while IFS= read -r -d '' _f; do
+    _tmp=$(mktemp)
+    _telanjang=$(mktemp)
+    if git show ":$_f" > "$_tmp" 2>/dev/null; then
+      LC_ALL=C tr -d '\000-\010\013\014\016-\037\177' < "$_tmp" > "$_telanjang"
+      if printf '%s\0' "$_telanjang" | python3 tools/cek-token.py --berkas 2>/dev/null | grep -q .; then
+        _berdiri=0
+      fi
+      python3 tools/cek-token.py --padatkan < "$_telanjang" >> "$_gabung" 2>/dev/null
+    fi
+    rm -f "$_tmp" "$_telanjang"
+    [ "$_berdiri" = 0 ] && break
+  done < "$_daftar"
+  rm -f "$_daftar"
+  if [ "$_berdiri" != 0 ]; then
+    _ukuran=$(wc -c < "$_gabung" 2>/dev/null || echo 0)
+    if [ "$_ukuran" -gt 33554432 ]; then
+      _berdiri=0
+    elif printf '%s\0' "$_gabung" | python3 tools/cek-token.py --berkas 2>/dev/null | grep -q .; then
+      _berdiri=0
+    fi
+  fi
+  rm -f "$_gabung"
+  return $_berdiri
+}
+if [ -f tools/cek-token.py ]; then
+  _daftar_biner=$(mktemp)
+  git diff --cached --name-only -z --diff-filter=d > "$_daftar_biner" 2>/dev/null
+  _ada_biner=0
+  while IFS= read -r -d '' _f; do
+    _tmp=$(mktemp)
+    if git show ":$_f" > "$_tmp" 2>/dev/null; then
+      if [ "$(tr -d '\0' < "$_tmp" | wc -c)" != "$(wc -c < "$_tmp")" ]; then
+        _ada_biner=1
+      fi
+    fi
+    rm -f "$_tmp"
+    [ "$_ada_biner" = 1 ] && break
+  done < "$_daftar_biner"
+  rm -f "$_daftar_biner"
+  if [ "$_ada_biner" = 1 ] && tuduhan_biner_berdiri; then
+    echo "GAGAL: kemungkinan token bot asli (belahan teks/biner) ikut staged (hanya via input SetupActivity)"; gagal=1;
+  fi
+fi
 # 5. Pindai tracked tree selalu (bukan hanya saat index bersih).
 # Menangkap secret yang terlanjur ter-commit via --no-verify walau ada perubahan staged.
 if git ls-files -z | tr '\0' '\n' | sed 's/[. ]*$//' | grep -iE '\.(apk|aab|ap_|dex|jks|keystore|p12|pfx|pem|key)$|local\.properties$|((^|/)\.env(\.[^/]*)?|\.env|(^|/)\.envrc(\.[^/]*)?)$' >/dev/null; then
