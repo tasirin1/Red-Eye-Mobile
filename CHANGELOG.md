@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Pemeriksaan token pada pesan commit di cek-cepat kini menjangkau seluruh commit yang belum ada di remote mana pun saat tidak ada upstream: sebelumnya cadangan pemeriksaannya hanya membaca pesan commit paling ujung, sehingga token di commit tengah rangkaian lolos pada push pertama cabang baru.
+
 - Acuan style berawalan pustaka yang segmen ruang-namanya belum dikenal alat verifikasi kini cukup diperingatkan (dengan petunjuk menambah segmennya), bukan lagi divonis gagal sebagai 'yatim': dependensi baru ber-segmen baru tidak lagi memblokir push dengan pesan yang menyesatkan.
 
 - Alternatif kurung terdalam pada slot anotasi alat verifikasi kini juga sadar-string (string berisi kurung di tingkat mana pun tertangkap), dan batas kedalaman slot itu kini dituliskan di komentar desainnya.
