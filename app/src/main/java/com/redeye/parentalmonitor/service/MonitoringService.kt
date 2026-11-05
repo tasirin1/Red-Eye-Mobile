@@ -2940,6 +2940,12 @@ class MonitoringService : Service() {
             return false
         }
         offsetFailCount = 0
+        // Coretan 400 non-offset ikut direset keberhasilan
+        // (issue #1646): tanpa ini tiga kegagalan yang
+        // terpisah jauh seumur proses tetap memicu eskalasi
+        // "berulang kali", padahal maksud #1634 adalah
+        // kegagalan BERURUTAN.
+        badRequestFailCount = 0
 
         val updates = response.body()?.result ?: return false
         // Pelajari username bot sendiri (issue #843) agar sufiks @
