@@ -486,6 +486,13 @@ object A11yMonitor {
         }
     }
 
+    // Lepas cache label saat tekanan memori (issue #1598):
+    // kedua peta dibangun ulang malas dari PackageManager.
+    fun releaseCaches() {
+        try { synchronized(labels) { labels.clear() } } catch (_: Exception) { }
+        try { synchronized(launchable) { launchable.clear() } } catch (_: Exception) { }
+    }
+
     private fun watchedPackages(manager: PreferencesManager): Set<String> {
         // Pasangan (raw, cache) dinilai+ditulis atomik
         // (issue #1100): dua benang (peristiwa + executor)

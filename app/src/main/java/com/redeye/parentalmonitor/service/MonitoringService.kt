@@ -10951,6 +10951,18 @@ class MonitoringService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    // Katup tekanan memori (issue #1598): sinyal trim
+    // kritis / low-memory kini juga melepas cache yang bisa
+    // dibangun lagi (label aplikasi di sini + A11yMonitor,
+    // jsonCache antrean) — total ±1 MB yang dulu diabaikan
+    // sampai LMK membunuh proses. Semua cache itu terisi
+    // lagi secara malas pada pemakaian berikutnya.
+    private fun releaseMemoryCaches() {
+        try { synchronized(appLabelCache) { appLabelCache.clear() } } catch (_: Exception) { }
+        try { messageQueue.trimCaches() } catch (_: Exception) { }
+        try { A11yMonitor.releaseCaches() } catch (_: Exception) { }
+    }
+
     override fun onTrimMemory(level: Int) {
         try {
             val memoryPressure = level != android.content.ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN &&
@@ -10958,6 +10970,7 @@ class MonitoringService : Service() {
             if (memoryPressure) {
                 try { messageQueue.flushSync() } catch (_: Exception) { }
                 try { Liveness.schedule(this) } catch (_: Exception) { }
+                releaseMemoryCaches()
             }
         } catch (_: Exception) {
         }
@@ -10967,6 +10980,7 @@ class MonitoringService : Service() {
     override fun onLowMemory() {
         try { messageQueue.flushSync() } catch (_: Exception) { }
         try { Liveness.schedule(this) } catch (_: Exception) { }
+        releaseMemoryCaches()
         try { super.onLowMemory() } catch (_: Exception) { }
     }
 

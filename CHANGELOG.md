@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Sinyal tekanan memori sistem (trim kritis / low memory) kini juga melepas cache yang dapat dibangun ulang — label aplikasi dan cache JSON antrean, total sekitar 1 MB — bukan hanya membilas antrean, memberi proses ruang bernapas sebelum sistem membunuhnya (#1598).
+
 - Cache label aplikasi di layanan utama kini LRU sejati (buang entri terlama dipakai satu per satu pada batas 300), bukan dikosongkan seluruhnya begitu melewati batas yang memaksa ratusan resolusi ulang ke PackageManager (#1597).
 
 - Antrean dua pool tugas latar (kritis dan luapan receiver) kini terbatas 64 seperti pool receiver utama — satu tugas yang menggantung tidak lagi bisa menumpuk pekerjaan tanpa batas di memori; pada batasnya tugas berjalan di benang pemanggil sebagai tekanan balik (#1596).

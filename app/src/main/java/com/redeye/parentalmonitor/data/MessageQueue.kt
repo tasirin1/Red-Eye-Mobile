@@ -782,6 +782,14 @@ class MessageQueue private constructor(context: Context) {
         }
     }
 
+    // Lepas cache yang bisa dibangun lagi (issue #1598):
+    // dipanggil layanan saat sistem memberi sinyal tekanan
+    // memori — jsonCache dibangun ulang malas oleh
+    // snapshotJson, jadi membersihkannya aman.
+    fun trimCaches() {
+        synchronized(persistMutex) { jsonCache.clear() }
+    }
+
     fun flushSync() {
         try {
             val onMain = android.os.Looper.myLooper() == android.os.Looper.getMainLooper()
