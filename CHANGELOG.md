@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Kabar 'lensa yang diminta tak ada' kini membaca lensa yang dipotret tepat saat pengambilan selesai, bukan sesudah unggahan: kabar tidak lagi bisa menyebut lensa yang salah gara-gara pengambilan lain di tengah unggahan.
+
 - Peringatan jam malam dan jam sekolah kini menyebut umur titik lokasi bila titiknya berasal dari simpanan (mis. 'posisi ±10 menit lalu'), agar vonis atas posisi lama tidak tampak seperti posisi saat ini.
 
 - Kabar 'siap dijemput' tidak lagi bisa terpicu dari titik lokasi simpanan yang sudah berumur beberapa menit lewat jalur deteksi kendaraan: kini hanya titik segar (maksimal 5 menit) yang boleh memicunya, sama seperti jalur lain.
