@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Teks panduan anti-mati kini jujur soal batasnya: janji hidup lagi dalam 3–15 menit berlaku untuk penghentian oleh sistem, sedangkan Paksa Berhenti manual di Setelan Android menghentikan semuanya sampai aplikasi dibuka sekali dengan tangan.
+
 - Perintah berat (rekam suara, rekam video, ambil foto) kini ditolak dengan kabar jelas saat baterai di bawah 10% dan tidak sedang diisi daya, agar perangkat tidak mati di tengah operasi dan perlindungan tidak berhenti tanpa kabar.
 
 
