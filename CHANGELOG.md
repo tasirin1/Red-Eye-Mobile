@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Cek izin lokasi latar kini satu di AppPermissions (issue #1658): tiga salinan logika yang sama di MonitoringService, MainActivity, dan SetupActivity digabung menjadi `AppPermissions.hasBackgroundLocation(context)` — sembilan situs panggilan kini menunjuk satu implementasi (SDK < Q selalu benar, selain itu cek `ACCESS_BACKGROUND_LOCATION`), jadi perubahan aturan izin kelak cukup di satu tempat.
 - Penutup badan error `tutupBadanError` kini satu di NetworkUtils (issue #1657): tiga salinan identik di MonitoringService, SetupActivity, dan CrashReporter digabung — 33 situs panggilan kini menunjuk fungsi bersama yang badannya verbatim sama, jadi semantik tutup-badan (dan perilaku diam saat gagal) tak berubah; perbaikan künftigen cukup di satu tempat.
 - Empat properti gerbang PIN yatim dihapus dari PreferencesManager (issue #1656): `restorePinFailCount`, `restorePinLastAttemptKey`, `accessPinFailCount`, dan `restoreCodeFailCount` tak dirujuk siapa pun — kunci-kuncinya hidup tetapi diakses fungsi gerbang internal langsung lewat konstanta `KEY_*`, jadi properti ini jalan resmi kedua yang tak pernah dilewati dan suntingan padanya akan diam-diam tak berpengaruh. Konstanta kuncinya tetap.
 - Fungsi pembungkus mati `protectionActive` dihapus dari A11yMonitor (issue #1655): ia hanya meneruskan `monitoringActive` (yang dipanggil langsung di 8+ situs) dan tak punya pemanggil satu pun — lapisan nama kedua yang membuat pembaca mengira ada semantik proteksi terpisah.

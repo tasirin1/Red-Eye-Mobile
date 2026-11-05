@@ -1,13 +1,10 @@
 package com.redeye.parentalmonitor.ui
 
-import android.Manifest
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
 import com.redeye.parentalmonitor.R
 import com.redeye.parentalmonitor.data.PreferencesManager
 import com.redeye.parentalmonitor.service.MonitoringService
@@ -257,7 +254,7 @@ class MainActivity : AppCompatActivity() {
             if (BuildConfig.DEBUG) android.util.Log.i("MainActivity", "Monitoring disabled by user - not auto-starting")
             return
         }
-        if (!hasBackgroundLocation()) {
+        if (!com.redeye.parentalmonitor.utils.AppPermissions.hasBackgroundLocation(this)) {
             if (BuildConfig.DEBUG) android.util.Log.w("MainActivity", "Background location missing - starting anyway with degraded location, grant via Setup")
         }
         if (!preferencesManager.isMonitoringEnabled || !MonitoringService.isRunning) {
@@ -281,11 +278,6 @@ class MainActivity : AppCompatActivity() {
 
     private fun hasAllPermissions(): Boolean {
         return com.redeye.parentalmonitor.utils.AppPermissions.hasAll(this)
-    }
-
-    private fun hasBackgroundLocation(): Boolean {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return true
-        return ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED
     }
 
     private fun startMonitoringService() {

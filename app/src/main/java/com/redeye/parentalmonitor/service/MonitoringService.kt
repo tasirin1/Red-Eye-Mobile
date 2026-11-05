@@ -6735,7 +6735,7 @@ class MonitoringService : Service() {
                 appendLine("Izin kamera: ${if (hasCameraPermission()) "ada" else "HILANG"}")
                 appendLine("Izin lokasi: ${if (hasLocationPermission()) "ada" else "HILANG"}")
                 appendLine("Lokasi presisi: ${if (hasFineLocation()) "ada" else "HILANG (hanya perkiraan)"}")
-                appendLine("Lokasi latar: ${if (hasBackgroundLocation()) "ada" else "HILANG"}")
+                appendLine("Lokasi latar: ${if (com.redeye.parentalmonitor.utils.AppPermissions.hasBackgroundLocation(this)) "ada" else "HILANG"}")
                 appendLine("Izin SMS masuk: ${if (hasReceiveSmsPermission()) "ada" else "tidak"}")
                 appendLine("Izin status telepon: ${if (hasPhoneStatePermission()) "ada" else "tidak"}")
                 appendLine("Jaringan: " + networkSummary())
@@ -6939,14 +6939,6 @@ class MonitoringService : Service() {
         return hasil.first
     }
 
-    private fun hasBackgroundLocation(): Boolean {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return true
-        return androidx.core.content.ContextCompat.checkSelfPermission(
-            this,
-            android.Manifest.permission.ACCESS_BACKGROUND_LOCATION
-        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-    }
-
     private fun isNotifForwarding(): Boolean {
         if (!preferencesManager.notifForwardEnabled) return false
         return try {
@@ -7037,7 +7029,7 @@ class MonitoringService : Service() {
             !hasLocationPermission() -> "izin lokasi belum diberikan."
             !providersOn -> "Lokasi/GPS di HP sedang mati."
             !hasFineLocation() -> "izin lokasi hanya \"Perkiraan\" \u2014 setel ke \"Presisi\"."
-            !hasBackgroundLocation() -> "izin \"Lokasi sepanjang waktu\" belum ada \u2014 buka Setup."
+            !com.redeye.parentalmonitor.utils.AppPermissions.hasBackgroundLocation(this) -> "izin \"Lokasi sepanjang waktu\" belum ada \u2014 buka Setup."
             else -> "GPS belum dapat perbaikan \u2014 coba lagi di tempat terbuka."
         }
     }
@@ -12801,7 +12793,7 @@ class MonitoringService : Service() {
             hasCameraPermission(),
             hasMicPermission(),
             hasFineLocation(),
-            hasBackgroundLocation(),
+            com.redeye.parentalmonitor.utils.AppPermissions.hasBackgroundLocation(this),
             !notifEnabled || isNotifForwarding(),
             ShotAccessibilityService.isEnabled(this) && ShotAccessibilityService.isBound(),
             isBatteryExempt()

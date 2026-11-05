@@ -25,6 +25,17 @@ object AppPermissions {
 
     fun isOptional(permission: String): Boolean = permission in optionalPerms
 
+    // Cek lokasi latar bersama (issue #1658): tiga
+    // salinan logika yang sama sebelumnya hidup di
+    // MonitoringService, MainActivity, dan SetupActivity.
+    fun hasBackgroundLocation(context: Context): Boolean {
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.Q) return true
+        return ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_BACKGROUND_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+    }
+
     fun hasAll(context: Context): Boolean {
         return perms.all {
             ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED

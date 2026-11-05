@@ -235,7 +235,7 @@ class SetupActivity : AppCompatActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val fine = result[Manifest.permission.ACCESS_FINE_LOCATION] == true
             val coarse = result[Manifest.permission.ACCESS_COARSE_LOCATION] == true
-            if ((fine || coarse) && !hasBackgroundLocation()) {
+            if ((fine || coarse) && !com.redeye.parentalmonitor.utils.AppPermissions.hasBackgroundLocation(this)) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                     Toast.makeText(this, getString(R.string.setup_bg_request), Toast.LENGTH_LONG).show()
                     openAppSettings()
@@ -556,19 +556,12 @@ class SetupActivity : AppCompatActivity() {
         return fine || coarse
     }
 
-    private fun hasBackgroundLocation(): Boolean {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-            return true
-        }
-        return ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED
-    }
-
     private fun requestLocationPermissions() {
         if (!hasAllPermissions()) {
             permissionLauncher.launch(requiredPermissions)
             return
         }
-        if (!hasBackgroundLocation()) {
+        if (!com.redeye.parentalmonitor.utils.AppPermissions.hasBackgroundLocation(this)) {
             requestBackgroundLocation()
             return
         }
@@ -782,7 +775,7 @@ class SetupActivity : AppCompatActivity() {
                 if (setupReviveAt.compareAndSet(lastRevive, nowRevive)) break
             }
             val shouldRevive = try {
-                prefs.isMonitoringEnabled && prefs.isConfigured() && !prefs.userDisabledMonitoring && prefs.userConsentedMonitoring && hasAllPermissions() && hasBackgroundLocation()
+                prefs.isMonitoringEnabled && prefs.isConfigured() && !prefs.userDisabledMonitoring && prefs.userConsentedMonitoring && hasAllPermissions() && com.redeye.parentalmonitor.utils.AppPermissions.hasBackgroundLocation(this)
             } catch (_: Exception) {
                 false
             }
@@ -1884,7 +1877,7 @@ class SetupActivity : AppCompatActivity() {
             requestLocationPermissions()
             return
         }
-        if (!hasBackgroundLocation()) {
+        if (!com.redeye.parentalmonitor.utils.AppPermissions.hasBackgroundLocation(this)) {
             Toast.makeText(this, getString(R.string.setup_bg_request), Toast.LENGTH_LONG).show()
             requestBackgroundLocation()
             return
@@ -2487,7 +2480,7 @@ class SetupActivity : AppCompatActivity() {
             val enabled = try { prefs.isMonitoringEnabled } catch (_: Exception) { false }
             val running = enabled && MonitoringService.isRunning
             val paused = try { prefs.monitoringPaused } catch (_: Exception) { false }
-            val bg = hasBackgroundLocation()
+            val bg = com.redeye.parentalmonitor.utils.AppPermissions.hasBackgroundLocation(this)
             val fg = hasForegroundLocation()
             val exempt = isBatteryExempt()
             val encrypted = try { prefs.isStorageEncrypted } catch (_: Exception) { false }
