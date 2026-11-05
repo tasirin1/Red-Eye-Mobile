@@ -719,6 +719,25 @@ class SendMessageWorker(
                 false
             }
         }
+        // Hapus pesan asal sesudah sisanya terantre (issue
+        // #1680): hasil removeMessages dulu diabaikan di
+        // keenam situs — persist hapus yang gagal total
+        // (lolos retry internal antrean) membuat asal bangkit
+        // di run berikutnya sementara sisanya juga terkirim,
+        // jadi potongan ekor diterima dua kali. Kini dicoba
+        // ulang terbatas dengan flush di sela percobaan;
+        // false berarti asal sungguh belum terhapus.
+        fun removeOrigin(): Boolean {
+            val id = origId ?: return true
+            repeat(3) {
+                try {
+                    if (messageQueue.removeMessages(listOf(id))) return true
+                } catch (_: Exception) {
+                }
+                try { messageQueue.flushSync() } catch (_: Exception) { }
+            }
+            return false
+        }
         var rateAfter = 0L
         var authCode = 0
         var failed = 0
@@ -739,10 +758,7 @@ class SendMessageWorker(
             val curChat = try { preferencesManager.chatId } catch (_: Exception) { chatId }
             if ((curToken.isNotEmpty() && curToken != botToken) || (curChat.isNotEmpty() && curChat != chatId)) {
                 if (!queueRemainder(idx)) return SendOutcome.Failed
-                try {
-                    if (origId != null) messageQueue.removeMessages(listOf(origId))
-                } catch (_: Exception) {
-                }
+                if (!removeOrigin()) return SendOutcome.Failed
                 try {
                     MessageScheduler.scheduleMessageSend(applicationContext)
                 } catch (_: Exception) {
@@ -753,10 +769,7 @@ class SendMessageWorker(
                 if (idx == 0) return SendOutcome.Failed
                 val queued = queueRemainder(idx)
                 if (!queued) return SendOutcome.Failed
-                try {
-                    if (origId != null) messageQueue.removeMessages(listOf(origId))
-                } catch (_: Exception) {
-                }
+                if (!removeOrigin()) return SendOutcome.Failed
                 try {
                     MessageScheduler.scheduleMessageSend(applicationContext)
                 } catch (_: Exception) {
@@ -772,20 +785,14 @@ class SendMessageWorker(
                         if (idx + 1 < parts.size) {
                             val queued = queueRemainder(idx + 1)
                             if (queued) {
-                                try {
-                                    if (origId != null) messageQueue.removeMessages(listOf(origId))
-                                } catch (_: Exception) {
-                                }
+                                removeOrigin()
                                 try {
                                     MessageScheduler.scheduleMessageSend(applicationContext)
                                 } catch (_: Exception) {
                                 }
                             }
                         } else {
-                            try {
-                                if (origId != null) messageQueue.removeMessages(listOf(origId))
-                            } catch (_: Exception) {
-                            }
+                            removeOrigin()
                         }
                         throw e
                     }
@@ -805,10 +812,7 @@ class SendMessageWorker(
                             NetworkUtils.noteRateLimited(outcome.retryAfterSecs)
                         } catch (_: Exception) {
                         }
-                        try {
-                            if (origId != null) messageQueue.removeMessages(listOf(origId))
-                        } catch (_: Exception) {
-                        }
+                        removeOrigin()
                         rateAfter = outcome.retryAfterSecs
                         break
                     }
@@ -838,10 +842,7 @@ class SendMessageWorker(
                         // sebagai Sent. handleAuthOrRate memasang ulang
                         // penanda yang sama. Pesan asal dibuang di sini
                         // karena sisanya sudah terantre sebagai pesan baru.
-                        try {
-                            if (origId != null) messageQueue.removeMessages(listOf(origId))
-                        } catch (_: Exception) {
-                        }
+                        removeOrigin()
                         authCode = outcome.code
                         break
                     }
