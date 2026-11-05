@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Laporan kewaspadaan kini selalu menyebut umur posisi yang dipakai untuk nilai 'di luar rumah': sebelumnya posisi sampai 6 jam bisa menopang nilai itu tanpa pembaca tahu posisinya sudah lama.
+
 - Pemilihan titik lokasi tersimpan kini mengutamakan yang paling akurat, bukan yang paling baru: titik jaringan kasar tidak lagi mengalahkan titik GPS presisi yang sedikit lebih tua pada penilaian patroli dan pagar wilayah.
 
 - Penerusan SMS langsung kini hanya mengambil SMS masuk (kotak masuk): draf yang belum dikirim dan baris keluar lain tidak lagi ikut terkirim ke Telegram sebagai 'SMS baru'.

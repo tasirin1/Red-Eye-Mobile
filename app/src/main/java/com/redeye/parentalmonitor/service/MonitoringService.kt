@@ -9519,7 +9519,16 @@ class MonitoringService : Service() {
                     )
                 ) {
                     score += 10
-                    locNote = "\nDi luar rumah: ya (+10)"
+                    // Umur posisi SELALU disebut (issue
+                    // #1479): posisi boleh berumur sampai
+                    // 6 jam di sini — vonis "di luar rumah"
+                    // tanpa umur menyesatkan pembaca.
+                    val umurPosisi = when {
+                        ageMs < 60_000L -> "baru saja"
+                        ageMs < 3_600_000L -> (ageMs / 60_000L).toString() + " mnt lalu"
+                        else -> (ageMs / 3_600_000L).toString() + " jam lalu"
+                    }
+                    locNote = "\nDi luar rumah: ya (+10) — posisi " + umurPosisi
                 }
             } catch (_: Exception) {
             }
