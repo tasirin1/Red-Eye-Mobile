@@ -588,6 +588,26 @@ AWALAN_STYLE_PUSTAKA = (
     "Theme_Material", "Theme_AppCompat", "Theme_Design",
 )
 
+# Penanda ruang-nama pustaka untuk penyempitan #1442:
+# selimut awalan saja membebaskan SEMUA nama berawalan
+# keluarga pustaka dari vonis yatim sisi kode — termasuk
+# salah-ketik yang tak ada di pustaka mana pun. Kini
+# bebas hanya bila nama juga memuat penanda ruang-nama
+# pustaka sungguhan (Platform_ adalah penandanya sendiri:
+# style platform tampil sebagai Platform_*). Sisa risiko
+# (salah-ketik DI DALAM ruang-nama asli) tertangkap
+# kompiler, karena rujukan R.style harus ada untuk lolos
+# build.
+PENANDA_PUSTAKA_STYLE = ("Material", "AppCompat", "Design", "Mdc")
+
+
+def _bebas_yatim_style_kode(nama):
+    if nama.startswith("Platform_"):
+        return True
+    if not nama.startswith(AWALAN_STYLE_PUSTAKA):
+        return False
+    return any(t in nama for t in PENANDA_PUSTAKA_STYLE)
+
 
 def cek_acuan_yatim(gagal):
     definisi, acuan = himpun_definisi()
@@ -602,7 +622,7 @@ def cek_acuan_yatim(gagal):
                        # dijangkau pola_pustaka maupun awalan di
                        # atas (khusus jenis style).
                        and not (jenis == "style" and n.startswith("Base_"))
-                       and not (jenis == "style" and n.startswith(AWALAN_STYLE_PUSTAKA)))
+                       and not (jenis == "style" and _bebas_yatim_style_kode(n)))
         if yatim:
             gagal.append("Acuan %s yatim (dipakai tapi tak terdefinisi): %s"
                          % (jenis, ", ".join(yatim[:10])))

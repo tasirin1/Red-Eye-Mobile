@@ -4,6 +4,8 @@
 
 ### Fixed
 
+- Pengecualian style pustaka pada pemeriksaan acuan yatim alat verifikasi kini dipersempit: tidak lagi cukup berawalan keluarga pustaka, namanya juga harus memuat penanda ruang-nama pustaka sungguhan — nama berkedok awalan yang tidak ada di pustaka mana pun kini tetap divonis.
+
 - Pemasang kait kini tetap bisa menguraikan core.hooksPath '~' saat variabel HOME kosong (mis. lingkungan cron minimal): ia beralih ke direktori rumah dari entri passwd pengguna seperti yang dilakukan Git, dan bila itu pun tak ditemukan pemasangan berhenti dengan pesan yang menjelaskan sebabnya, bukan kegagalan mkdir mentah.
 
 - Pemasang kait kini memperlakukan catatan rantai lama yang bernilai persis penanda kegagalan cadangan sebagai rantai rusak yang dibuang (dengan peringatan), bukan sebagai kegagalan cadangan: sebelumnya kait racikan tertentu bisa membatalkan pemasangan dengan pesan yang keliru.
