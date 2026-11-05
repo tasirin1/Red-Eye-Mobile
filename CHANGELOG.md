@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Dialog peringatan akses yang masih mati sesudah monitoring dimulai tidak lagi langsung tertimpa wizard anti-baterai pada saat yang sama: kini hanya satu dialog yang tampil tiap kali mulai.
+
 - Notifikasi percakapan yang menumpuk tidak lagi meneruskan ulang seluruh riwayat tumpukannya setiap ada pesan baru: kini hanya pesan barunya saja yang diteruskan.
 
 - Laporan 'rekaman terputus' tidak lagi keliru bunyi untuk rekaman yang sebenarnya sudah selesai dan utuh: penanda rekaman berjalan kini dicabut tepat sesudah rekaman selesai difinalkan, bukan menunggu seluruh proses unggah beres.

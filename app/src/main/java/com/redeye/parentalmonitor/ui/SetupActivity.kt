@@ -1863,6 +1863,7 @@ class SetupActivity : AppCompatActivity() {
                     // kecil — monitoring menyala "Aktif" walau
                     // fitur intinya mati semua. Kini disebut
                     // dalam satu dialog sesudah mulai.
+                    var dialogAksesTampil = false
                     try {
                         val hilang = ArrayList<String>()
                         if (!com.redeye.parentalmonitor.service.ShotAccessibilityService.isEnabled(this@SetupActivity)) hilang.add("Accessibility")
@@ -1872,6 +1873,7 @@ class SetupActivity : AppCompatActivity() {
                         if (!adminOn2) hilang.add("Device admin")
                         if (!com.redeye.parentalmonitor.utils.ScreenCapture.granted()) hilang.add("Screen capture")
                         if (hilang.isNotEmpty()) {
+                            dialogAksesTampil = true
                             androidx.appcompat.app.AlertDialog.Builder(this@SetupActivity)
                                 .setTitle(getString(R.string.setup_start_missing_title))
                                 .setMessage(getString(R.string.setup_start_missing_body, hilang.joinToString("\n") { "• " + it }))
@@ -1884,7 +1886,12 @@ class SetupActivity : AppCompatActivity() {
                     } catch (_: Exception) {
                     }
                     try {
-                        if (!isBatteryExempt() || !com.redeye.parentalmonitor.utils.AutoStart.canDrawOverlays(this@SetupActivity)) {
+                        // Satu dialog per lintasan (issue
+                        // #1473): wizard anti-kill langsung
+                        // menimpa dialog akses mati pada
+                        // lintasan sukses yang sama. Wizard
+                        // tetap terjangkau dari tombolnya.
+                        if (!dialogAksesTampil && (!isBatteryExempt() || !com.redeye.parentalmonitor.utils.AutoStart.canDrawOverlays(this@SetupActivity))) {
                             showAntiKillWizard()
                         }
                     } catch (_: Exception) {
