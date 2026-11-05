@@ -175,6 +175,13 @@ class NotificationForwarderService : NotificationListenerService() {
     private var cfgCacheAt = 0L
     @Volatile
     private var cfgCacheFilled = false
+    // Generasi invalidasi cache konfigurasi (issue #1669):
+    // invalidasi dari benang listener menaikkannya; refresh
+    // hanya boleh mencap segar bila generasi tak berubah
+    // selama ia membaca — invalidasi yang mendarat di tengah
+    // refresh tidak lagi tertimpa cap segar snapshot basi.
+    @Volatile
+    private var cfgCacheGen = 0L
     @Volatile
     private var cfgCacheEnabled = false
     @Volatile
@@ -298,8 +305,8 @@ class NotificationForwarderService : NotificationListenerService() {
             android.util.Log.e("NotifForwarder", "Queue init failed in onCreate, will retry lazily", e)
         }
         fwdCredsListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-            if (key == PreferencesManager.KEY_BOT_TOKEN || key == PreferencesManager.KEY_CHAT_ID) { refreshFwdCreds(); cfgCacheAt = 0L; cfgCacheFilled = false }
-            if (key == PreferencesManager.KEY_NOTIF_FORWARD || key == PreferencesManager.KEY_MONITORING_ENABLED || key == PreferencesManager.KEY_MONITORING_PAUSED || key == PreferencesManager.KEY_USER_DISABLED || key == PreferencesManager.KEY_USER_CONSENTED) { cfgCacheAt = 0L; cfgCacheFilled = false }
+            if (key == PreferencesManager.KEY_BOT_TOKEN || key == PreferencesManager.KEY_CHAT_ID) { refreshFwdCreds(); invalidateCfgCache() }
+            if (key == PreferencesManager.KEY_NOTIF_FORWARD || key == PreferencesManager.KEY_MONITORING_ENABLED || key == PreferencesManager.KEY_MONITORING_PAUSED || key == PreferencesManager.KEY_USER_DISABLED || key == PreferencesManager.KEY_USER_CONSENTED) { invalidateCfgCache() }
         }
         attachCredsListener()
         scope.launch {
@@ -372,7 +379,14 @@ class NotificationForwarderService : NotificationListenerService() {
         }
     }
 
+    private fun invalidateCfgCache() {
+        cfgCacheGen++
+        cfgCacheAt = 0L
+        cfgCacheFilled = false
+    }
+
     private fun refreshCfgCache(prefs: PreferencesManager, now: Long) {
+        val genAwal = cfgCacheGen
         cfgCacheEnabled = try {
             prefs.isMonitoringEnabled && !prefs.monitoringPaused && !prefs.userDisabledMonitoring && prefs.userConsentedMonitoring
         } catch (_: Exception) {
@@ -388,8 +402,14 @@ class NotificationForwarderService : NotificationListenerService() {
         } catch (_: Exception) {
             false
         }
-        cfgCacheAt = now
-        cfgCacheFilled = true
+        // Cap segar hanya bila tak ada invalidasi selama
+        // membaca (issue #1669); bila ada, cache dibiarkan
+        // belum terisi agar ensureCfgCache berikutnya
+        // me-refresh ulang dari prefs terbaru.
+        if (cfgCacheGen == genAwal) {
+            cfgCacheAt = now
+            cfgCacheFilled = true
+        }
     }
 
     private fun ensureCfgCache(prefs: PreferencesManager) {
