@@ -23,6 +23,18 @@ object DigestSchedule {
         return A11yUsageMath.localHour(nowMs, offsetMs.toInt())
     }
 
+    // Kunci cap penyelesaian sesudah kirim digest malam
+    // berhasil (issue #621; diekstrak agar keputusannya
+    // terkunci langsung oleh uji, bukan hanya akibatnya
+    // — issue #1691): jalur reguler mencap kunci HARI
+    // INI; jalur susulan mencap kunci KEMARIN. Mencap
+    // hari ini pada jalur susulan akan mematikan digest
+    // reguler malam nanti; mencap selain kemarin bisa
+    // mempersenjatai ulang susulan yang sama.
+    fun nightDoneKeyAfterSend(wasCatchUp: Boolean, yesterdayKey: String, todayKey: String): String {
+        return if (wasCatchUp) yesterdayKey else todayKey
+    }
+
     fun nightDue(hour: Int, doneKey: String, todayKey: String): Boolean {
         return hour >= 21 && todayKey.isNotEmpty() && doneKey < todayKey
     }

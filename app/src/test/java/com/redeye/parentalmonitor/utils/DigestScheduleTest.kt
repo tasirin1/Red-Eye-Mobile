@@ -63,6 +63,15 @@ class DigestScheduleTest {
     }
 
     @Test
+    fun nightDoneKeyAfterSendRules() {
+        // #1691: keputusan capnya sendiri, bukan hanya
+        // akibatnya — reguler mencap hari ini, susulan
+        // mencap kemarin (#621).
+        assertEquals("2026-10-27", DigestSchedule.nightDoneKeyAfterSend(false, "2026-10-26", "2026-10-27"))
+        assertEquals("2026-10-26", DigestSchedule.nightDoneKeyAfterSend(true, "2026-10-26", "2026-10-27"))
+    }
+
+    @Test
     fun catchUpStampedWithYesterdayKeepsTonightDue() {
         // #632: cabang catch-up di MonitoringService mencap kunci KEMARIN
         // (bukan hari ini) — urutan predikat ini mengunci akibatnya: catch-up
