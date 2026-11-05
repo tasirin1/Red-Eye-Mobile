@@ -1,6 +1,6 @@
 ## [Unreleased]
 
-## [1.6.624] - 2026-11-05
+## [1.6.625] - 2026-11-05
 
 ### Fixed
 
@@ -37,6 +37,10 @@
 - Cek token pada pesan commit di skrip cek cepat kini memakai varian permukaan pesan yang sama dengan alat verifikasi utama: sebelumnya jalur kedua itu masih memakai varian penuh ber-pemadatan sehingga pesan yang sah tetap bisa terblokir oleh kait walau sudah lolos gerbang pertama.
 
 - Sorotan persen pada laporan harian kini membandingkan jendela yang sama kemarin (dari tengah malam sampai jam laporan terbit), bukan satu hari kemarin penuh: sebelumnya laporan susulan pagi selalu mengklaim penurunan besar yang keliru hanya karena harinya baru mulai.
+
+## [1.6.624] - 2026-11-05
+
+### Fixed
 
 - Penjaga token pada PESAN commit kini diselaraskan per permukaan: pesan diperiksa untuk token tertempel utuh dan bentuk ter-encode saja, tanpa pemadatan — pemadatan menyambung prosa biasa (id run CI + titik dua + kutipan galat) menjadi pola token palsu dan pernah memblokir pesan perbaikan yang sah. Pemeriksaan isi berkas tetap memakai pemadatan penuh. Terbukti lewat harness dua arah.
 
