@@ -112,7 +112,11 @@ class CameraService(private val context: Context) {
         Thread {
             try {
                 com.redeye.parentalmonitor.utils.MediaDirs.queueDir(context).listFiles { f ->
-                    f.isFile && f.name.endsWith(".tmp") &&
+                    // .mig ikut disapu (issue #1508): sisa
+                    // salinan migrasi MediaDirs yang prosesnya
+                    // mati di tengah penyalinan — dulu tak ada
+                    // pembersih yang mencocokkan akhiran itu.
+                    f.isFile && (f.name.endsWith(".tmp") || f.name.endsWith(".mig")) &&
                         (f.name.startsWith("camera_") || f.name.startsWith("screenshot_") ||
                             f.name.startsWith("video_") || f.name.startsWith("audio_"))
                 }?.forEach {

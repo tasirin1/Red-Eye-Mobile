@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Sisa berkas salinan migrasi media yang terputus di tengah jalan kini ikut dibersihkan saat layanan kamera mulai: sebelumnya berkas yatim itu bisa menetap permanen tanpa terlihat.
+
 - Calon tumpukan pesan kini bertanda postingan pembuatnya dan kedaluwarsa dalam 10 menit: pengiriman postingan lain tidak lagi mengesahkan tumpukan basi sebagai patokan.
 
 - Perbaikan lanjutan untuk pesan percakapan: patokan tumpukan kini hanya maju pada pengiriman atau pengantrean yang terkonfirmasi, tidak lagi ikut maju saat pembaruan dibuang oleh penyaring spam.
