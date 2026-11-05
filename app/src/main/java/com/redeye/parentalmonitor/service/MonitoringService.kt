@@ -497,9 +497,11 @@ class MonitoringService : Service() {
         private val storageWarnAt = java.util.concurrent.atomic.AtomicLong(0L)
         private val smsReqSeq = java.util.concurrent.atomic.AtomicInteger(java.util.concurrent.ThreadLocalRandom.current().nextInt())
         private val authReminderAt = java.util.concurrent.atomic.AtomicLong(0L)
+        private val storageLossReminderAt = java.util.concurrent.atomic.AtomicLong(0L)
         @Volatile
         private var commandsRegFailAt = 0L
         private const val AUTH_NOTIF_ID = 5
+        private const val STORAGE_LOSS_NOTIF_ID = 6
         @Volatile
         var isRunning = false
         private val appLabelCache = java.util.concurrent.ConcurrentHashMap<String, Pair<Boolean, String>>()
@@ -1163,7 +1165,7 @@ class MonitoringService : Service() {
                 // perangkat; percobaan Telegram tetap berjalan
                 // untuk sub-kasus kredensial selamat di memori.
                 if (hilang) {
-                    try { postAuthFailureReminder(-916) } catch (_: Exception) { }
+                    try { postAuthFailureReminder(-916, slotTerpisah = true) } catch (_: Exception) { }
                 }
                 sendToTelegram(
                     if (hilang) "⚠️ Penyimpanan aman rusak/hilang: token & Chat ID yang tersimpan tak terbaca lagi, jadi monitoring berhenti mengirim. Buka aplikasi dan isi ulang kredensial di Setup."
@@ -3379,15 +3381,22 @@ class MonitoringService : Service() {
         }
     }
 
-    private fun postAuthFailureReminder(code: Int) {
+    private fun postAuthFailureReminder(code: Int, slotTerpisah: Boolean = false) {
+        // Slot terpisah untuk peringatan kredensial HILANG
+        // (issue #1533): berbagi throttle/ID dengan pengingat
+        // auth membuat peringatan hilang bisa tertelan jeda
+        // 6 jam pengingat auth yang sudah ditutup pengguna —
+        // dan jalur Telegram-nya memang mati, jadi tak ada
+        // peringatan sama sekali.
+        val slot = if (slotTerpisah) storageLossReminderAt else authReminderAt
         val now = android.os.SystemClock.elapsedRealtime()
-        val lastReminder = authReminderAt.get()
+        val lastReminder = slot.get()
         if (lastReminder != 0L && now - lastReminder < 6 * 60 * 60_000L) return
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
                 androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED
             ) return
-            authReminderAt.set(now)
+            slot.set(now)
             val tap = setupTapIntent()
             // Teks notifikasi menyamar penuh (issue #741): judul/teks lama
             // menyebut token, bot, dan Setup — membocorkan jati diri
@@ -3409,7 +3418,7 @@ class MonitoringService : Service() {
                 .setAutoCancel(true)
                 .build()
             val manager = getSystemService(NOTIFICATION_SERVICE) as android.app.NotificationManager
-            manager.notify(AUTH_NOTIF_ID, notification)
+            manager.notify(if (slotTerpisah) STORAGE_LOSS_NOTIF_ID else AUTH_NOTIF_ID, notification)
         } catch (_: Exception) {
         }
     }

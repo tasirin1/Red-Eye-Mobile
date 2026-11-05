@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Notifikasi peringatan kredensial hilang kini memakai slot dan jeda pengingatnya sendiri: sebelumnya berbagi dengan pengingat gagal masuk, sehingga peringatannya bisa tertelan jeda pengingat lain.
+
 - Peringatan keluar/masuk area pagar kini tahan terhadap satu titik lokasi yang melompat jauh secara tidak wajar (glitch GPS/jaringan): titik seperti itu diabaikan dan tidak lagi membalik status area atau mengunci catatan harian.
 
 - Perintah buang antrean kini meminta konfirmasi dua tahap seperti kirim SMS: ketukan pertama hanya memperingatkan, antrean benar-benar dibuang sesudah konfirmasi kedua dari peminta yang sama dalam 5 menit.
