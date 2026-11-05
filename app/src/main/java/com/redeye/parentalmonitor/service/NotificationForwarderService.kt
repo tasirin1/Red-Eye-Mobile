@@ -479,8 +479,15 @@ class NotificationForwarderService : NotificationListenerService() {
     // (issue #1494): peta dulu hanya maju saat emitPost
     // men-cap terkirim — pembaruan yang gugur pembatas
     // laju tak lagi kehilangan pesannya permanen.
-    private val tumpukanCalon = HashMap<String, String>()
+    private val tumpukanCalon = HashMap<String, CalonTumpukan>()
     private var kunciTumpukanAktif = ""
+    private var postTimeTumpukanAktif = 0L
+
+    // Calon gabungan bertag (issue #1507): postTime
+    // postingan pembuatnya + cap waktu dinding, agar
+    // commit hanya berlaku untuk postingan yang sama
+    // dan calon basi kedaluwarsa (10 menit).
+    private data class CalonTumpukan(val gabung: String, val postTime: Long, val capDinding: Long)
 
     private fun notifTitleText(notification: Notification): NotifText {
         return try {
@@ -575,7 +582,7 @@ class NotificationForwarderService : NotificationListenerService() {
                     val prev = synchronized(tumpukanDulu) { tumpukanDulu[kunci] }
                     synchronized(tumpukanCalon) {
                         if (tumpukanCalon.size > 100) tumpukanCalon.clear()
-                        tumpukanCalon[kunci] = tumpukanGabung
+                        tumpukanCalon[kunci] = CalonTumpukan(tumpukanGabung, postTimeTumpukanAktif, System.currentTimeMillis())
                     }
                     if (prev != null && prev.isNotEmpty() && tumpukanGabung.startsWith(prev)) {
                         val sisa = tumpukanGabung.removePrefix(prev).removePrefix("\n")
@@ -624,7 +631,8 @@ class NotificationForwarderService : NotificationListenerService() {
             return
         }
         kunciTumpukanAktif = sbnKey
-        val nf = try { notifTitleText(notification) } finally { kunciTumpukanAktif = "" }
+        postTimeTumpukanAktif = try { sbn.postTime } catch (_: Exception) { 0L }
+        val nf = try { notifTitleText(notification) } finally { kunciTumpukanAktif = ""; postTimeTumpukanAktif = 0L }
         val title = nf.title
         val text = nf.text
         if (title.isEmpty() && text.isEmpty()) return
@@ -794,10 +802,17 @@ class NotificationForwarderService : NotificationListenerService() {
             if (sbnKey.isNotEmpty()) {
                 try {
                     val calon = synchronized(tumpukanCalon) { tumpukanCalon.remove(sbnKey) }
-                    if (calon != null) {
+                    // Hanya commit untuk postingan yang
+                    // SAMA (postTime cocok) dan calon yang
+                    // masih segar (issue #1507): calon dari
+                    // postingan lain yang basi tak boleh
+                    // menjadi patokan potong.
+                    if (calon != null &&
+                        (calon.postTime == 0L || sbnPostTime == 0L || calon.postTime == sbnPostTime) &&
+                        System.currentTimeMillis() - calon.capDinding < 10 * 60_000L) {
                         synchronized(tumpukanDulu) {
                             if (tumpukanDulu.size > 100) tumpukanDulu.clear()
-                            tumpukanDulu[sbnKey] = calon
+                            tumpukanDulu[sbnKey] = calon.gabung
                         }
                     }
                 } catch (_: Exception) {
