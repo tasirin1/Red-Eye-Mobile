@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Pindai riwayat pada gerbang kini mengonfirmasi setiap tuduhan grep mentah dengan pemindai token bersama sebelum menyatakan gagal, sehingga commit sah berisi contoh bertanda atau kutipan hash tidak lagi membuat gerbang merah permanen (#1603).
+
 - Gerbang token kini menolak pengecualian "hash + kata prosa" bila sisa sesudah hash cukup panjang untuk memuat ekor token utuh (≥35 aksara): ekor token asli yang menempel rapat sesudah kutipan hash — bentuk lazim dari tempelan log/JSON — tidak lagi lolos di semua permukaan pindai (#1602).
 
 - Konfirmasi dua tahap /clearqueue dan /cleanup kini terikat pada ID pesan penahap: pengiriman ulang update yang sama oleh Telegram sesudah proses dimulai ulang tidak lagi terbaca sebagai konfirmasi, sehingga antrean/media tidak terbuang tanpa ketukan kedua yang sungguhan (#1601).

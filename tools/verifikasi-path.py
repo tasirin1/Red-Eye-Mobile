@@ -1962,13 +1962,31 @@ def cek_secret_riwayat(gagal, rentang):
                 continue
             if teks.startswith("Binary file ") and teks.endswith(" matches"):
                 path = teks[len("Binary file "):-len(" matches")]
+                biner = True
+            else:
+                path = teks.split(":", 1)[1] if ":" in teks else teks
+                biner = False
+            # Konfirmasi pemindai bersama (issue #1603):
+            # grep mentah sendirian menuduh contoh bertanda
+            # (#1530) dan kutipan hash (#1529/#1543/#1568/
+            # #1602) yang oleh permukaan lain dinyatakan
+            # bersih — satu commit sah seperti itu membuat
+            # gerbang riwayat merah permanen. Vonis kanal
+            # ini wajib lolos penilaian yang sama seperti
+            # kanal kandidat di bawah: ambil blob, dekode,
+            # nilai mengandung_token. Tak terkonfirmasi =
+            # bukan vonis; lanjut ke berkas/commit berikut.
+            mentah = jalan_biner("git", "show", "%s:%s" % (sha, path))
+            isi = _dekode(mentah) if mentah is not None else None
+            if not mengandung_token(isi):
+                continue
+            if biner:
                 gagal.append("Kemungkinan token bot asli di berkas BINER %s "
                              "pada commit %s (riwayat rentang) — token tetap "
                              "hidup di riwayat walau sudah dihapus di pohon "
                              "akhir. Kredensial hanya via input manual "
                              "SetupActivity" % (path, sha[:8]))
             else:
-                path = teks.split(":", 1)[1] if ":" in teks else teks
                 gagal.append("Kemungkinan token bot asli di %s pada commit %s "
                              "(riwayat rentang) — token tetap hidup di "
                              "riwayat walau sudah dihapus di pohon akhir. "
