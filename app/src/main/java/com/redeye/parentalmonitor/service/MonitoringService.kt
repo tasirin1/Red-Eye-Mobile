@@ -4855,6 +4855,7 @@ class MonitoringService : Service() {
                 "Token bot, Chat ID, interval sync, dan interval foto sudah diganti.\n" +
                 ownerNote + "\n" +
                 pinNote + "\n" +
+                "Setelan lain (kata pantau, pagar lokasi, patroli, sakelar) tidak ada di cadangan — masih bawaan perangkat ini, periksa bila perlu.\n" +
                 "Bot lama tidak dipakai lagi. Kirim /status untuk memastikan."
         )
         if (oldToken.isNotEmpty() && oldChat.isNotEmpty() && (oldToken != newToken || oldChat != newChat)) {

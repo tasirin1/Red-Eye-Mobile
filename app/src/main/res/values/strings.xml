@@ -116,7 +116,7 @@
     <string name="restore_pin_title">Enter backup PIN</string>
     <string name="restore_pin_hint">PIN/passphrase (min 4 characters)</string>
     <string name="restore_pin_short">PIN too short, minimum 4 characters</string>
-    <string name="restore_done">Backup loaded, check then tap Save</string>
+    <string name="restore_done">Backup loaded (credentials &amp; main intervals only — watched words, fences, patrol etc. stay at defaults), check then tap Save</string>
     <string name="restore_legacy_warn">This backup uses the old, weaker format. After saving, change your access PIN and consider a new bot token, then export a fresh backup.</string>
     <string name="restore_bad">Cannot open backup (wrong PIN or corrupt file)</string>
     <string name="restore_same_attempt">This exact file + PIN was already tried and failed. If the PIN is surely right, the backup file is likely corrupt — export a fresh one.</string>

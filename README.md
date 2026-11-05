@@ -49,7 +49,7 @@ Buat orang tua memantau HP anaknya sendiri — bukan buat iseng. Dari luar, apli
 - Anti-mati (hidup lagi sendiri habis reboot atau dibunuh sistem), proteksi uninstall via Device Admin
 - Proteksi tamper: perubahan setelan sensitif HP (Aksesibilitas, admin perangkat, hapus aplikasi, sumber tak dikenal, opsi pengembang) diblokir/dilaporkan
 - Antrean offline: pesan dikirim begitu online lagi; masking OTP/bank otomatis
-- Backup/restore setelan terenkripsi (file `.redeyebak`), termasuk pulihkan lewat bot (`/restore`) dan mode restore ketat berkode 6 digit
+- Backup/restore terenkripsi (file `.redeyebak`) untuk kredensial & setelan utama (token bot, chat, interval sinkron & kamera, ID pemilik, PIN akses); setelan lain (kata pantau, pagar lokasi, patroli, dll.) tidak ikut — atur ulang sesudah pindah perangkat. Termasuk pulihkan lewat bot (`/restore`) dan mode restore ketat berkode 6 digit
 - Akses owner aman: link pairing dari Setup, atau `/login <PIN>`; `/logout` mengunci semua perintah sampai login lagi
 
 ## Ambil APK-nya

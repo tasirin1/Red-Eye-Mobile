@@ -1,5 +1,10 @@
 ## [Unreleased]
 
+### Fixed
+
+- Cakupan cadangan kini dinyatakan terus terang di semua permukaan: berkas cadangan hanya memuat kredensial dan interval utama — pesan selesai memuat di Setup, balasan pemulihan lewat bot, dan README kini menyebut setelan lain tetap bawaan dan perlu diperiksa sesudah pindah perangkat.
+
+
 ## [1.6.630] - 2026-11-05
 
 ### Fixed
