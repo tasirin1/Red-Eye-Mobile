@@ -907,12 +907,14 @@ class SetupActivity : AppCompatActivity() {
             val myClear = saveSeq.get()
             val oldOwner = try { prefs.ownerUserId } catch (_: Exception) { 0L }
             val oldToken = try { prefs.botToken } catch (_: Exception) { "" }
+            val oldChat = try { prefs.chatId } catch (_: Exception) { "" }
             // Inti kredensial (token/chat/owner/PIN/update-id)
             // dihapus atomik + tahan LEBIH DULU (issue #1360),
             // sebelum panggilan jaringan di bawah yang bisa
             // menggantung lama — mati proses di antaranya tak
             // lagi menyisakan keadaan campuran.
             try { prefs.clearCredentialCoreSync() } catch (_: Exception) { }
+            kabarKanalLama(oldToken, oldChat, "⚠️ Kredensial perangkat dihapus dari layar Setup di perangkat ini. Bot ini tidak lagi memantau perangkat.")
             if (oldOwner != 0L && oldToken.isNotEmpty()) {
                 try {
                     val delResp1 = com.redeye.parentalmonitor.network.TelegramClient.api.deleteMyCommands(
@@ -1185,8 +1187,12 @@ class SetupActivity : AppCompatActivity() {
                 }
                 return@launch
             }
+            var oldTokenLama = ""
+            var oldChatLama = ""
             val persistOutcome: Boolean? = configMutex.withLock {
                 if (mySave != saveSeq.get()) return@withLock null
+                oldTokenLama = try { prefs.botToken } catch (_: Exception) { "" }
+                oldChatLama = try { prefs.chatId } catch (_: Exception) { "" }
                 try {
                     prefs.saveCredentials(token, chatId, interval, cameraInterval, restoreOwnerOverride(token, chatId), accessPin)
                 } catch (_: Exception) {
@@ -1201,6 +1207,9 @@ class SetupActivity : AppCompatActivity() {
                 loadedCameraInterval = cameraInterval
                 clearPendingRestore()
                 simpanUsernameBotTeruji(token)
+            }
+            if (persisted && oldTokenLama.isNotEmpty() && oldChatLama.isNotEmpty() && (oldTokenLama != token || oldChatLama != chatId)) {
+                kabarKanalLama(oldTokenLama, oldChatLama, "⚠️ Token/Chat ID perangkat diganti dari layar Setup di perangkat ini. Bot ini tidak lagi memantau perangkat.")
             }
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                 if (isFinishing || isDestroyed) return@withContext
@@ -1230,6 +1239,25 @@ class SetupActivity : AppCompatActivity() {
                 } catch (_: Exception) {
                 }
             }
+        }
+    }
+
+    // Kabar ke kanal lama (issue #1624): penggantian/
+    // penghapusan kredensial dari Setup lokal dulu
+    // senyap total — jalur /restore mengirim pesan
+    // perpisahan ke bot/chat lama, jalur lokal tidak,
+    // sehingga pemilik di kanal lama tak pernah tahu
+    // kanalnya diganti atau dihapus. Usaha terbaik:
+    // kegagalan jaringan diabaikan.
+    private suspend fun kabarKanalLama(oldToken: String, oldChat: String, teks: String) {
+        if (oldToken.isEmpty() || oldChat.isEmpty()) return
+        try {
+            val resp = com.redeye.parentalmonitor.network.TelegramClient.api.sendMessage(
+                "https://api.telegram.org/bot$oldToken/sendMessage",
+                com.redeye.parentalmonitor.network.TelegramMessage(chatId = oldChat, text = teks, parseMode = null)
+            )
+            if (!resp.isSuccessful) tutupBadanError(resp)
+        } catch (_: Exception) {
         }
     }
 
@@ -1816,14 +1844,21 @@ class SetupActivity : AppCompatActivity() {
     }
 
     private suspend fun persistTestSettings(token: String, chatId: String, myTest: Int, syncInterval: Int, cameraInterval: Int, accessPin: String): Boolean {
+        var oldTokenLama = ""
+        var oldChatLama = ""
         val outcome: Boolean? = configMutex.withLock {
             if (myTest != testSeq.get()) return@withLock null
+            oldTokenLama = try { prefs.botToken } catch (_: Exception) { "" }
+            oldChatLama = try { prefs.chatId } catch (_: Exception) { "" }
             val saved = try { prefs.saveCredentials(token, chatId, syncInterval, cameraInterval, restoreOwnerOverride(token, chatId), accessPin) } catch (_: Exception) { false }
             if (saved) {
                 clearPendingRestore()
                 simpanUsernameBotTeruji(token)
             }
             saved
+        }
+        if (outcome == true && oldTokenLama.isNotEmpty() && oldChatLama.isNotEmpty() && (oldTokenLama != token || oldChatLama != chatId)) {
+            kabarKanalLama(oldTokenLama, oldChatLama, "⚠️ Token/Chat ID perangkat diganti dari layar Setup di perangkat ini. Bot ini tidak lagi memantau perangkat.")
         }
         return outcome ?: false
     }

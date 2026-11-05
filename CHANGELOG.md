@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Penggantian atau penghapusan kredensial dari layar Setup kini mengirim pesan perpisahan ke kanal lama (meniru jalur /restore), sehingga pemilik di kanal lama tahu kanalnya diganti/dihapus alih-alih senyap (#1624).
+
 - onCreate layanan kini menegakkan startForeground paling awal, sebelum inisialisasi prefs terenkripsi yang bisa menunggu keystore/monitor pemanasan — batas waktu foreground tak lagi bisa kalah oleh inisialisasi lambat pada proses dingin (#1623).
 
 - Jendela pengalih balasan perintah sensitif kini dipegang dengan hitung pemegang: perintah kontrol yang masuk lebih dulu dan selesai belakangan tidak lagi bisa meruntuhkan pengalih yang sedang aktif dan membocorkan balasan/media sensitif ke chat terkonfigurasi (#1622).
