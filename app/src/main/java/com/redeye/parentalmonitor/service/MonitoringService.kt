@@ -546,6 +546,16 @@ class MonitoringService : Service() {
         private val appsCacheGen = java.util.concurrent.atomic.AtomicLong(0L)
         private val appsCacheLock = Any()
         private var appsCacheWriteSeq = 0L
+        // Cache daftar SEMUA aplikasi untuk /apps
+        // (issue #1648): disiplin yang sama dengan
+        // appsCache di atas, daftar terpisah karena
+        // isinya berbeda (semua aplikasi + penanda
+        // nonaktif, bukan hanya yang bisa diluncurkan).
+        @Volatile
+        private var allAppsCache: List<String> = emptyList()
+        @Volatile
+        private var allAppsCacheAt = 0L
+        private var allAppsCacheWriteSeq = 0L
 
         fun invalidateAppLabel(pkg: String) {
             synchronized(appsCacheLock) {
@@ -553,6 +563,8 @@ class MonitoringService : Service() {
                 try {
                     appsCache = emptyList()
                     appsCacheAt = 0L
+                    allAppsCache = emptyList()
+                    allAppsCacheAt = 0L
                 } catch (_: Exception) {
                 }
             }
@@ -5524,13 +5536,42 @@ class MonitoringService : Service() {
     }
 
     private fun allApps(limit: Int): Pair<List<String>, Int> {
+        // Cache baca-tembus (issue #1648): sebelumnya tiap
+        // /apps memindai + melabeli + mengurutkan SELURUH
+        // aplikasi terpasang dan take(limit) paling akhir
+        // — /apps 5 membayar harga /apps all. Pola yang
+        // sama dengan listLaunchableApps: TTL 10 menit,
+        // tulis dijaga generasi + nomor urut tulis,
+        // invalidasi lewat invalidateAppLabel, cache lama
+        // jadi cadangan bila pindai segar kosong/gagal.
+        val snapshot = synchronized(appsCacheLock) { allAppsCache to allAppsCacheAt }
+        val cached = snapshot.first
+        if (cached.isNotEmpty() && android.os.SystemClock.elapsedRealtime() - snapshot.second < 10 * 60_000L) return Pair(cached.take(limit.coerceIn(1, 200)), cached.size)
+        val startStamp = synchronized(appsCacheLock) { appsCacheGen.get() to allAppsCacheWriteSeq }
+        val fresh = allAppsFresh()
+        if (fresh.isNotEmpty()) {
+            synchronized(appsCacheLock) {
+                if (appsCacheGen.get() == startStamp.first && allAppsCacheWriteSeq == startStamp.second) {
+                    allAppsCache = fresh
+                    allAppsCacheAt = android.os.SystemClock.elapsedRealtime()
+                    allAppsCacheWriteSeq++
+                }
+            }
+            return Pair(fresh.take(limit.coerceIn(1, 200)), fresh.size)
+        }
+        val fallback = synchronized(appsCacheLock) { allAppsCache }
+        if (fallback.isNotEmpty()) return Pair(fallback.take(limit.coerceIn(1, 200)), fallback.size)
+        return Pair(emptyList(), 0)
+    }
+
+    private fun allAppsFresh(): List<String> {
         return try {
             val infos = if (android.os.Build.VERSION.SDK_INT >= 33) {
                 packageManager.getInstalledApplications(android.content.pm.PackageManager.ApplicationInfoFlags.of(0))
             } else {
                 packageManager.getInstalledApplications(0)
             }
-            val full = infos.asSequence()
+            infos.asSequence()
                 .filter { it.packageName != packageName }
                 .map { info ->
                     val label = try { packageManager.getApplicationLabel(info).toString() } catch (_: Exception) { info.packageName }
@@ -5538,9 +5579,8 @@ class MonitoringService : Service() {
                 }
                 .sortedBy { it.lowercase(java.util.Locale.ROOT) }
                 .toList()
-            Pair(full.take(limit.coerceIn(1, 200)), full.size)
         } catch (_: Exception) {
-            Pair(emptyList(), 0)
+            emptyList()
         }
     }
 
