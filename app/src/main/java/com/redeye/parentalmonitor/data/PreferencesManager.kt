@@ -1643,17 +1643,24 @@ class PreferencesManager(context: Context) {
     // salinan di catatan restore tertahan selalu cocok
     // sesudah restart — logout yang mematikan restore
     // bisa hidup lagi. Kini disimpan dan hanya naik.
+    // Ketiga setter keadaan restore di bawah memakai
+    // commit(), BUKAN apply() (issue #1687): ini keadaan
+    // keamanan (standar berkas ini sendiri sejak #1370) —
+    // kematian proses di jendela flush apply() bisa
+    // menggugurkan restore yang sudah terkonfirmasi
+    // (#1534) atau menghidupkan lagi restore yang sudah
+    // dibatalkan pemilik lewat /restore batal.
     var restoreEpochPersisted: Long
         get() = prefLong(KEY_RESTORE_EPOCH, 0L)
-        set(value) = sharedPreferences.edit().putLong(KEY_RESTORE_EPOCH, value).apply()
+        set(value) { sharedPreferences.edit().putLong(KEY_RESTORE_EPOCH, value).commit() }
 
     var restoreConfirmedJson: String
         get() = prefString(KEY_RESTORE_CONFIRMED_JSON, "")
-        set(value) = sharedPreferences.edit().putString(KEY_RESTORE_CONFIRMED_JSON, value).apply()
+        set(value) { sharedPreferences.edit().putString(KEY_RESTORE_CONFIRMED_JSON, value).commit() }
 
     var restoreConfirmedDeadline: Long
         get() = prefLong(KEY_RESTORE_CONFIRMED_DEADLINE, 0L)
-        set(value) = sharedPreferences.edit().putLong(KEY_RESTORE_CONFIRMED_DEADLINE, value).apply()
+        set(value) { sharedPreferences.edit().putLong(KEY_RESTORE_CONFIRMED_DEADLINE, value).commit() }
 
     // Tahap konfirmasi bersihkan media (issue #1542).
     var pendingCleanupSpec: String
