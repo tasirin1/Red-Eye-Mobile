@@ -250,11 +250,19 @@ class CameraService(private val context: Context) {
             }
             mySeq = sessionSeq.get()
         }
+        // Penanda sedang-memotret (issue #1681): padanan
+        // penanda rekam video — kematian proses di tengah
+        // jepret dulu hanya menyisakan berkas .tmp yang
+        // disapu senyap oleh thread init; kini penanda ini
+        // membuat MonitoringService melaporkannya saat
+        // bangkit. Dihapus di kedua corong akhir jepretan.
+        try { java.io.File(com.redeye.parentalmonitor.utils.MediaDirs.queueDir(context), "foto_aktif.txt").writeText(System.currentTimeMillis().toString()) } catch (_: Exception) { }
         val done = java.util.concurrent.atomic.AtomicBoolean(false)
         var timeoutRunnable: Runnable? = null
 
         fun finishWithError(e: Exception) {
             if (done.compareAndSet(false, true)) {
+                try { java.io.File(com.redeye.parentalmonitor.utils.MediaDirs.queueDir(context), "foto_aktif.txt").delete() } catch (_: Exception) { }
                 if (sessionSeq.get() == mySeq) {
                     removeEverywhere(timeoutRunnable)
                     try {
@@ -269,6 +277,7 @@ class CameraService(private val context: Context) {
 
         fun finishWithPhoto(file: File) {
             if (done.compareAndSet(false, true)) {
+                try { java.io.File(com.redeye.parentalmonitor.utils.MediaDirs.queueDir(context), "foto_aktif.txt").delete() } catch (_: Exception) { }
                 val current = sessionSeq.get() == mySeq
                 if (current) capturing.set(false)
                 removeEverywhere(timeoutRunnable)

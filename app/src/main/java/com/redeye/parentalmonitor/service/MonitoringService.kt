@@ -716,6 +716,23 @@ class MonitoringService : Service() {
                     }
                 }
             }
+            // Penanda foto (issue #1681): padanan penanda
+            // video di atas untuk pemotretan CameraService —
+            // /photo yang prosesnya mati di tengah jepret
+            // kini berkabar, tidak hilang senyap.
+            val penandaFoto = java.io.File(
+                com.redeye.parentalmonitor.utils.MediaDirs.queueDir(this), "foto_aktif.txt"
+            )
+            if (penandaFoto.exists()) {
+                penandaFoto.delete()
+                serviceScope.launch {
+                    try {
+                        com.redeye.parentalmonitor.data.MessageQueue.getInstance(this@MonitoringService).addMessage("⚠️ Pemotretan foto sebelumnya terputus di tengah jalan (aplikasi/proses mati) — foto tidak tersimpan.")
+                        MessageScheduler.scheduleMessageSend(this@MonitoringService)
+                    } catch (_: Exception) {
+                    }
+                }
+            }
         } catch (_: Exception) {
         }
         if (!startForegroundImmediate()) {
