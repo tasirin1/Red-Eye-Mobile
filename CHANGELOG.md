@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Halaman rilis kini hanya memuat APK varian release: varian debug (yang bisa dibaca aplikasi lain lewat adb) sebelumnya ikut diterbitkan berdampingan dan berisiko salah pasang; varian debug tetap tersedia sebagai artefak hasil build di Actions.
+
 - Catatan foto tertahan yang rusak/tak terbaca kini dibatasi jumlahnya saat daftar dibersihkan: sebelumnya catatan seperti itu dipertahankan tanpa batas dan tak bisa dilepas atau dibersihkan oleh jalur mana pun, sehingga data rusak menumpuk permanen di penyimpanan.
 
 - Pengukuran cahaya kamera kini menunggu beberapa frame pratinjau sebelum menjepret, bukan menerima frame pertama: pada perangkat yang tidak melaporkan keadaan paparannya (atau yang meminta kilat), foto dulu bisa terambil sebelum paparan sempat mapan dan hasilnya terlalu gelap.
