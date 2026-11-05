@@ -5510,13 +5510,15 @@ class MonitoringService : Service() {
                 val nameIdx = c.getColumnIndex(android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
                 val numIdx = c.getColumnIndex(android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER)
                 if (nameIdx < 0 || numIdx < 0) return@use
-                // Lompat langsung ke offset (issue #1650):
+                // Lompat langsung ke offset (issue #1650;
+                // posisi offset-1 karena loop di bawah
+                // moveToNext dulu sebelum membaca):
                 // sebelumnya baris dilewati satu per satu
                 // dari nol pada TIAP halaman, jadi halaman
                 // dalam di buku kontak besar membayar jalan
                 // kaki ribuan baris per ketukan. moveToPosition
                 // memakai jendela kursor penyedia langsung.
-                if (offset > 0 && !c.moveToPosition(offset.toInt())) return@use
+                if (offset > 0 && !c.moveToPosition((offset - 1).toInt())) return@use
                 while (c.moveToNext() && out.size < pageSize) {
                     val name = try { c.getString(nameIdx)?.trim().orEmpty() } catch (_: Exception) { "" }
                     val number = try { c.getString(numIdx)?.trim().orEmpty() } catch (_: Exception) { "" }
