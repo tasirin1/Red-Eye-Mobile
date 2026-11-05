@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Komentar batas kemampuan slot anotasi pada alat verifikasi dibetulkan sesuai bukti uji: cakupannya tiga tingkat sarang (bukan dua), dan pengecualian char literal serta string ber-escape kini tertulis apa adanya.
+
 - Dialog peringatan akses yang masih mati sesudah monitoring dimulai tidak lagi langsung tertimpa wizard anti-baterai pada saat yang sama: kini hanya satu dialog yang tampil tiap kali mulai.
 
 - Notifikasi percakapan yang menumpuk tidak lagi meneruskan ulang seluruh riwayat tumpukannya setiap ada pesan baru: kini hanya pesan barunya saja yang diteruskan.

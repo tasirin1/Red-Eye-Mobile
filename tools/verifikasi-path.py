@@ -2969,10 +2969,14 @@ def cek_uji_baru(peringatan, diff):
     # Nama
     # berawalan huruf besar (kelas/konstruktor) dilewati,
     # seperti di cek_uji_ubah.
-    # Batas slot anotasi (issue #1467): argumen anotasi
-    # diterima sampai kurung bersarang DUA tingkat dan
-    # string di semua tingkat; sarang tiga tingkat lolos
-    # (batas terdokumentasi, bukan keheningan tak disengaja).
+    # Batas slot anotasi (issue #1467, dikoreksi #1474
+    # lewat harness banding tag-vs-HEAD audit-121):
+    # argumen anotasi diterima sampai kurung bersarang
+    # TIGA tingkat dengan string dasar di semua tingkat;
+    # yang lolos = sarang EMPAT tingkat, char literal
+    # berkurung (mis. @A(@B(')'))), dan string ber-escape
+    # yang tak terurai penguraiannya. Ini batas
+    # terdokumentasi, bukan keheningan tak disengaja.
     pola_fun = re.compile(
         r"^\s*(?:@\w+(?:\((?:[^()\"]|\"[^\"]*\"|\((?:[^()\"]|\"[^\"]*\"|\((?:[^()\"]|\"[^\"]*\")*\))*\))*\))?\s+)*(?:\w+\s+)*?fun\s+(?:<.*>\s*)?(?:[\w]+(?:\.[\w]+)*(?:<.+>)?\.)?(\w+)\s*\(")
     pola_java = re.compile(
