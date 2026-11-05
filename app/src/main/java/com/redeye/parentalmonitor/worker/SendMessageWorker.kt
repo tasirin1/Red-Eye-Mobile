@@ -134,7 +134,17 @@ class SendMessageWorker(
         // sebelumnya urutan kirim murni FIFO sehingga pesan prioritas
         // di posisi 100 menunggu lima putaran worker. Urutan di dalam
         // kelas yang sama tetap FIFO (pengurutan stabil).
-        val queue = messageQueue.getQueue().sortedByDescending { it.priority }
+        // Penuaan antrean (issue #1513): pesan biasa yang
+        // sudah menunggu > 60 menit naik ke tingkat atas
+        // (di bawah prioritas sejati) — tanpa ini arus
+        // prioritas ramai membuat laporan biasa kelaparan
+        // sampai tereviksi/kedaluwarsa. Urutan stabil:
+        // FIFO tetap berlaku di dalam tingkat yang sama.
+        val nowWallAging = System.currentTimeMillis()
+        val queue = messageQueue.getQueue().sortedWith(
+            compareByDescending<com.redeye.parentalmonitor.data.models.QueuedMessage> { it.priority || (nowWallAging - it.timestamp > 60 * 60_000L) }
+                .thenByDescending { it.priority }
+        )
         if (queue.isEmpty()) {
             return Result.success()
         }

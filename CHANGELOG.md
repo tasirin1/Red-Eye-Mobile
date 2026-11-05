@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Antrean kirim kini menua dengan adil: pesan biasa yang sudah menunggu lebih dari satu jam naik mendahului pesan baru, sehingga arus pesan prioritas yang ramai tidak lagi membuat laporan biasa kelaparan sampai kedaluwarsa.
+
 - Pesan prioritas dan darurat dalam antrean kini berumur 30 hari sebelum kedaluwarsa, bukan 7 hari seperti laporan biasa: HP yang lama offline tidak lagi menguapkan peringatan terpenting lebih dulu.
 
 - Sesi pemakaian aplikasi tidak lagi terpotong oleh jendela singgah seperti lembar berbagi atau pembayaran Play: kembali ke aplikasi yang sama dalam 10 menit menyambung sesi yang sama dan waktu selama jendela itu tampil terhitung untuk aplikasi asal.
