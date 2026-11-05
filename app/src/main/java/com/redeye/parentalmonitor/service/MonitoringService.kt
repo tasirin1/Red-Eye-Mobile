@@ -1153,6 +1153,18 @@ class MonitoringService : Service() {
                 // mode cadangan — pesannya harus memanggil owner
                 // mengisi ulang, bukan menunggu Setup dibuka.
                 val hilang = try { preferencesManager.credentialsLikelyLost } catch (_: Exception) { false }
+                // Kanal yang benar-benar sampai (issue #1523):
+                // pada skenario hilang sungguhan, token untuk
+                // Telegram berasal dari store yang sama yang
+                // tak terbaca — pesan Telegram secara konstruksi
+                // tak pernah terkirim. Notifikasi lokal
+                // tersamar (pola #741) adalah satu-satunya
+                // pemberitahuan yang pasti terlihat pemegang
+                // perangkat; percobaan Telegram tetap berjalan
+                // untuk sub-kasus kredensial selamat di memori.
+                if (hilang) {
+                    try { postAuthFailureReminder(-916) } catch (_: Exception) { }
+                }
                 sendToTelegram(
                     if (hilang) "⚠️ Penyimpanan aman rusak/hilang: token & Chat ID yang tersimpan tak terbaca lagi, jadi monitoring berhenti mengirim. Buka aplikasi dan isi ulang kredensial di Setup."
                     else "Mode cadangan: penyimpanan aman tak tersedia, data ditahan di memori sementara sampai Setup dibuka lagi."
