@@ -6831,6 +6831,7 @@ class MonitoringService : Service() {
                                 appendLine("👤 Nama: ${Html.escape(call.name)}")
                             }
                             appendLine("🔄 Jenis: ${call.getTypeString()}")
+                if (call.simLabel.isNotEmpty()) appendLine("📱 " + call.simLabel)
                             appendLine("⏱️ Durasi: ${call.getDurationString()}")
                             appendLine("⏰ Waktu: ${formatDate(call.date)}")
                             appendLine("━━━━━━━━━━━━━━━━")
@@ -7500,6 +7501,7 @@ class MonitoringService : Service() {
                 } catch (_: Exception) {
                 }
                 appendLine("🔄 Jenis: ${call.getTypeString()}")
+                if (call.simLabel.isNotEmpty()) appendLine("📱 " + call.simLabel)
                 appendLine("⏱️ Durasi: ${call.getDurationString()}")
                 appendLine("⏰ Waktu: ${formatDate(call.date)}")
                 appendLine("━━━━━━━━━━━━━━━━")

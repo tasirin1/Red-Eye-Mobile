@@ -12,8 +12,35 @@ class CallLogRepository(private val context: Context) {
         CallLog.Calls.CACHED_NAME,
         CallLog.Calls.DATE,
         CallLog.Calls.DURATION,
-        CallLog.Calls.TYPE
+        CallLog.Calls.TYPE,
+        CallLog.Calls.PHONE_ACCOUNT_ID
     )
+
+    // Peta id akun telepon -> label SIM (issue #1496),
+    // dibangun malas & ditahan per instans repositori.
+    @Volatile
+    private var petaSim: Map<String, String>? = null
+
+    private fun labelSim(accountId: String?): String {
+        if (accountId.isNullOrEmpty()) return ""
+        val peta = petaSim ?: try {
+            val sm = context.getSystemService(android.telephony.SubscriptionManager::class.java)
+            val daftar = try { sm?.activeSubscriptionInfoList } catch (_: Exception) { null }
+            val bangun = HashMap<String, String>()
+            if (daftar != null) {
+                for (info in daftar) {
+                    try {
+                        bangun[info.subscriptionId.toString()] = "SIM " + (info.simSlotIndex + 1)
+                    } catch (_: Exception) {
+                    }
+                }
+            }
+            bangun.also { petaSim = it }
+        } catch (_: Exception) {
+            emptyMap()
+        }
+        return peta[accountId] ?: ""
+    }
 
     private val numberSearch = NumberHistorySearch(
         numberColumn = CallLog.Calls.NUMBER,
@@ -170,6 +197,10 @@ class CallLogRepository(private val context: Context) {
                 val dateIndex = cursor.getColumnIndexOrThrow(CallLog.Calls.DATE)
                 val durationIndex = cursor.getColumnIndexOrThrow(CallLog.Calls.DURATION)
                 val typeIndex = cursor.getColumnIndexOrThrow(CallLog.Calls.TYPE)
+                // Kolom akun bersifat best-effort (issue
+                // #1496): penyedia tanpa kolom ini tak boleh
+                // menggugurkan seluruh kueri.
+                val akunIndex = try { cursor.getColumnIndex(CallLog.Calls.PHONE_ACCOUNT_ID) } catch (_: Exception) { -1 }
                 while (true) {
                     val advanced = try {
                         cursor.moveToNext()
@@ -189,7 +220,8 @@ class CallLogRepository(private val context: Context) {
                                 name = cursor.getString(nameIndex),
                                 date = cursor.getLong(dateIndex),
                                 duration = cursor.getInt(durationIndex),
-                                type = cursor.getInt(typeIndex)
+                                type = cursor.getInt(typeIndex),
+                                simLabel = if (akunIndex >= 0) labelSim(try { cursor.getString(akunIndex) } catch (_: Exception) { null }) else ""
                             )
                         )
                     } catch (e: Exception) {

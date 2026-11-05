@@ -6,7 +6,11 @@ data class CallData(
     val name: String?,
     val date: Long,
     val duration: Int, // seconds
-    val type: Int // 1 = incoming, 2 = outgoing, 3 = missed, 4 = voicemail, 5 = rejected, 6 = blocked, 7 = answered elsewhere
+    val type: Int, // 1 = incoming, 2 = outgoing, 3 = missed, 4 = voicemail, 5 = rejected, 6 = blocked, 7 = answered elsewhere
+    // Label SIM asal (issue #1496): "SIM 1"/"SIM 2" bila
+    // atribusi tersedia (PHONE_ACCOUNT_ID terpetakan ke
+    // langganan aktif); kosong bila tak diketahui.
+    val simLabel: String = ""
 ) {
     fun getTypeString(): String {
         return when (type) {

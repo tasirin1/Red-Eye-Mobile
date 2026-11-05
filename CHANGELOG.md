@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Laporan panggilan kini menyebut SIM asal (SIM 1/SIM 2) bila atribusinya tersedia, sehingga pada HP dua SIM pemilik bisa membedakan panggilan dari SIM mana.
+
 - Panggilan yang ditolak atau diblokir sistem tidak lagi dihitung sebagai aktivitas dalam laporan kewaspadaan, peringatan begadang, dan frekuensi nomor teratas: spam yang terblokir tengah malam tidak lagi memicu peringatan palsu.
 
 - Pesan percakapan yang gugur oleh pembatas laju penerusan tidak lagi hilang permanen: patokan tumpukan pesan kini hanya maju sesudah pengiriman benar-benar terkonfirmasi.
