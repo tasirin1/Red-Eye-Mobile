@@ -1548,7 +1548,17 @@ object A11yMonitor {
         if (now - lastSaveRequestElapsed < PERSIST_INTERVAL_MS) return
         lastSaveRequestElapsed = now
         val app = context.applicationContext
-        executor.execute {
+        // Pola anti-buang yang sama dengan semua tetangga
+        // (issue #1679): executor DiscardPolicy bisa membuang
+        // serahan ini diam-diam sementara cap jatah 20
+        // detiknya sudah terbakar, menunda persist berkala
+        // + alert malam di dalamnya tanpa batas. Klaim CAS
+        // memastikan badan jalan tepat sekali — oleh pekerja
+        // antrean atau oleh pemanggil sendiri bila serahan
+        // tak masuk antrean.
+        val claimed = java.util.concurrent.atomic.AtomicBoolean(false)
+        val task = Runnable {
+            if (!claimed.compareAndSet(false, true)) return@Runnable
             var crossAlert: String? = null
             var nightUndo: (() -> Unit)? = null
             synchronized(gate) {
@@ -1573,6 +1583,10 @@ object A11yMonitor {
                     try { nightUndo?.invoke() } catch (_: Exception) { }
                 }
             }
+        }
+        executor.execute(task)
+        if (!executor.queue.contains(task)) {
+            task.run()
         }
     }
 
