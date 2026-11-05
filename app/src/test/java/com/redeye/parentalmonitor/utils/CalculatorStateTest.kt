@@ -179,6 +179,16 @@ class CalculatorStateTest {
         assertEquals("1.00000E+12", h.state.currentNumber)
     }
 
+    // Ambang format simetris (issue #1482): hasil bulat
+    // negatif sebesar pasangan positifnya tampil utuh,
+    // bukan notasi ilmiah terbulatkan.
+    @Test
+    fun negativeHugeIntegerShowsInFull() {
+        val h = Harness()
+        h.run("0", "-", "999999999999", "=")
+        assertEquals("-999999999999", h.state.currentNumber)
+    }
+
     @Test
     fun toggleSignStartsNegativeOperand() {
         val h = Harness()

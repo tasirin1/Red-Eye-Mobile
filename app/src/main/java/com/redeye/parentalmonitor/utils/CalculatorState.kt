@@ -105,7 +105,11 @@ class CalculatorState {
     private fun formatResult(result: Double): String {
         if (result.isNaN() || result.isInfinite()) return "Error"
         val abs = kotlin.math.abs(result)
-        if (result == kotlin.math.floor(result) && abs < if (result < 0) 1e11 else 1e12) {
+        // Ambang simetris (issue #1482): dulu negatif
+        // dibatasi 1e11 vs positif 1e12, sehingga
+        // -999999999999 tampil ilmiah terbulatkan
+        // (-1.00000E12) padahal pasangan positifnya utuh.
+        if (result == kotlin.math.floor(result) && abs < 1e12) {
             return result.toLong().toString()
         }
         val floored = kotlin.math.floor(abs)

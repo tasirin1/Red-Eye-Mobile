@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Kalkulator tersamar kini menampilkan hasil bulat negatif besar secara utuh sama seperti positifnya: sebelumnya hasil seperti -999999999999 tampil dalam notasi ilmiah terbulatkan yang mengaburkan nilainya.
+
 - Kegagalan lokasi pada pemeriksaan pagar wilayah kini ikut tercatat sebagai kegagalan lokasi: buta lokasi total tidak lagi luput dari laporan kesehatan perangkat.
 
 - Perintah pagar wilayah (/home dan /school) kini menolak masukan koordinat berkoma-desimal yang ambigu (mis. -6,2,106) dengan contoh format yang benar: sebelumnya bentuk itu terurai menjadi koordinat yang sama sekali lain dan tetap lolos.
