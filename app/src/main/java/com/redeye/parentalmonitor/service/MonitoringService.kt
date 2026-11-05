@@ -5476,6 +5476,14 @@ class MonitoringService : Service() {
         } else if (sub.isEmpty() || sub.equals("status", ignoreCase = true)) {
             if (!privateChat) { sendToTelegram("\uD83D\uDD12 Rincian hanya via private chat dengan bot."); return }
             sendToTelegram("📍 $name: " + fenceStatusText(command == "/home"))
+        } else if (Regex("^-?\\d+,\\d+,\\d+$").matches(sub.replace(" ", ""))) {
+            // Bentuk desimal-koma khas Indonesia (issue
+            // #1480): "-6,2,106" dulu terurai jadi lat=-6,
+            // lon=2, radius=106 dan LOLOS — pagar aktif di
+            // Samudra Atlantik. Bentuk tiga bilangan bulat
+            // berkoma memang ambigu; tolak dengan contoh
+            // format titik yang benar.
+            sendToTelegram("Format itu ambigu — sepertinya koma dipakai sebagai desimal. Pakai titik untuk desimal: $command -6.2,106.8,200 (lat,lon,radius).")
         } else {
             val tokens = sub.replace(",", " ").split(CMD_SPLIT_REGEX).filter { it.isNotEmpty() }
             val nums = tokens.map { it.toDoubleOrNull() }
