@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.629] - 2026-11-05
+
 ### Fixed
 
 - Alat verifikasi kini melaporkan secara tersendiri berkas yang gagal dibaca saat pemeriksaan rentang, bukan menelannya diam-diam hingga tampak seperti temuan yatim biasa.
@@ -29,7 +31,6 @@
 - Teks panduan anti-mati kini jujur soal batasnya: janji hidup lagi dalam 3–15 menit berlaku untuk penghentian oleh sistem, sedangkan Paksa Berhenti manual di Setelan Android menghentikan semuanya sampai aplikasi dibuka sekali dengan tangan.
 
 - Perintah berat (rekam suara, rekam video, ambil foto) kini ditolak dengan kabar jelas saat baterai di bawah 10% dan tidak sedang diisi daya, agar perangkat tidak mati di tengah operasi dan perlindungan tidak berhenti tanpa kabar.
-
 
 ## [1.6.628] - 2026-11-05
 
