@@ -9431,6 +9431,7 @@ class MonitoringService : Service() {
                 val rows = callLogRepository.getCallsSince(since, 200)
                 if (rows.size >= 200) capped = true
                 for (c in rows) {
+                    if (!callCountsAsActivity(c.type)) continue
                     val d = c.number.filter { it.isDigit() }.takeLast(10)
                     if (d.length >= 7 && (keys == null || d in keys)) m[d] = (m[d] ?: 0) + 1
                 }
@@ -9490,6 +9491,13 @@ class MonitoringService : Service() {
         }
     }
 
+    // Panggilan yang dihitung sebagai aktivitas (issue
+    // #1495): tipe Ditolak (5) & Diblokir (6) adalah
+    // penolakan otomatis/sistem, BUKAN aktivitas anak —
+    // spam terblokir tengah malam tak boleh memicu
+    // peringatan begadang atau menaikkan frekuensi nomor.
+    private fun callCountsAsActivity(type: Int): Boolean = type != 5 && type != 6
+
     private fun watchNumberHit(number: String, list: List<String> = watchNumbers()): String? {
         return try {
             if (list.isEmpty()) return null
@@ -9529,6 +9537,7 @@ class MonitoringService : Service() {
                 if (!knownCached(s.address)) unknown.add(s.address.filter { it.isDigit() }.takeLast(10))
             }
             for (c in calls) {
+                if (!callCountsAsActivity(c.type)) continue
                 if (watchNumberHit(c.number, watchNums) != null) hits++
                 val h = hourOf(c.date)
                 if (h >= 23 || h in 0..4) nights++
@@ -9633,6 +9642,7 @@ class MonitoringService : Service() {
                 val recentCalls = callLogRepository.getCallsSince(since, 200)
                 if (recentCalls.size >= 200) capped = true
                 for (c in recentCalls) {
+                    if (!callCountsAsActivity(c.type)) continue
                     val hh = hourOf(c.date)
                     if (hh >= 23 || hh in 0..4) nights++
                 }
