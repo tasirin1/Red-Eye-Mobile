@@ -1179,10 +1179,19 @@ class MonitoringService : Service() {
     }
 
     private fun canRunMonitoring(requireConfigured: Boolean): Boolean {
+        return canRunMonitoringTahu(requireConfigured) ?: false
+    }
+
+    // Varian tahu-bedakan-gagal (issue #1637): null berarti
+    // baca prefs MELEMPAR, bukan keadaan mati — pemanggil
+    // yang membatalkan jaring kebangkitan wajib membedakan
+    // keduanya, karena false polos menelan kegagalan baca
+    // sesaat sebagai "berhenti sengaja".
+    private fun canRunMonitoringTahu(requireConfigured: Boolean): Boolean? {
         return try {
             preferencesManager.isMonitoringEnabled && preferencesManager.isConfigured() == requireConfigured && !preferencesManager.userDisabledMonitoring && preferencesManager.userConsentedMonitoring
         } catch (_: Exception) {
-            false
+            null
         }
     }
 
@@ -11258,7 +11267,9 @@ class MonitoringService : Service() {
             packageReceiver = null
         }
         try {
-            if (shouldAutoResume() || needsCredsRetry()) {
+            val resumeTahu = canRunMonitoringTahu(true)
+            val retryTahu = canRunMonitoringTahu(false)
+            if (resumeTahu == true || retryTahu == true) {
                 if (selfTestPending()) {
                     try {
                         Liveness.scheduleSoon(this, SELF_TEST_ALARM_DELAY_MS)
@@ -11282,6 +11293,17 @@ class MonitoringService : Service() {
                     } catch (_: Exception) {
                     }
                 }
+            } else if (resumeTahu == null || retryTahu == null) {
+                // Baca prefs gagal tepat saat hancur (issue
+                // #1637): keadaan sebenarnya tak diketahui,
+                // jadi JANGAN batalkan Liveness dan jangan
+                // catat berhenti — dulu kegagalan baca sesaat
+                // diperlakukan sebagai berhenti sengaja dan
+                // jaring kebangkitan tercepat dibatalkan.
+                // Liveness dibiarkan apa adanya; watchdog
+                // periodik memasangnya lagi, dan berhenti
+                // sungguhan terbaca sehat pada destroy
+                // berikutnya lalu membatalkan seperti biasa.
             } else {
                 try {
                     Liveness.noteStopped(preferencesManager)

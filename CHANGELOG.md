@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- onDestroy tidak lagi membatalkan Liveness saat baca prefs gagal: kegagalan baca kini dibedakan dari berhenti sengaja, sehingga jaring kebangkitan tercepat tak hilang karena gangguan sesaat (#1637).
+
 - Cabang else onStartCommand kini mengembalikan START_STICKY, sejajar kemungkinan pemeriksaan asinkronnya menyalakan monitoring — instance aktif tak lagi berisiko kehilangan penghidupan ulang sistem (#1636).
 
 - BootReceiver tidak lagi membuang seluruh peristiwa boot bila goAsync() gagal; handler tetap berjalan seperti receiver saudara (#1635).
