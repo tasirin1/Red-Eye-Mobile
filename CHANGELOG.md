@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Catatan foto tertahan yang rusak/tak terbaca kini dibatasi jumlahnya saat daftar dibersihkan: sebelumnya catatan seperti itu dipertahankan tanpa batas dan tak bisa dilepas atau dibersihkan oleh jalur mana pun, sehingga data rusak menumpuk permanen di penyimpanan.
+
 - Pengukuran cahaya kamera kini menunggu beberapa frame pratinjau sebelum menjepret, bukan menerima frame pertama: pada perangkat yang tidak melaporkan keadaan paparannya (atau yang meminta kilat), foto dulu bisa terambil sebelum paparan sempat mapan dan hasilnya terlalu gelap.
 
 - Perintah dengan spasi ganda di dalam argumen (lazim dari dikte atau tempel) kini berjalan normal: argumen diruntuhkan ke spasi tunggal saat diurai, sehingga perintah seperti mode patroli dan notifikasi tak lagi salah dibalas petunjuk cara pakai.

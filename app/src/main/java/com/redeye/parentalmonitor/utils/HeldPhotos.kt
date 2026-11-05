@@ -68,6 +68,19 @@ object HeldPhotos {
                 else -> out.add(entry)
             }
         }
+        // Entri raw dibatasi (issue #1447): token tak
+        // terurai dipertahankan demi kompatibilitas format
+        // masa depan, tetapi dulu TANPA batas dan tanpa
+        // jalur pelepasan/pembersihan apa pun yang bisa
+        // menyentuhnya (hashesOf/withoutHashes/withoutNames
+        // semuanya melewatinya) — prefs rusak membusuk
+        // permanen. Kini paling banyak 5 raw TERAKHIR yang
+        // dipertahankan sesudah heal.
+        val rawIdx = out.indices.filter { out[it].raw != null }
+        if (rawIdx.size > 5) {
+            val buang = rawIdx.dropLast(5).toSet()
+            return out.filterIndexed { i, _ -> i !in buang }
+        }
         return out
     }
 
