@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.633] - 2026-11-05
+
 ### Fixed
 
 - Gerbang pemeriksa jalur kini memuat ulang ikatan pemindai tokennya pada tiap lari, sehingga pemindai yang sempat hilang saat modul dimuat tidak lagi digantikan pola sederhana secara permanen dalam proses yang sama.
