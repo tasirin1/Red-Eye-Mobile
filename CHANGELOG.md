@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Saringan kandidat riwayat tak lagi buta terhadap fragmentasi halus (issue #1643): `cek_secret_riwayat` di `tools/verifikasi-path.py` hanya menilai blob yang satu barisnya memuat run digit ≥6 atau run karakter ≥40, sehingga token yang dipecah ≤5 aksara/baris — termasuk digit id botnya — menggugurkan kedua alternatif sekaligus dan tak pernah dinilai pemindai. Kanal sapuan baru menilai berkas yang berubah pada tiap commit dalam rentang: blob ≤64 KB diuji kandidasinya pada isi yang newline-nya dibuang (run lintas baris terlihat), dan vonis tetap `mengandung_token` atas isi asli. Terbukti sandbox: pecahan 4 aksara/baris tambah+hapus kini GAGAL menamai berkas+commit (sebelumnya LOLOS), kontrol 44 aksara tetap GAGAL, rentang bersih tetap LOLOS.
 - Token terbelah tepat di titik-dua kini tersambung lagi di pemindai bersama (issue #1642): aturan pemadatan koma (#802) dan titik (#772) di `tools/cek-token.py` tidak memuat titik-dua di kelas karakternya, padahal titik-dua satu-satunya karakter yang wajib utuh agar pola token cocok — belahan lazim `listOf("123456789:", "AAE…")` atau `("123456789", ":AAE…")` lolos di semua permukaan gerbang. Dua pasang aturan sempit kini melepas koma/titik yang salah satu sisinya persis titik-dua token; terbukti unit dua arah (6 bentuk belah tertangkap termasuk varian titik, 4 kontrol bersih termasuk kutipan hash dan wilayah contoh bertanda tetap aman).
 
 ## [1.6.636] - 2026-11-05

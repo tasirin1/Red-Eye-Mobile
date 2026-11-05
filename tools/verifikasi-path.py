@@ -2058,6 +2058,41 @@ def cek_secret_riwayat(gagal, rentang):
                              "via input manual SetupActivity"
                              % (path, sha[:8]))
                 return
+        # Fragmentasi halus di bawah KEDUA ambang per baris
+        # (issue #1643): grep menilai per baris, jadi token
+        # yang dipecah <=5 aksara/baris TERMASUK digit id-nya
+        # menggugurkan alternatif digit >=6 maupun run >=40
+        # sekaligus dan blob tak pernah jadi kandidat. Sapu
+        # berkas yang berubah di commit ini: blob kecil
+        # (<=64 KB) diuji kandidasinya pada isi yang newline-
+        # nya dibuang — run yang menyeberangi baris terlihat
+        # di sana. Kandidat bukan vonis: vonis tetap
+        # mengandung_token atas isi ASLI (pemadatan pemindai
+        # menyambung belahannya sendiri).
+        berubah_kandidat = jalan("git", "diff-tree", "--no-commit-id",
+                                 "--name-only", "-z", "-r", "--root",
+                                 "-m", sha) or ""
+        for path in dict.fromkeys(pecah_nama(berubah_kandidat)):
+            path = path.strip()
+            if not path:
+                continue
+            mentah = jalan_biner("git", "show", "%s:%s" % (sha, path))
+            if mentah is None or len(mentah) > 65536:
+                continue
+            isi = _dekode(mentah)
+            if isi is None:
+                continue
+            rapat = isi.replace("\r", "").replace("\n", "")
+            if not re.search(r"[0-9]{6,}|[A-Za-z0-9+/=_-]{40,}", rapat):
+                continue
+            if mengandung_token(isi):
+                gagal.append("Kemungkinan token bot asli (base64/terbelah) "
+                             "di %s pada commit %s (riwayat rentang) — "
+                             "token tetap hidup di riwayat walau sudah "
+                             "dihapus di pohon akhir. Kredensial hanya "
+                             "via input manual SetupActivity"
+                             % (path, sha[:8]))
+                return
         # Berkas UTF-16 tak pernah jadi kandidat di atas (issue #801):
         # byte NUL antar karakter memutus regex saringan grep. Sapu
         # blob ber-BOM UTF-16 secara terpisah dan uji sesudah didekode.
