@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.636] - 2026-11-05
+
 ### Fixed
 
 - Workflow CodeQL kini memakai blok concurrency per ref seperti workflow build, sehingga run lama pada ref yang sama dibatalkan dan menit CI tak terbuang menumpuk (#1641).
