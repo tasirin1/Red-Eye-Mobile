@@ -2131,6 +2131,35 @@ def cek_secret_riwayat(gagal, rentang):
                              "via input manual SetupActivity"
                              % (path, sha[:8]))
                 return
+        # Belahan lintas berkas (issue #1676): semua saluran
+        # di atas menilai per blob, jadi token yang separuh
+        # di berkas A dan separuh di berkas B pada commit
+        # yang sama tak tertuduh di mana pun (permukaan
+        # staged sudah menilai gabungan sejak #1625/#1644,
+        # permukaan riwayat belum). Nilai gabungan isi
+        # terdekode berkas-berkas yang berubah pada commit
+        # ini: kandidat dulu (regex run atas gabungan
+        # rapat), vonis tetap mengandung_token.
+        gabungan_isi = []
+        for path in dict.fromkeys(pecah_nama(berubah_kandidat)):
+            path = path.strip()
+            if not path:
+                continue
+            mentah_g = jalan_biner("git", "show", "%s:%s" % (sha, path))
+            if mentah_g is None:
+                continue
+            isi_g = _dekode(mentah_g)
+            if isi_g is not None:
+                gabungan_isi.append(isi_g)
+        if len(gabungan_isi) >= 2:
+            rapat_g = "".join(gabungan_isi).replace("\r", "").replace("\n", "")
+            if _kandidat_rapat(rapat_g) and _vonis_isi_besar("\n".join(gabungan_isi)):
+                gagal.append("Kemungkinan token bot asli (base64/terbelah lintas "
+                             "berkas) pada commit %s (riwayat rentang) — token "
+                             "tetap hidup di riwayat walau sudah dihapus di pohon "
+                             "akhir. Kredensial hanya via input manual "
+                             "SetupActivity" % sha[:8])
+                return
         # Berkas UTF-16 tak pernah jadi kandidat di atas (issue #801):
         # byte NUL antar karakter memutus regex saringan grep. Sapu
         # blob ber-BOM UTF-16 secara terpisah dan uji sesudah didekode.
