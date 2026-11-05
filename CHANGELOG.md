@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Tuduhan token atas fragmen baris-tambah pada gerbang kini dikonfirmasi ulang terhadap isi staged penuh tiap berkas, sehingga merotasi nilai kontrol pemindai di dalam wilayah bertanda contoh tidak lagi selalu tertuduh (#1620).
+
 - Fungsi batas hari pada hitungan pemakaian kini menerima zona waktu secara eksplisit dari pemanggil, bukan membaca zona global — hasil untuk cap waktu lampau konsisten dan ujinya tak lagi mengubah zona bawaan proses (#1619).
 
 - Lapisan keputusan medan cadangan (penerimaan versi, koersi interval, penolakan medan kosong, tanda PIN gugur/versi baru) dipisah menjadi fungsi murni yang teruji JVM, menutup celah cakupan nol pada aturan parsing cadangan (#1618).

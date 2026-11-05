@@ -159,16 +159,45 @@ konfirmasi_teks() {
   cek_token_sehat || return 0
   printf '%s' "$1" | python3 tools/cek-token.py --teks 2>/dev/null | grep -q 'DITEMUKAN'
 }
+# Konfirmasi per-berkas untuk tuduhan atas FRAGMEN baris
+# tambah (issue #1620): langkah 4/4b menilai gabungan
+# baris yang berubah saja (-U0), jadi konteks penanda
+# contoh (#1530) pada baris TETANGGA yang tak berubah
+# tak terlihat — merotasi nilai kontrol _ct_kontrol
+# sendirian selalu tertuduh walau berkas penuhnya
+# bersih. Bila fragmen tertuduh, nilai ulang ISI STAGED
+# PENUH tiap berkas lewat --berkas: tuduhan hanya
+# berdiri bila ada berkas yang isinya sendiri tertuduh.
+# Pemindai tak sehat = tuduhan berdiri (fail-closed,
+# sejalan konfirmasi_berkas).
+tuduhan_staged_berdiri() {
+  cek_token_sehat || return 0
+  _berdiri=1
+  _daftar=$(mktemp)
+  git diff --cached --name-only -z --diff-filter=d > "$_daftar" 2>/dev/null
+  while IFS= read -r -d '' _f; do
+    _tmp=$(mktemp)
+    if git show ":$_f" > "$_tmp" 2>/dev/null; then
+      if printf '%s\0' "$_tmp" | python3 tools/cek-token.py --berkas 2>/dev/null | grep -q .; then
+        _berdiri=0
+      fi
+    fi
+    rm -f "$_tmp"
+    [ "$_berdiri" = 0 ] && break
+  done < "$_daftar"
+  rm -f "$_daftar"
+  return $_berdiri
+}
 # 4. Token bot asli jangan ikut staged.
 tambah_baris=$(git diff --cached -U0 2>/dev/null | grep -E '^\+' | grep -v '^+++' || true)
-if printf '%s' "$tambah_baris" | grep -E '[0-9]{6,}:[A-Za-z0-9_-]{35,}' >/dev/null && konfirmasi_teks "$tambah_baris"; then
+if printf '%s' "$tambah_baris" | grep -E '[0-9]{6,}:[A-Za-z0-9_-]{35,}' >/dev/null && konfirmasi_teks "$tambah_baris" && tuduhan_staged_berdiri; then
   echo "GAGAL: kemungkinan token bot asli ikut staged (hanya via input SetupActivity)"; gagal=1;
 fi
 # 4b. Bentuk base64/terbelah di staged (issue #765): regex literal poin 4
 # tak melihatnya — uji gabungan baris tambah lewat pemindai bersama.
 if [ -f tools/cek-token.py ]; then
   tambah_token=$(git diff --cached -U0 2>/dev/null | grep -E '^\+' | grep -v '^+++' | python3 tools/cek-token.py --teks 2>/dev/null || true)
-  if [ -n "$tambah_token" ]; then
+  if [ -n "$tambah_token" ] && tuduhan_staged_berdiri; then
     echo "GAGAL: kemungkinan token bot asli (base64/terbelah) ikut staged (hanya via input SetupActivity)"; gagal=1;
   fi
 fi
