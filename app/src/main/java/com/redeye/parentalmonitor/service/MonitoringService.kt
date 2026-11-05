@@ -5579,6 +5579,7 @@ class MonitoringService : Service() {
 
 
     private suspend fun handleRecordCommand(arg: String) {
+        if (tolakBateraiKritis("rekaman suara")) return
         if (preferencesManager.monitoringPaused) {
             sendToTelegram("⏸️ Monitoring dijeda. Kirim /resume dulu.")
             return
@@ -5609,6 +5610,7 @@ class MonitoringService : Service() {
     }
 
     private suspend fun handleRecordVideoCommand(arg: String) {
+        if (tolakBateraiKritis("rekaman video")) return
         if (preferencesManager.monitoringPaused) {
             sendToTelegram("⏸️ Monitoring dijeda. Kirim /resume dulu.")
             return
@@ -6108,6 +6110,7 @@ class MonitoringService : Service() {
 
 
     private suspend fun handlePhotoCommand(arg: String) {
+        if (tolakBateraiKritis("pengambilan foto")) return
         if (preferencesManager.monitoringPaused) {
             sendToTelegram("⏸️ Monitoring dijeda. Kirim /resume dulu.")
             return
@@ -8033,6 +8036,24 @@ class MonitoringService : Service() {
     private fun lowPowerActive(): Boolean {
         val level = batteryLevel()
         return level in 0..LOW_BATTERY_LEVEL && !isCharging()
+    }
+
+    // Gerbang baterai operasi berat (issue #1491): di
+    // bawah 10% tanpa pengisian, perangkat bisa mati di
+    // tengah rekam — berkas hilang & perlindungan berhenti
+    // total. Operasi berat perintah (rekam suara/video/
+    // foto) ditolak dengan kabar jelas; pemilik bisa
+    // mengulang sesudah mengisi daya. Level tak terbaca
+    // (-1) TIDAK menolak (sikap aman keluarga ini).
+    private fun bateraiMenolakOperasiBerat(): Boolean {
+        val level = batteryLevel()
+        return level in 0..9 && !isCharging()
+    }
+
+    private suspend fun tolakBateraiKritis(namaOperasi: String): Boolean {
+        if (!bateraiMenolakOperasiBerat()) return false
+        sendToTelegram("🔋 Baterai kritis (" + batteryLevel() + "%) — " + namaOperasi + " ditunda agar perangkat tidak mati di tengah jalan. Isi daya dulu, lalu ulangi perintahnya.")
+        return true
     }
 
     private fun lowPowerSlowedMask(): Int {

@@ -1,5 +1,10 @@
 ## [Unreleased]
 
+### Fixed
+
+- Perintah berat (rekam suara, rekam video, ambil foto) kini ditolak dengan kabar jelas saat baterai di bawah 10% dan tidak sedang diisi daya, agar perangkat tidak mati di tengah operasi dan perlindungan tidak berhenti tanpa kabar.
+
+
 ## [1.6.628] - 2026-11-05
 
 ### Fixed
