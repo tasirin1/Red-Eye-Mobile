@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Pemindai token tidak lagi salah menebak berkas teks pendek yang memuat satu byte kontrol sebagai berkas UTF-16 asing: bacaan teks biasanya kini didahulukan, menutup celah token tersembunyi yang sempat lolos kedua gerbang.
+
 - Pengiriman media tertahan kini berhenti di tengah jalan bila jaringan berpindah ke seluler saat pengiriman berlangsung, bukan hanya dicek sekali di awal — sisa unggahan besar tidak lagi menguras kuota.
 
 - Skrip cek cepat tidak lagi memercayai vonis "bersih" dari pemindai token yang rusak: kesehatan pemindai diuji dengan kontrol positif dulu, dan bila pemindai mati semua tuduhan mentah berlaku apa adanya (gagal-aman).

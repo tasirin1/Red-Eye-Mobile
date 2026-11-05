@@ -163,6 +163,26 @@ def _utf16_tanpa_bom(data):
     utf8_bersih = teks8 is not None and all(
         c in "\t\n\r" or ord(c) >= 32 for c in teks8)
     if not utf8_bersih:
+        # Penjaga teks-mentah (issue #1551): berkas yang
+        # sesungguhnya teks biasa (UTF-8) kecuali satu-dua
+        # byte kontrol/rusak gugur uji kebersihan di atas,
+        # lalu dekode UTF-16 yang salah atas berkas PENDEK
+        # menghasilkan CJK tercetak-koheren yang menang
+        # skor -> isi jadi sampah dan pola token hancur
+        # sebelum pemindaian (fail-open). Bila bacaan
+        # mentah UTF-8 (errors=replace) sudah >=95%
+        # tercetak dengan sedikit aksara pengganti, teks
+        # itu memang teks biasa: jangan tebak UTF-16.
+        # UTF-16 asli tanpa BOM terbaca mentah penuh NUL /
+        # aksara pengganti sehingga tak kena penjaga ini.
+        # Sisa yang diakui: berkas UTF-16 aksara yang
+        # seluruh byte-nya kebetulan ASCII tercetak murni
+        # (kelas sisa #836).
+        mentah = contoh.decode("utf-8", errors="replace")
+        if mentah:
+            tercetak_m = sum(1 for c in mentah if c == " " or c.isprintable() or c in "\t\n\r")
+            if tercetak_m >= int(len(mentah) * 0.95) and mentah.count("\ufffd") <= max(1, int(len(mentah) * 0.02)):
+                return None
         genap512 = contoh[:510] if len(contoh) >= 510 else contoh[: len(contoh) // 2 * 2]
         # Nilai KEDUA endian lalu pilih yang terbaik (issue #860):
         # urutan coba lama (LE dulu) salah menebak UTF-16BE aksara
