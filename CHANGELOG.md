@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Pemilihan ukuran foto kini berplafon keras pada target 1280×720: ukuran terbesar yang masih di bawah target selalu dipilih, sehingga kamera yang hanya menawarkan ukuran besar tidak lagi memotret di 1080p atau lebih (#1589).
+
 - Analisis foto (sidik jari duplikat + catatan foto nyaris tanpa detail) kini berbagi satu lintasan dekode yang sama — sebelumnya foto yang sama didekode sampai empat kali per aliran pengiriman (#1588).
 
 - Penyalinan bingkai tangkapan layar pada perangkat dengan stride berpadding kini baris demi baris memakai satu buffer baris kecil, bukan mengalokasi buffer kedua sebesar seluruh bingkai (±4 MB) pada setiap jepretan (#1587).

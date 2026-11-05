@@ -1138,7 +1138,16 @@ class CameraService(private val context: Context) {
                 val targetArea = (IMAGE_WIDTH * IMAGE_HEIGHT).toDouble()
                 val wide = sizes.filter { kotlin.math.abs(it.width.toDouble() / it.height - 16.0 / 9.0) < 0.05 }
                 val pool = if (wide.isNotEmpty()) wide else sizes.toList()
-                val chosen = pool.minByOrNull { kotlin.math.abs(it.width * it.height - targetArea) }
+                // Plafon keras (issue #1589): utamakan
+                // ukuran TERBESAR yang masih di bawah target
+                // — pilihan 'terdekat' lama bisa mendarat di
+                // 1080p+ pada kamera yang tak menawarkan
+                // ukuran <= target (JPEG lebih besar, encode
+                // lebih lama, unggah lebih mahal). Hanya bila
+                // tak ada satu pun di bawah target, kembali ke
+                // terdekat di atasnya.
+                val chosen = pool.filter { it.width.toLong() * it.height <= targetArea }.maxByOrNull { it.width * it.height }
+                    ?: pool.minByOrNull { kotlin.math.abs(it.width * it.height - targetArea) }
                 if (chosen != null) {
                     (chosen.width to chosen.height).also { photoSizeCache[cameraId] = it }
                 } else {
