@@ -225,9 +225,11 @@ class BootReceiver : BroadcastReceiver() {
         private fun markHandled(context: android.content.Context, at: Long, full: Boolean = true) {
             synchronized(handleLock) { lastHandleAt = at }
             try {
+                val bootPasangan = bootCount(context)
                 val editor = context.getSharedPreferences(PreferencesManager.BOOT_META_PREFS_NAME, android.content.Context.MODE_PRIVATE).edit()
                     .putLong("last_handle_elapsed", at)
-                if (full) editor.putLong("last_full_boot_elapsed", at)
+                    .putLong("last_handle_boot", bootPasangan)
+                if (full) editor.putLong("last_full_boot_elapsed", at).putLong("last_full_boot_boot", bootPasangan)
                 editor.apply()
             } catch (_: Exception) {
             }
@@ -292,10 +294,10 @@ class BootReceiver : BroadcastReceiver() {
         synchronized(handleLock) { if (!updated && !freshBoot && lastHandleAt != 0L && nowBoot - lastHandleAt < 60_000L) return }
         try {
             val meta = context.getSharedPreferences(PreferencesManager.BOOT_META_PREFS_NAME, android.content.Context.MODE_PRIVATE)
-            val lastElapsed = meta.getLong("last_handle_elapsed", 0L)
+            val lastElapsed = capSebidangBoot(meta, "last_handle_elapsed", "last_handle_boot", bootKini)
             if (!updated && !freshBoot && lastElapsed != 0L && nowBoot >= lastElapsed && nowBoot - lastElapsed < 60_000L) return
             // Additional guard: if we've handled a boot in the last 10 minutes AND service runs, skip (catches OEM duplicate >60s apart)
-            val lastFullBoot = meta.getLong("last_full_boot_elapsed", 0L)
+            val lastFullBoot = capSebidangBoot(meta, "last_full_boot_elapsed", "last_full_boot_boot", bootKini)
             if (!updated && MonitoringService.isRunning && lastFullBoot != 0L && nowBoot >= lastFullBoot && nowBoot - lastFullBoot < 10 * 60_000L) return
         } catch (_: Exception) {
         }
