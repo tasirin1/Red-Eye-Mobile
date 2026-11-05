@@ -596,14 +596,25 @@ object A11yMonitor {
         val hit = fullTextHit ?: AppWatch.hit(keywords, texts.joinToString(" ")) ?: return
         val nowWall = System.currentTimeMillis()
         val day = TimeFmt.dayKey(nowWall)
-        ensureKeywordState(manager, day)
-        if (keywordAlertCount >= MAX_KEYWORD_ALERTS_PER_DAY) return
         val key = pkg + "|" + hit
-        val last = lastKeywordAlert[key] ?: 0L
-        if (last > 0L && nowWall - last < KEYWORD_ALERT_GAP_MS) return
-        lastKeywordAlert[key] = nowWall
-        keywordAlertCount++
-        saveKeywordState(manager)
+        var last = 0L
+        // Seluruh urutan baca-ubah-simpan state kata pantau
+        // di dalam gate yang sama (issue #1652): pola
+        // serah-tugas bisa menjalankan dua handleContent
+        // sejajar (utas utama sebaris + utas executor),
+        // dan HashMap + penghitung polos ini sebelumnya
+        // berlomba tanpa kunci — iterasi toJson di
+        // saveKeywordState bisa menabrak ubahan sejajar
+        // dan peta jeda persisten tersimpan kosong.
+        synchronized(gate) {
+            ensureKeywordState(manager, day)
+            if (keywordAlertCount >= MAX_KEYWORD_ALERTS_PER_DAY) return
+            last = lastKeywordAlert[key] ?: 0L
+            if (last > 0L && nowWall - last < KEYWORD_ALERT_GAP_MS) return
+            lastKeywordAlert[key] = nowWall
+            keywordAlertCount++
+            saveKeywordState(manager)
+        }
         val label = labelFor(context, pkg)
         val snippet = try {
             texts.firstNotNullOfOrNull { AppWatch.contextSnippet(hit, it) }
@@ -621,10 +632,13 @@ object A11yMonitor {
         if (!queued) {
             // Antre menolak (issue #811): kembalikan cap jeda +
             // hitungan harian yang telanjur ditulis di atas, agar
-            // kejadian yang sama bisa dilaporkan lagi.
-            if (last > 0L) lastKeywordAlert[key] = last else lastKeywordAlert.remove(key)
-            keywordAlertCount--
-            saveKeywordState(manager)
+            // kejadian yang sama bisa dilaporkan lagi. Di dalam
+            // gate yang sama dengan penulisannya (issue #1652).
+            synchronized(gate) {
+                if (last > 0L) lastKeywordAlert[key] = last else lastKeywordAlert.remove(key)
+                keywordAlertCount--
+                saveKeywordState(manager)
+            }
         }
     }
 
