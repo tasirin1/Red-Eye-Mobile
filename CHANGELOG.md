@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Jeda polling perintah Telegram kini meregang mengikuti lama diam: tetap rapat (maks 30 detik) di menit-menit awal, naik ke 60 detik sesudah 5 menit diam total dan 120 detik sesudah 30 menit, lalu kembali rapat begitu ada aktivitas — siklus radio saat siaga turun dari 60–90 per jam menjadi sekitar 20–30 per jam (#1573).
+
 - Dua rantai bangun berkala kini mundur saat layanan sehat: alarm Liveness menaikkan intervalnya bertahap mengikuti rentetan tembakan sehat (plafon 60 menit, mode waspada tak pernah diregangkan) dan watchdog WorkManager meregang ke 45 menit, dipulihkan ke irama dasar pada tiap awal layanan — kebangkitan CPU saat diam berkurang tanpa melepas jaring pengaman anti-bunuh (#1572).
 
 - Layanan aksesibilitas tidak lagi melanggan peristiwa perubahan konten jendela (aliran peristiwa terderas di Android) secara permanen: langganan kini dinamis mengikuti kebutuhan — menyala hanya selagi pemindaian kata pantau aktif atau halaman sensitif sedang di depan, mati pada konfigurasi bawaan — menghemat CPU dan baterai (#1571).

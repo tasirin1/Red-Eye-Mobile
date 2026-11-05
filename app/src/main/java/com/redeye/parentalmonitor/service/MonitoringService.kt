@@ -51,6 +51,7 @@ import com.redeye.parentalmonitor.utils.NumericArg
 import com.redeye.parentalmonitor.utils.PatternBaseline
 import com.redeye.parentalmonitor.utils.PermReport
 import com.redeye.parentalmonitor.utils.PhotoFingerprint
+import com.redeye.parentalmonitor.utils.PollTiming
 import com.redeye.parentalmonitor.utils.ReportFormat
 import com.redeye.parentalmonitor.utils.RingVolume
 import com.redeye.parentalmonitor.utils.RestoreCode
@@ -1218,6 +1219,7 @@ class MonitoringService : Service() {
         }
         loopRelaunchJob?.cancel()
         idlePolls = 0
+        idleSinceElapsed = 0L
         refreshCreds()
         refreshLoopConfig()
         isRunning = true
@@ -2498,6 +2500,7 @@ class MonitoringService : Service() {
 
     @Volatile
     private var idlePolls = 0
+    private var idleSinceElapsed = 0L
     @Volatile
     private var commandBackoffUntil = 0L
     @Volatile
@@ -2550,7 +2553,13 @@ class MonitoringService : Service() {
                 }
                 try {
                     val active = pollTelegramCommands()
-                    idlePolls = if (active) 0 else (idlePolls + 1).coerceAtMost(4)
+                    if (active) {
+                        idlePolls = 0
+                        idleSinceElapsed = 0L
+                    } else {
+                        idlePolls = (idlePolls + 1).coerceAtMost(4)
+                        if (idleSinceElapsed == 0L) idleSinceElapsed = android.os.SystemClock.elapsedRealtime()
+                    }
                 } catch (e: kotlinx.coroutines.CancellationException) {
                     throw e
                 } catch (e: Exception) {
@@ -2577,7 +2586,8 @@ class MonitoringService : Service() {
                 } else if (NetworkUtils.isPollBlocked(preferencesManager)) {
                     delay(300_000)
                 } else {
-                    delay((10_000L + idlePolls * 5_000L).coerceAtMost(30_000L))
+                    val idleForMs = if (idleSinceElapsed > 0L) android.os.SystemClock.elapsedRealtime() - idleSinceElapsed else 0L
+                    delay(PollTiming.idleGapMs(idlePolls, idleForMs))
                 }
             }
         }
@@ -10352,6 +10362,7 @@ class MonitoringService : Service() {
         }
         initialSyncRunning.set(false)
         idlePolls = 0
+        idleSinceElapsed = 0L
         commandBackoffUntil = 0L
         mediaBackoffUntil = 0L
         try {
@@ -12416,6 +12427,7 @@ class MonitoringService : Service() {
             }
         }
         idlePolls = 0
+        idleSinceElapsed = 0L
         // Backoff perintah/media ikut dibersihkan (issue #849):
         // teardownJobs membersihkannya, restartAllLoops sebelumnya
         // tidak — "/restart" membalas berhasil tetapi polling tetap
