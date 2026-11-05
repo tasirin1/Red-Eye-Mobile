@@ -6053,7 +6053,7 @@ class MonitoringService : Service() {
         when (arg.lowercase(java.util.Locale.ROOT).trim()) {
             "on", "nyala" -> {
                 preferencesManager.dataSaverEnabled = true
-                sendToTelegram("📶 Hemat kuota: nyala. Foto/video/rekaman otomatis ditahan saat pakai data seluler, dikirim otomatis begitu tersambung Wi-Fi. Permintaan langsung (/photo, /screenshot, /record, /recordvideo) tetap dikirim segera.")
+                sendToTelegram("📶 Hemat kuota: nyala. Foto/video/rekaman otomatis ditahan saat pakai data seluler, dikirim otomatis begitu tersambung jaringan tak-terukur (mis. Wi-Fi). Permintaan langsung (/photo, /screenshot, /record, /recordvideo) tetap dikirim segera.")
             }
             "off", "mati" -> {
                 preferencesManager.dataSaverEnabled = false
@@ -8623,7 +8623,18 @@ class MonitoringService : Service() {
             val cm = connectivityManager ?: return false
             val active = cm.activeNetwork ?: return false
             val caps = cm.getNetworkCapabilities(active) ?: return false
-            !caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
+            if (caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_NOT_METERED)) return false
+            // VPN selalu-aktif (issue #1565): jaringan
+            // aktif adalah VPN yang kapabilitas tak-
+            // terukurnya lazim tidak terbawa, sehingga
+            // media tertahan tanpa batas walau di Wi-Fi
+            // rumah. Transport fisik Wi-Fi/ethernet di
+            // balik VPN menandakan jalur sungguhan tak
+            // terukur — VPN di atas seluler tetap
+            // terukur karena transportnya seluler.
+            if (caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) ||
+                caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_ETHERNET)) return false
+            true
         } catch (_: Exception) {
             false
         }
@@ -8687,7 +8698,7 @@ class MonitoringService : Service() {
             } else if (last <= 0L || now - last >= 6 * 60 * 60_000L) {
                 // Cap jeda sesudah kirim berhasil (issue #798, pola #737);
                 // status #806: terantre juga mencap agar tak dobel.
-                if (sendToTelegramStatus("📶 <b>Hemat kuota</b>: $pending foto/video/rekaman ditahan dulu, dikirim otomatis begitu tersambung Wi-Fi.") != SendStatus.DROPPED) {
+                if (sendToTelegramStatus("📶 <b>Hemat kuota</b>: $pending foto/video/rekaman ditahan dulu, dikirim otomatis begitu tersambung jaringan tak-terukur (mis. Wi-Fi).") != SendStatus.DROPPED) {
                     preferencesManager.dataSaverNoticeAt = now
                 }
             }

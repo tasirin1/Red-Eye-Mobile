@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Hemat kuota tidak lagi menahan media tanpa batas di Wi-Fi rumah bila VPN selalu aktif: jalur fisik Wi-Fi/ethernet di balik VPN kini diakui tak-terukur, dan teks kabar tahan menyebut "jaringan tak-terukur" dengan benar.
+
 - Balasan perintah /flush kini menyebut terang-terangan bila foto/video/rekaman masih ditahan hemat kuota dan tidak ikut terkirim, bukan hanya melaporkan antrean teks.
 
 - Pekerja pemulih boot kini juga membatalkan alarm penjaga-hidup pada perangkat yang pemantauannya dimatikan atau belum dikonfigurasi, bukan hanya pengawas berkala — tidak ada lagi satu kebangunan tak diundang sesudahnya.
