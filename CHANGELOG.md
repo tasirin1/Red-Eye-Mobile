@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Pesan percakapan yang gugur oleh pembatas laju penerusan tidak lagi hilang permanen: patokan tumpukan pesan kini hanya maju sesudah pengiriman benar-benar terkonfirmasi.
+
 - Alat verifikasi kembali memberi vonis gagal untuk tema milik aplikasi sendiri yang hilang: pengenalan awalan tema pustaka yang terlalu luas sebelumnya menurunkan tema utama aplikasi menjadi sekadar peringatan.
 
 - Teks panduan anti-mati kini jujur soal batasnya: janji hidup lagi dalam 3–15 menit berlaku untuk penghentian oleh sistem, sedangkan Paksa Berhenti manual di Setelan Android menghentikan semuanya sampai aplikasi dibuka sekali dengan tangan.

@@ -475,6 +475,11 @@ class NotificationForwarderService : NotificationListenerService() {
     // kunciTumpukanAktif diisi handlePosted (utas serial
     // yang sama) tepat sebelum notifTitleText dipanggil.
     private val tumpukanDulu = HashMap<String, String>()
+    // Calon gabungan yang BELUM terkonfirmasi terkirim
+    // (issue #1494): peta dulu hanya maju saat emitPost
+    // men-cap terkirim — pembaruan yang gugur pembatas
+    // laju tak lagi kehilangan pesannya permanen.
+    private val tumpukanCalon = HashMap<String, String>()
     private var kunciTumpukanAktif = ""
 
     private fun notifTitleText(notification: Notification): NotifText {
@@ -568,9 +573,9 @@ class NotificationForwarderService : NotificationListenerService() {
                 try {
                     val kunci = kunciTumpukanAktif
                     val prev = synchronized(tumpukanDulu) { tumpukanDulu[kunci] }
-                    synchronized(tumpukanDulu) {
-                        if (tumpukanDulu.size > 100) tumpukanDulu.clear()
-                        tumpukanDulu[kunci] = tumpukanGabung
+                    synchronized(tumpukanCalon) {
+                        if (tumpukanCalon.size > 100) tumpukanCalon.clear()
+                        tumpukanCalon[kunci] = tumpukanGabung
                     }
                     if (prev != null && prev.isNotEmpty() && tumpukanGabung.startsWith(prev)) {
                         val sisa = tumpukanGabung.removePrefix(prev).removePrefix("\n")
@@ -777,6 +782,20 @@ class NotificationForwarderService : NotificationListenerService() {
         // kirim yang gugur menelan kiriman ulang <10 detik.
         val capTerkirim = {
             synchronized(lastSent) { lastSent[key] = now to sbnPostTime }
+            // Kirim terkonfirmasi: gabungan tumpukan calon
+            // menjadi patokan potong berikutnya (issue #1494).
+            if (sbnKey.isNotEmpty()) {
+                try {
+                    val calon = synchronized(tumpukanCalon) { tumpukanCalon.remove(sbnKey) }
+                    if (calon != null) {
+                        synchronized(tumpukanDulu) {
+                            if (tumpukanDulu.size > 100) tumpukanDulu.clear()
+                            tumpukanDulu[sbnKey] = calon
+                        }
+                    }
+                } catch (_: Exception) {
+                }
+            }
         }
         val alreadyHandled = synchronized(lastSent) {
             val prev = lastSent[key]
