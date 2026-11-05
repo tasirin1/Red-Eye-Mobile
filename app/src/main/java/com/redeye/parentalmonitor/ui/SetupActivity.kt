@@ -1556,8 +1556,10 @@ class SetupActivity : AppCompatActivity() {
     private fun backupSettings() {
         val uiToken = botTokenInput.text.toString().trim()
         val uiChat = chatIdInput.text.toString().trim()
-        val uiInterval = syncIntervalInput.text.toString().trim().toIntOrNull()
-        val uiCam = cameraIntervalInput.text.toString().trim().toIntOrNull()
+        val uiIntervalRaw = syncIntervalInput.text.toString().trim()
+        val uiCamRaw = cameraIntervalInput.text.toString().trim()
+        val uiInterval = uiIntervalRaw.toIntOrNull()
+        val uiCam = uiCamRaw.toIntOrNull()
         lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
             val storedToken = try { prefs.botToken } catch (_: Exception) { "" }
             val storedChat = try { prefs.chatId } catch (_: Exception) { "" }
@@ -1589,6 +1591,23 @@ class SetupActivity : AppCompatActivity() {
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                     if (!isFinishing && !isDestroyed) {
                         Toast.makeText(this@SetupActivity, getString(R.string.backup_invalid_form), Toast.LENGTH_LONG).show()
+                    }
+                }
+                return@launch
+            }
+            // Interval KETIKAN tak sah menolak ekspor
+            // (issue #1614): dulu interval yang diketik
+            // di luar jangkauan jatuh SENYAP ke nilai
+            // tersimpan lama, jadi cadangan tertulis
+            // dengan interval yang tidak dilihat pengguna
+            // di kolomnya — jalur Simpan/Tes menolak
+            // dengan toast yang sama. Kolom kosong tetap
+            // berarti 'pakai tersimpan'.
+            if ((uiIntervalRaw.isNotEmpty() && (uiInterval == null || uiInterval !in 1..1440)) ||
+                (uiCamRaw.isNotEmpty() && (uiCam == null || uiCam !in 0..60))) {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    if (!isFinishing && !isDestroyed) {
+                        Toast.makeText(this@SetupActivity, getString(R.string.setup_bad_interval), Toast.LENGTH_LONG).show()
                     }
                 }
                 return@launch

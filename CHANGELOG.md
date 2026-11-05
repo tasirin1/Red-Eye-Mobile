@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Ekspor cadangan kini menolak interval ketikan yang tidak sah dengan toast yang sama seperti Simpan/Tes, bukan lagi diam-diam menulis interval tersimpan lama yang berbeda dari yang terlihat di kolom (#1614).
+
 - Dialog verifikasi PIN akses kini tunggal: ketuk ganda pada Simpan atau tombol sensitif lain selagi dialog PIN terbuka tidak lagi menumpuk dialog kedua di belakangnya (#1613).
 
 - Tes koneksi Setup kini memeriksa hak kirim bot berstatus restricted: bot yang dibisukan di grup tidak lagi lulus sebagai "terhubung" padahal semua laporannya akan ditolak Telegram (#1612).
