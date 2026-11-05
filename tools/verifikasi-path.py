@@ -1991,18 +1991,18 @@ def cek_secret_riwayat(gagal, rentang):
         sha = sha.strip()
         if not sha:
             continue
-        out = jalan("git", "grep", "-l", "-E",
+        # Format -z (issue #1627): tanpa itu git mengutip
+        # nama non-ASCII gaya C dan path hasil parse tak
+        # bisa dibuka git show — berkas bernama seperti
+        # itu terlewat diam-diam dari kanal ini, melanggar
+        # aturan #1138 bahwa semua daftar nama wajib -z.
+        out = jalan("git", "grep", "-l", "-z", "-E",
                     r"[0-9]{6,}:[A-Za-z0-9_-]{35,}", sha) or ""
-        for baris in out.splitlines():
-            teks = baris.strip()
-            if not teks:
-                continue
+        for teks in pecah_nama(out):
             if teks.startswith("Binary file ") and teks.endswith(" matches"):
                 path = teks[len("Binary file "):-len(" matches")]
-                biner = True
             else:
                 path = teks.split(":", 1)[1] if ":" in teks else teks
-                biner = False
             # Konfirmasi pemindai bersama (issue #1603):
             # grep mentah sendirian menuduh contoh bertanda
             # (#1530) dan kutipan hash (#1529/#1543/#1568/
@@ -2017,7 +2017,7 @@ def cek_secret_riwayat(gagal, rentang):
             isi = _dekode(mentah) if mentah is not None else None
             if not mengandung_token(isi):
                 continue
-            if biner:
+            if mentah is not None and b"\x00" in mentah:
                 gagal.append("Kemungkinan token bot asli di berkas BINER %s "
                              "pada commit %s (riwayat rentang) — token tetap "
                              "hidup di riwayat walau sudah dihapus di pohon "
@@ -2040,12 +2040,9 @@ def cek_secret_riwayat(gagal, rentang):
         # bersama tak pernah melihat blob-nya. 40 masih selektif
         # (kandidat bukan vonis — vonis tetap mengandung_token);
         # pemecahan di bawah 40 char/baris tetap batas kanal ini.
-        kandidat = jalan("git", "grep", "-a", "-l", "-E",
+        kandidat = jalan("git", "grep", "-a", "-l", "-z", "-E",
                          r"[0-9]{6,}|[A-Za-z0-9+/=_-]{40,}", sha) or ""
-        for baris in kandidat.splitlines():
-            teks = baris.strip()
-            if not teks:
-                continue
+        for teks in pecah_nama(kandidat):
             path = teks.split(":", 1)[1] if ":" in teks else teks
             mentah = jalan_biner("git", "show", "%s:%s" % (sha, path))
             isi = _dekode(mentah) if mentah is not None else None
@@ -2061,11 +2058,11 @@ def cek_secret_riwayat(gagal, rentang):
         # byte NUL antar karakter memutus regex saringan grep. Sapu
         # blob ber-BOM UTF-16 secara terpisah dan uji sesudah didekode.
         for bom in (b"\xff\xfe", b"\xfe\xff"):
-            out = jalan_biner("git", "grep", "-a", "-l", "-F", "-e", bom, sha) or b""
-            for baris in out.decode("utf-8", errors="replace").splitlines():
-                teks = baris.strip()
-                if not teks:
+            out = jalan_biner("git", "grep", "-a", "-l", "-z", "-F", "-e", bom, sha) or b""
+            for mentah_nama in out.split(b"\x00"):
+                if not mentah_nama:
                     continue
+                teks = mentah_nama.decode("utf-8", errors="surrogateescape")
                 path = teks.split(":", 1)[1] if ":" in teks else teks
                 mentah = jalan_biner("git", "show", "%s:%s" % (sha, path))
                 if mentah is not None and mengandung_token(_dekode(mentah)):
