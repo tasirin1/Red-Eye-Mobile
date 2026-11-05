@@ -10456,6 +10456,19 @@ class MonitoringService : Service() {
     private var lastSendOkNoteAt = 0L
 
     private fun noteSendOk() {
+        // Keadaan pulih = peringatan lokal dibatalkan
+        // (issue #1556): kirim sukses membuktikan
+        // kredensial bekerja lagi. Tanpa pembatalan,
+        // notifikasi 'perlu perhatian' (auth & kredensial
+        // hilang) terpajang tanpa batas sampai diketuk
+        // manual — peringatan basi mengajarkan pemilik
+        // mengabaikannya.
+        try {
+            val managerNotif = getSystemService(NOTIFICATION_SERVICE) as android.app.NotificationManager
+            managerNotif.cancel(AUTH_NOTIF_ID)
+            managerNotif.cancel(STORAGE_LOSS_NOTIF_ID)
+        } catch (_: Exception) {
+        }
         val nowElapsed = android.os.SystemClock.elapsedRealtime()
         if (nowElapsed - lastSendOkNoteAt >= 30_000L) {
             lastSendOkNoteAt = nowElapsed

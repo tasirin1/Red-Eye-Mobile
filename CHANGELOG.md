@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Notifikasi peringatan "perlu perhatian" di perangkat kini otomatis hilang begitu pengiriman berhasil lagi, tidak lagi terpajang basi sampai diketuk manual.
+
 - Jalur gagal awal saat layanan dibuat kini tetap berusaha membentuk notifikasi latar depan sebelum berhenti, menutup risiko galat sistem pada perangkat yang membuatnya lewat jalur layanan latar depan.
 
 - Titik acuan uji lompatan lokasi pagar tidak lagi bisa dimundurkan oleh titik lokasi lama dari cache, yang sebelumnya bisa meloloskan titik glitch berikutnya.
