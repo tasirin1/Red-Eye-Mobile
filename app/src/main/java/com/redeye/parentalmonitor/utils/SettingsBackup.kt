@@ -11,7 +11,7 @@ object SettingsBackup {
     private const val MIN_PIN = 10
     private const val MIN_PIN_LEGACY = 4
 
-    data class BackupData(val token: String, val chatId: String, val syncInterval: Int, val cameraInterval: Int, val ownerId: Long = 0L, val accessPin: String = "", val legacy: Boolean = false)
+    data class BackupData(val token: String, val chatId: String, val syncInterval: Int, val cameraInterval: Int, val ownerId: Long = 0L, val accessPin: String = "", val legacy: Boolean = false, val newerVersion: Boolean = false, val pinDropped: Boolean = false)
 
     fun looksStructurallyValid(blob: String): Boolean {
         val raw = blob.trim()
@@ -59,14 +59,24 @@ object SettingsBackup {
         val cipherText = all.copyOfRange(28, all.size)
         val plain = decrypt(cipherText, pin, salt, iv, if (legacy) ITERATIONS_LEGACY else ITERATIONS).toString(Charsets.UTF_8)
         val o = org.json.JSONObject(plain)
-        require(o.optInt("v", 0) in 1..2)
+        val versi = o.optInt("v", 0)
+        require(versi in 1..2)
         val token = o.optString("token", "")
         val chat = o.optString("chat", "")
         require(token.isNotEmpty() && chat.isNotEmpty())
         val owner = o.optLong("owner", 0L)
         require(owner >= 0L)
-        val accessPin = o.optString("accessPin", "").takeIf { AccessPin.isValid(it) } ?: ""
-        return BackupData(token, chat, o.optInt("interval", 5).coerceIn(1, 1440), o.optInt("camera", 1).coerceIn(0, 60), owner, accessPin, legacy)
+        // PIN yang dibawa tetapi tak memenuhi syarat
+        // dicatat sebagai pinDropped (issue #1559): dulu
+        // dibuang senyap lalu dilaporkan seolah cadangan
+        // memang tidak membawa PIN.
+        val pinMentah = o.optString("accessPin", "")
+        val accessPin = pinMentah.takeIf { AccessPin.isValid(it) } ?: ""
+        // Versi lebih baru dari yang ditulis ekspor (1)
+        // diterima demi kompatibilitas, tetapi ditandai
+        // agar pemulihan memperingatkan pemilik bahwa
+        // sebagian isi bisa tak dikenal (issue #1559).
+        return BackupData(token, chat, o.optInt("interval", 5).coerceIn(1, 1440), o.optInt("camera", 1).coerceIn(0, 60), owner, accessPin, legacy, newerVersion = versi > 1, pinDropped = pinMentah.isNotEmpty() && accessPin.isEmpty())
     }
 
     internal fun decrypt(cipherText: ByteArray, pin: String, salt: ByteArray, iv: ByteArray, iterations: Int): ByteArray {

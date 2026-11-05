@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Pemulihan cadangan kini memperingatkan bila berkas dibuat oleh versi aplikasi yang lebih baru, dan menyebut terang-terangan bila PIN di dalam cadangan dibuang karena tidak memenuhi syarat — bukan lagi dilaporkan seolah cadangan memang tak membawa PIN.
+
 - Penanda jeda 6 jam peringatan autentikasi/kredensial kini dicap hanya sesudah notifikasi benar-benar terpasang, bukan sebelumnya — kegagalan memasang tidak lagi membungkam peringatan berikutnya.
 
 - Halaman status di aplikasi kini memperingatkan bila kanal notifikasi peringatan dimatikan di setelan sistem — sebelumnya peringatan di perangkat bisa tertelan diam-diam walau izin notifikasi diberikan.

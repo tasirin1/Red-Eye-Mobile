@@ -635,7 +635,9 @@ class MonitoringService : Service() {
                                 obj.getString("token"), obj.getString("chat"),
                                 obj.optInt("interval", 15), obj.optInt("camera", 15),
                                 obj.optLong("owner", 0L), obj.optString("accessPin", ""),
-                                obj.optBoolean("legacy", false)
+                                obj.optBoolean("legacy", false),
+                                obj.optBoolean("baru", false),
+                                obj.optBoolean("pinGugur", false)
                             )
                             synchronized(restoreLock) { restoreApplying = true }
                             try {
@@ -4883,6 +4885,7 @@ class MonitoringService : Service() {
                 .put("token", data.token).put("chat", data.chatId)
                 .put("interval", data.syncInterval).put("camera", data.cameraInterval)
                 .put("owner", data.ownerId).put("accessPin", data.accessPin)
+                .put("baru", data.newerVersion).put("pinGugur", data.pinDropped)
                 .put("legacy", data.legacy).put("epoch", restoreEpoch).toString()
             preferencesManager.restoreConfirmedDeadline = System.currentTimeMillis() + RESTORE_CANCEL_WINDOW_MS
         } catch (_: Exception) {
@@ -5041,7 +5044,12 @@ class MonitoringService : Service() {
         serviceScope.launch {
             try { registerBotCommands(force = true) } catch (_: Exception) { }
         }
-        val pinNote = if (data.accessPin.isNotEmpty()) "PIN akses diganti dari cadangan." else "PIN akses tidak ada di cadangan — PIN perangkat ini tetap dipakai."
+        val pinNote = when {
+            data.pinDropped -> "PIN akses di cadangan TIDAK memenuhi syarat dan dibuang — PIN perangkat ini tetap dipakai."
+            data.accessPin.isNotEmpty() -> "PIN akses diganti dari cadangan."
+            else -> "PIN akses tidak ada di cadangan — PIN perangkat ini tetap dipakai."
+        }
+        val versiNote = if (data.newerVersion) "⚠️ Cadangan ini dibuat versi aplikasi yang LEBIH BARU — sebagian isinya mungkin tidak dikenal versi ini dan terabaikan.\n" else ""
         val ownerNote = when (RestoreRules.ownerOutcome(data.ownerId, targetOwner, oldOwner)) {
             RestoreRules.OwnerOutcome.FROM_BACKUP -> "Owner ID diganti dari cadangan."
             RestoreRules.OwnerOutcome.FROM_CHAT -> "Owner ID diganti mengikuti Chat ID baru."
@@ -5050,6 +5058,7 @@ class MonitoringService : Service() {
         sendToTelegram(
             "✅ <b>Setelan dipulihkan</b>\n" +
                 "Token bot, Chat ID, interval sync, dan interval foto sudah diganti.\n" +
+                versiNote +
                 ownerNote + "\n" +
                 pinNote + "\n" +
                 "Setelan lain (kata pantau, pagar lokasi, patroli, sakelar) tidak ada di cadangan — masih bawaan perangkat ini, periksa bila perlu.\n" +
