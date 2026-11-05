@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Skrip cek cepat kini membaca nama berkas non-ASCII (aksen/emoji) dengan benar pada pindaian pohon — berkas bernama seperti itu tidak lagi tertuduh tanpa bisa dikonfirmasi.
+
 - Skrip cek cepat kini mengenali berkas teks yang memuat satu byte kosong (NUL) sebagai teks — contoh token bertanda di dalamnya tidak lagi tertuduh sebagai "berkas biner", sementara biner sungguhan tetap berlaku vonis mentahnya.
 
 - Hemat kuota tidak lagi menahan media tanpa batas di Wi-Fi rumah bila VPN selalu aktif: jalur fisik Wi-Fi/ethernet di balik VPN kini diakui tak-terukur, dan teks kabar tahan menyebut "jaringan tak-terukur" dengan benar.
