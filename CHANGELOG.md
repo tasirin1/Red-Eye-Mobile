@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.637] - 2026-11-05
+
 ### Fixed
 - Perbaikan compile susulan untuk penyatuan cek lokasi latar (Refs #1658): tiga situs panggilan di dalam lambda `buildString`/coroutine mewarisi `this` lambda (StringBuilder/CoroutineScope), bukan Activity/Service — kini memakai `this@MonitoringService`/`this@SetupActivity`. Tertangkap Build CI atas pohon maraton-129 penuh sebelum rilis.
 - Jalur gagal baca jam di `lastNightMillis` kini punya cadangan aritmetika (issue #1663): bila `Calendar.getInstance()` melempar, jam menjadi −1 dan rumus jendela tuntas dipakai walau sebenarnya sedang di jendela berjalan 22.00–24.00, menyimpang dari maksud #1628. Kini jam lokal diturunkan dari cap waktu + offset zona (pola yang sama dengan menit buka-kunci digest) sebelum menyerah ke rumus lama.
