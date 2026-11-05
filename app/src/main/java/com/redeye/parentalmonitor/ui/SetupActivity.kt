@@ -453,8 +453,15 @@ class SetupActivity : AppCompatActivity() {
                         val memObj = memResp.body()?.result?.asJsonObject
                         val status = memObj?.get("status")?.asString.orEmpty()
                         val isMember = memObj?.get("is_member")?.asBoolean ?: true
+                        // Anggota restricted wajib boleh MENGIRIM
+                        // (issue #1612): bot yang dibisukan admin
+                        // lulus is_member tetapi semua laporannya
+                        // ditolak Telegram — tes tak boleh menyebut
+                        // itu 'terhubung'. Medan absen = bawaan
+                        // lama (dianggap boleh).
+                        val bolehKirim = memObj?.get("can_send_messages")?.asBoolean ?: true
                         val anggota = status == "member" || status == "administrator" ||
-                            status == "creator" || (status == "restricted" && isMember)
+                            status == "creator" || (status == "restricted" && isMember && bolehKirim)
                         if (!anggota) {
                             val namaBot = if (botUsername.isNotEmpty()) "@" + botUsername else getString(R.string.setup_test_this_bot)
                             return VerifyOutcome.Error(getString(R.string.setup_test_not_member, namaBot))
