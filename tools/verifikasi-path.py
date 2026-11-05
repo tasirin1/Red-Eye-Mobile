@@ -2131,6 +2131,38 @@ def cek_secret_riwayat(gagal, rentang):
                              "via input manual SetupActivity"
                              % (path, sha[:8]))
                 return
+        # Nama berkas berpola token (issue #1697): saluran
+        # isi tak pernah menilai NAMA — berkas bernama
+        # token utuh (':' diganti '_', bentuk yang sah
+        # untuk nama berkas) lolos walau isinya polos.
+        # Nilai nama tiap berkas yang berubah pada commit
+        # ini: bentuk tanpa '/', plus rekonstruksi
+        # '_'->':' pada batas digitnya; vonis tetap
+        # mengandung_token.
+        for path in dict.fromkeys(pecah_nama(berubah_kandidat)):
+            nama = path.strip()
+            if not nama:
+                continue
+            polos_nama = nama.replace("/", "")
+            # Pra-saring murah dulu (pola cek-cepat): nama
+            # tanpa deret digit panjang tak mungkin berpola
+            # token — memanggil pemindai untuk tiap path
+            # (mis. path sumber panjang yang sesudah '/'
+            # dibuang menjadi run alfabet raksasa) membuat
+            # sapuan rentang jauh lebih lambat.
+            calon_nama = []
+            if re.search(r"[0-9]{6,}:[A-Za-z0-9_-]{35,}", polos_nama):
+                calon_nama.append(polos_nama)
+            cocok_nama = re.match(r"^(.*?)([0-9]{6,})_([A-Za-z0-9_-]{35,})$", polos_nama)
+            if cocok_nama:
+                calon_nama.append("%s%s:%s" % (cocok_nama.group(1), cocok_nama.group(2), cocok_nama.group(3)))
+            if any(mengandung_token(c) for c in calon_nama):
+                gagal.append("Kemungkinan token bot asli pada NAMA berkas %s "
+                             "pada commit %s (riwayat rentang) — token tetap "
+                             "hidup di riwayat walau sudah dihapus di pohon "
+                             "akhir. Kredensial hanya via input manual "
+                             "SetupActivity" % (nama, sha[:8]))
+                return
         # Belahan lintas berkas (issue #1676): semua saluran
         # di atas menilai per blob, jadi token yang separuh
         # di berkas A dan separuh di berkas B pada commit
