@@ -202,6 +202,11 @@ class BootRestartWorker(
         } catch (_: Exception) {
         }
         MessageScheduler.scheduleWatchdog(appContext)
+        if (!MonitoringService.tryClaimServiceStart()) {
+            // Penghidup lain baru saja mengklaim start
+            // (issue #1683): anggap layanan sedang bangkit.
+            return Result.success()
+        }
         val startResult: Result = try {
             val serviceIntent = Intent(appContext, MonitoringService::class.java).apply {
                 action = MonitoringService.ACTION_START_MONITORING

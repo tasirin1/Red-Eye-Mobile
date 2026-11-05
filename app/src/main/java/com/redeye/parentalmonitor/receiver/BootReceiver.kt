@@ -375,6 +375,12 @@ class BootReceiver : BroadcastReceiver() {
             } catch (_: Exception) {
             }
         }
+        if (!MonitoringService.tryClaimServiceStart()) {
+            // Penghidup lain baru saja mengklaim start
+            // (issue #1683): jangan kirim start kedua.
+            markHandled(context, nowBoot)
+            return
+        }
         if (!tryStartService(context)) {
             markHandled(context, 0L, full = false)
             MessageScheduler.scheduleBootRestart(context)

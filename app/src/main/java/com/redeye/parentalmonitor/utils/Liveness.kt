@@ -319,6 +319,12 @@ object Liveness {
             }
             return
         }
+        if (!MonitoringService.tryClaimServiceStart()) {
+            // Penghidup lain baru saja mengklaim start
+            // (issue #1683): jangan catat sebagai kematian
+            // dan jangan kirim start kedua.
+            return
+        }
         noteKillDetected()
         schedule(context)
         try {

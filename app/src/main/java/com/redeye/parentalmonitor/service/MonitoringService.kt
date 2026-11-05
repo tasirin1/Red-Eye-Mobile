@@ -530,6 +530,30 @@ class MonitoringService : Service() {
         private const val STORAGE_LOSS_NOTIF_ID = 6
         @Volatile
         var isRunning = false
+        // Klaim start bersama tiga rantai penghidup (issue
+        // #1683): BootReceiver, BootRestartWorker, dan
+        // Liveness dulu sama-sama memeriksa isRunning lalu
+        // start tanpa klaim atomik — ketiganya bisa membaca
+        // false bersamaan dan sama-sama mengirim start
+        // (loop restart mubazir sesaat). Kini hanya satu
+        // yang memegang klaim dalam jendela 15 detik;
+        // jendela sengaja pendek dan klaim kedaluwarsa
+        // sendiri, jadi penghidupan sesudah kematian
+        // sungguhan tak pernah terhalang lama.
+        @Volatile
+        private var startClaimElapsed = 0L
+        private val startClaimLock = Any()
+
+        fun tryClaimServiceStart(): Boolean {
+            if (isRunning) return false
+            val now = android.os.SystemClock.elapsedRealtime()
+            synchronized(startClaimLock) {
+                if (isRunning) return false
+                if (now - startClaimElapsed < 15_000L) return false
+                startClaimElapsed = now
+                return true
+            }
+        }
         // LRU 300 berkunci (issue #1597): dulu ConcurrentHashMap
         // yang DIKOSONGKAN TOTAL begitu melewati 300 entri —
         // sesudahnya ratusan resolusi PackageManager berulang
