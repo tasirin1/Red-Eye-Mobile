@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Pencatatan penghitung pesan terbuang (drop) tidak lagi menulis ulang seluruh berkas antrean terenkripsi pada setiap catatan: persist penghitung kini ditunda ke mekanisme drain yang sama dengan antrean, sehingga badai pesan terbuang tidak lagi membayar satu penulisan penuh per kejadian (#1583).
+
 - Pemindaian kata pantau pada snapshot aksesibilitas tidak lagi memindai teks yang identik berulang kali dalam satu snapshot (baris daftar yang berulang cukup dipindai sekali); cakupan deteksi teks utuh tidak berubah (#1582).
 
 - Pemrosesan transisi jendela aksesibilitas tidak lagi membaca ulang bendera prefs terenkripsi berkali-kali dalam satu transisi: status monitoring, tamper, dan alert aplikasi kini dijepret sekali di awal transisi (sebelumnya status monitoring saja disusun dua kali dari 4 baca terenkripsi), menghemat CPU di dalam kunci serial layanan (#1581).

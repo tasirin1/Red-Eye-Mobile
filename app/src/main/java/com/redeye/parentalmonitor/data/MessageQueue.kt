@@ -506,7 +506,17 @@ class MessageQueue private constructor(context: Context) {
         } catch (_: Exception) {
         }
         dropsDirty = true
-        if (persist && !restoringDrops) persistDropCountsLocked()
+        if (persist && !restoringDrops) {
+            // Persist penghitung ditunda ke drain (issue
+            // #1583): commit langsung di sini menulis ulang
+            // SELURUH berkas prefs terenkripsi (termasuk blob
+            // JSON antrean) hanya untuk mengubah 6 angka —
+            // badai drop membayar satu tulis penuh per
+            // catatan. Drain memang menulis penghitung kotor
+            // pada larinya, dan ambilan laporan tetap persist
+            // sinkron lewat jalurnya sendiri (#1332).
+            schedulePersistLocked()
+        }
     }
 
     // Batas efektif antrean (issue #842): kelonggaran +5 milik
@@ -1113,6 +1123,11 @@ class MessageQueue private constructor(context: Context) {
                 val pending = pendingSnapshot
                 val currentPrefs = sharedPreferences
                 if (pending == null || currentPrefs == null || !persistDirty) {
+                    // Tak ada snapshot antrean untuk ditulis,
+                    // tetapi penghitung drop bisa kotor sendiri
+                    // (issue #1583): tulis penghitungnya saja
+                    // sebelum berhenti, jangan dibuang senyap.
+                    if (pending == null && currentPrefs != null && dropsDirty) persistDropCountsLocked()
                     pendingSnapshot = null
                     persistDirty = false
                     persistQueued.set(false)
