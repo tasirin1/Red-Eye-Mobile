@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Layar Setup kini berjalan sendirian di tugasnya sendiri seperti layar sensitif lain, menutup celah penyisipan layar asing ke tugas yang memuat pengisian token bot.
+
 - Perbaikan kerapian kode: komentar penjelasan sebuah setelan dalam kode dikembalikan menempel tepat di atas setelannya (sempat terpisah oleh sisipan fungsi lain).
 
 - Data antrean pesan yang rusak kini diselamatkan per pesan, bukan dibuang seluruhnya: pesan yang masih terbaca dipertahankan, yang rusak dihitung dan dilaporkan ke pemilik seperti kategori kehilangan lain.
