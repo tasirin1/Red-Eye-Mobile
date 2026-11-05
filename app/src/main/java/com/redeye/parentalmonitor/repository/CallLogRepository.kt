@@ -13,7 +13,8 @@ class CallLogRepository(private val context: Context) {
         CallLog.Calls.DATE,
         CallLog.Calls.DURATION,
         CallLog.Calls.TYPE,
-        CallLog.Calls.PHONE_ACCOUNT_ID
+        CallLog.Calls.PHONE_ACCOUNT_ID,
+        CallLog.Calls.PRESENTATION
     )
 
     // Peta id akun telepon -> label SIM (issue #1496),
@@ -201,6 +202,7 @@ class CallLogRepository(private val context: Context) {
                 // #1496): penyedia tanpa kolom ini tak boleh
                 // menggugurkan seluruh kueri.
                 val akunIndex = try { cursor.getColumnIndex(CallLog.Calls.PHONE_ACCOUNT_ID) } catch (_: Exception) { -1 }
+                val presIndex = try { cursor.getColumnIndex(CallLog.Calls.PRESENTATION) } catch (_: Exception) { -1 }
                 while (true) {
                     val advanced = try {
                         cursor.moveToNext()
@@ -212,7 +214,17 @@ class CallLogRepository(private val context: Context) {
                     if (!advanced) break
                     if (result.size >= limit) break
                     try {
-                        val number = cursor.getString(numberIndex) ?: "Unknown"
+                        // Nomor tersembunyi (issue #1498):
+                        // presentasi HIDDEN atau penanda mentah
+                        // OEM (-1/-2) dipetakan ke label jujur,
+                        // bukan tampil apa adanya di laporan.
+                        val mentah = cursor.getString(numberIndex)
+                        val pres = if (presIndex >= 0) try { cursor.getInt(presIndex) } catch (_: Exception) { 1 } else 1
+                        val number = when {
+                            pres == CallLog.Calls.PRESENTATION_HIDDEN || mentah == "-1" || mentah == "-2" -> "Nomor tersembunyi"
+                            mentah.isNullOrEmpty() -> "Unknown"
+                            else -> mentah
+                        }
                         result.add(
                             CallData(
                                 id = cursor.getLong(idIndex),
