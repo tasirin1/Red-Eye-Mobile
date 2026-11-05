@@ -1,5 +1,11 @@
 package com.redeye.parentalmonitor.repository
 
+// Plafon limit kueri repositori ringkasan: 201, BUKAN 200.
+// Pemanggil ringkasan mengambil tepat 201 baris sebagai sonde —
+// baris ke-201 adalah bukti data terpotong di 200 (issue #1661).
+// Menekan plafon ini kembali ke 200 mematikan deteksi itu (issue #1664).
+internal const val REPOSITORY_LIMIT_CAP = 201
+
 class NumberHistorySearch<T>(
     private val numberColumn: String,
     private val dateColumn: String,

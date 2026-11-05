@@ -179,7 +179,7 @@ class SmsRepository(private val context: Context) {
     }
 
     fun getRecentSmsSince(sinceMillis: Long, limit: Int = 200): List<SmsData> {
-        val safeLimit = limit.coerceIn(1, 200)
+        val safeLimit = limit.coerceIn(1, REPOSITORY_LIMIT_CAP)
         val now = System.currentTimeMillis()
         return querySms(
             selection = "${Telephony.Sms.DATE} >= ? AND ${Telephony.Sms.DATE} <= ?",
@@ -190,7 +190,7 @@ class SmsRepository(private val context: Context) {
     }
 
     fun getRecentSmsSinceLight(sinceMillis: Long, limit: Int = 200): List<SmsData> {
-        val safeLimit = limit.coerceIn(1, 200)
+        val safeLimit = limit.coerceIn(1, REPOSITORY_LIMIT_CAP)
         val now = System.currentTimeMillis()
         return querySms(
             selection = "${Telephony.Sms.DATE} >= ? AND ${Telephony.Sms.DATE} <= ?",
@@ -202,7 +202,7 @@ class SmsRepository(private val context: Context) {
     }
 
     fun countSmsSince(sinceMillis: Long, limit: Int = 200): Int {
-        val safeLimit = limit.coerceIn(1, 200)
+        val safeLimit = limit.coerceIn(1, REPOSITORY_LIMIT_CAP)
         val now = System.currentTimeMillis()
         val cursor = com.redeye.parentalmonitor.utils.ContentQuery.query(
             context.contentResolver,
@@ -218,7 +218,7 @@ class SmsRepository(private val context: Context) {
 
 
     fun getRecentSms(limit: Int = 20): List<SmsData> {
-        val safeLimit = limit.coerceIn(1, 200)
+        val safeLimit = limit.coerceIn(1, REPOSITORY_LIMIT_CAP)
         val now = System.currentTimeMillis()
         return querySms(
             selection = "${Telephony.Sms.DATE} <= ?",

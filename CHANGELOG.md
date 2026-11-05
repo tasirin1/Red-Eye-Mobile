@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Perbaikan #1661 dihidupkan kembali (issue #1664): kelima fungsi repositori SMS/panggilan menekan limit kueri ke maksimum 200 (`coerceIn(1, 200)`), sehingga sonde 201 baris hasil #1661 selalu terpotong balik ke 200 dan syarat `size > 200` tak pernah bisa benar — label "200+"/"(dari 200 terakhir)" tidak pernah menyala sama sekali. Plafon kini konstanta bersama `REPOSITORY_LIMIT_CAP = 201` di paket repositori (7 situs di `SmsRepository`/`CallLogRepository`) dengan komentar penjaga agar tidak ditekan kembali ke 200.
+
 ## [1.6.637] - 2026-11-05
 
 ### Fixed
