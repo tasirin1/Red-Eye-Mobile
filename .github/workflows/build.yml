@@ -146,6 +146,27 @@ jobs:
       - name: Detekt (3 aturan dasar)
         run: gradle detekt --stacktrace
 
+      # Android Lint (issue #1693): dulu CI tak punya langkah
+      # lint sama sekali. Sengaja peringatan-saja dulu
+      # (continue-on-error + laporan diunggah) karena backlog
+      # temuan lama belum dipetakan — menggagalkan build
+      # karenanya akan memblokir rilis; pengetatan jadi
+      # gerbang (baseline) adalah tindak lanjut sesudah
+      # backlog dibaca dari laporan ini.
+      - name: Android Lint (peringatan saja)
+        continue-on-error: true
+        run: gradle lintDebug --stacktrace
+
+      - name: Upload laporan Lint
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: lint-report
+          if-no-files-found: ignore
+          path: |
+            app/build/reports/lint-results-debug.html
+            app/build/intermediates/lint_intermediate_text_report/debug/lintReportDebug/lint-results-debug.txt
+
       - name: Decode release keystore
         if: startsWith(github.ref, 'refs/heads/main') || startsWith(github.ref, 'refs/tags/v')
         run: |
