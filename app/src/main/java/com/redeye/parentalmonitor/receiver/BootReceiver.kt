@@ -226,10 +226,17 @@ class BootReceiver : BroadcastReceiver() {
             com.redeye.parentalmonitor.utils.Liveness.schedule(appContext)
         } catch (_: Exception) {
         }
+        // goAsync gagal TIDAK membuang peristiwa boot
+        // (issue #1635): pola receiver saudara
+        // (Liveness/TimeChange) adalah pendingResult=null
+        // dan handler tetap jalan lewat runReceiver —
+        // dulu return di sini membatalkan seluruh
+        // handleBoot (layanan tak dicoba hidup, hitungan
+        // boot hilang, volume dering tak pulih).
         val pendingResult = try {
             goAsync()
         } catch (_: Exception) {
-            return
+            null
         }
         val bootAction = intent.action
         com.redeye.parentalmonitor.utils.Background.runReceiver(pendingResult) {

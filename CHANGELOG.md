@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- BootReceiver tidak lagi membuang seluruh peristiwa boot bila goAsync() gagal; handler tetap berjalan seperti receiver saudara (#1635).
+
 - Polling perintah yang ditolak Telegram dengan HTTP 400 non-offset kini mendapat backoff 60 detik (5 menit + kabar terbatas sekali per jam pada kegagalan ketiga), bukan berputar tiap 10–30 detik selamanya tanpa kabar (#1634).
 
 - Potongan pesan yang gagal diantrekan lokal kini dilaporkan dengan sebab yang benar lewat penghitung dan pemberitahuan tersendiri, bukan sebagai "ditolak Telegram (permanen)"; potongan yang tereviksi antrean tidak lagi terhitung ganda (#1633).
