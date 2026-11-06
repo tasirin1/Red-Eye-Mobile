@@ -22,11 +22,25 @@ object Background {
     // siaran dulu membuat jalur kritis ikut tertahan di
     // belakang handleBoot luapan. Tetap satu benang agar
     // luapan terserial seperti rancangan #1069.
+    // Penolakannya BUKAN CallerRuns (issue #1708): handler
+    // penolakan pool receivers berjalan sinkron di benang
+    // pemanggil (benang utama broadcast), jadi CallerRuns
+    // di sini menjalankan pekerjaan receiver berat DI
+    // BENANG UTAMA saat saturasi ganda — ANR yang justru
+    // dicegah #1069. Jalan terakhirnya benang daemon lepas
+    // satu kali pakai: tugas tetap jalan (pembungkusnya
+    // tetap memanggil finish() pendingResult), tak pernah
+    // di benang pemanggil.
     private val receiverOverflow: java.util.concurrent.ExecutorService = java.util.concurrent.ThreadPoolExecutor(
         0, 1, 60L, java.util.concurrent.TimeUnit.SECONDS,
         java.util.concurrent.LinkedBlockingQueue(64),
         java.util.concurrent.ThreadFactory { r -> Thread(r, "RedEyeRecvOvf").apply { isDaemon = true } },
-        java.util.concurrent.ThreadPoolExecutor.CallerRunsPolicy()
+        java.util.concurrent.RejectedExecutionHandler { r, _ ->
+            try {
+                Thread(r, "RedEyeRecvOvfX").apply { isDaemon = true }.start()
+            } catch (_: Exception) {
+            }
+        }
     )
 
     // Maks 3 benang (issue #1016, diperbaiki #1032): dulu
