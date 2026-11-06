@@ -14283,6 +14283,12 @@ class MonitoringService : Service() {
                     if (umurBerkas in 0L until 10_000L) continue
                     if (!file.exists() || file.length() == 0L) {
                         deleteQuietly(file)
+                        // Buang terminal membersihkan ketiga
+                        // jurnal juga di cabang ini (issue #1809,
+                        // sisa #1796).
+                        hapusUpayaMedia(file)
+                        hapusTujuanMedia(file)
+                        bersihkanCatatanUnggah(file)
                         // Ikut terhitung terbuang (issue
                         // #1760): ringkasan pemilik menyebut
                         // jumlah berkas yang dibuang.
@@ -14304,6 +14310,9 @@ class MonitoringService : Service() {
                     // buang sekali dan hitung sebagai dropped.
                     if (maxBytes > 0 && file.length() > maxBytes) {
                         deleteQuietly(file)
+                        hapusUpayaMedia(file)
+                        hapusTujuanMedia(file)
+                        bersihkanCatatanUnggah(file)
                         // Tercatat sudah dicoba (issue #1794),
                         // sama seperti cabang kosong di atas.
                         attempted.add(file.absolutePath)
@@ -14353,6 +14362,12 @@ class MonitoringService : Service() {
                     }
                     hapusUpayaMedia(file)
                     hapusTujuanMedia(file)
+                    // Jurnal coba ikut dibersihkan di blok
+                    // pasca-kirim skeleton juga (issue #1809):
+                    // flush foto sudah melakukannya, dan hasil
+                    // DROPPED non-classify bisa menyisakan
+                    // entri coba lama.
+                    bersihkanCatatanUnggah(file)
                     monitorBeatAt = android.os.SystemClock.elapsedRealtime()
                     batchProgress = true
                     progress = true
@@ -15022,6 +15037,18 @@ class MonitoringService : Service() {
                     if (umurBerkas in 0L until 10_000L) continue
                     if (!file.exists() || file.length() == 0L) {
                         deleteQuietly(file)
+                        // Buang terminal membersihkan ketiga
+                        // jurnal + melepas entri tertahan
+                        // bernama sama (issue #1809, sisa
+                        // #1796).
+                        hapusUpayaMedia(file)
+                        hapusTujuanMedia(file)
+                        bersihkanCatatanUnggah(file)
+                        if (heldPhotoEntriesNow().any { it.name == file.name }) {
+                            mutateHeldPhotoEntries { fresh ->
+                                HeldPhotos.withoutNames(fresh, setOf(file.name))
+                            }
+                        }
                         // Ikut terhitung terbuang (issue #1760).
                         // Tercatat sudah dicoba (issue #1794):
                         // tanpa ini potret menetap #1773
