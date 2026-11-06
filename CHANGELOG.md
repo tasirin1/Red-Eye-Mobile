@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Fixed
+
+- Pemeriksa restore tertahan di awal layanan kini mengklaim sesinya secara atomik di bawah kunci yang sama dengan pembatalan, dan pembatalan membersihkan catatannya di dalam ruas kunci yang sama: /restore batal yang tiba di celah antara baca catatan dan pemasangan penanda tidak lagi dijawab tidak ada sesi sementara restore-nya tetap diterapkan (issue #1743).
+
 ## [1.6.642] - 2026-11-06
 
 ### Changed

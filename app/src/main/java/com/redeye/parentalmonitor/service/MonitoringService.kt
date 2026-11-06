@@ -689,7 +689,31 @@ class MonitoringService : Service() {
                             // jendela agar /restore batal tetap
                             // melihatnya dan bisa menghentikan.
                             val penanda = PendingRestore(RESTORE_STAGE_CONFIRM)
-                            pendingRestore = penanda
+                            // Klaim atomik (issue #1743):
+                            // pemasangan penanda + uji catatan
+                            // masih ada dalam SATU ruas
+                            // restoreLock yang sama dengan ruas
+                            // pembatal (#1078). Pembatal kini
+                            // selalu menang atau kalah secara
+                            // utuh: ia melihat penanda (dijawab
+                            // dibatalkan, uji identitas di bawah
+                            // menggugurkan klaim ini) atau ia
+                            // mendahului klaim (catatannya sudah
+                            // kosong di dalam ruas ini, klaim
+                            // gugur) — tak ada lagi celah
+                            // "dijawab tidak ada sesi" tetapi
+                            // restore tetap diterapkan.
+                            val terklaim = synchronized(restoreLock) {
+                                if (pendingRestore == null &&
+                                    preferencesManager.restoreConfirmedJson.isNotEmpty()
+                                ) {
+                                    pendingRestore = penanda
+                                    true
+                                } else {
+                                    false
+                                }
+                            }
+                            if (!terklaim) return@launch
                             val sisa = tenggat - System.currentTimeMillis()
                             if (sisa > 0L) delay(sisa)
                             if (pendingRestore !== penanda) return@launch
@@ -4885,15 +4909,20 @@ class MonitoringService : Service() {
             // sesi yang sudah terklaim dijawab jujur.
             var had = false
             var applying = false
+            // Pembersihan catatan ikut ke dalam ruas
+            // (issue #1743): klaim pemeriksa startup
+            // membaca catatan di ruas yang sama, jadi
+            // catatan harus sudah kosong sebelum ruas
+            // ini lepas agar klaim sesudah batal gugur.
             synchronized(restoreLock) {
                 had = pendingRestore != null
                 pendingRestore = null
                 applying = restoreApplying
-            }
-            try {
-                preferencesManager.restoreConfirmedJson = ""
-                preferencesManager.restoreConfirmedDeadline = 0L
-            } catch (_: Exception) {
+                try {
+                    preferencesManager.restoreConfirmedJson = ""
+                    preferencesManager.restoreConfirmedDeadline = 0L
+                } catch (_: Exception) {
+                }
             }
             audit("restore batal", "private")
             sendToTelegram(
