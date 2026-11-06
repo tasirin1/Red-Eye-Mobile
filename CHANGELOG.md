@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.642] - 2026-11-06
+
 ### Changed
 - Versi Android minimum naik dari 7.0 (API 24) ke 10 (API 29) atas keputusan pemilik: cabang-cabang kode khusus Android lama yang kini tak terjangkau dihapus/dilipat (gerbang versi di ParentalMonitorApp, ServiceStart, UsageAccess, AppPermissions, MainActivity, SetupActivity, BootRestartWorker, dan MonitoringService), tanpa perubahan perilaku di perangkat yang didukung — gerbang Android 11 ke atas (izin notifikasi, tipe layanan latar, dsb.) tetap utuh. Konsekuensinya perangkat Android 7–9 tidak bisa lagi memasang aplikasi ini.
 
