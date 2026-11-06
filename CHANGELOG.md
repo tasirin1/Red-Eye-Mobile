@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Prune cache media kini membersihkan jurnal upaya juga, bukan hanya jurnal tujuan: berkas yang dibuang rotasi cache sebelumnya meninggalkan entri upaya yatim di media_upaya.txt sampai terdesak plafon 100 entri (issue #1779).
+
 - Pelacakan update Telegram tak lagi mendekripsi token + menghitung SHA-256 pada setiap update: sidik token kini di-cache per nilai token dan loop poll meneruskan token snapshot-nya — sebelumnya s.d. 50 dekripsi + hash berulang per batch untuk sidik yang sama (issue #1778).
 
 - Jangkar kesegaran menu kini dikunci per chat + pesan: sebelumnya nomor pesan saja yang menjadi kunci, padahal nomor pesan Telegram independen antar chat — render menu di satu chat bisa menyegarkan gerbang umur 300 detik menu bernomor sama di chat lain (issue #1777).
