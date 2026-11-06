@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Kanal base32 gerbang token kini menilai huruf kecil juga: sebelumnya regex kandidat hanya menerima huruf besar, jadi token ter-encode base32 huruf kecil (keluaran lazim encoder) lolos dari semua permukaan berkas/isi (issue #1784).
+
 - Fungsi mati `PhotoFingerprint.gridSpread` dihapus: pekerjaannya sudah terserap `analyzeFull` sejak konsolidasi satu-lintasan-dekode #1588 dan tak ada satu pun pemanggil tersisa (issue #1783).
 
 - Cabang mati pada penanganan respons 400 SendMessageWorker dihapus: pesan panjang sudah dipotong di pintu fungsi sejak #1732, jadi lengan pemotongan di cabang 400 tak pernah terjangkau dan hanya menyesatkan pembaca jalur klasifikasi (issue #1782).

@@ -482,9 +482,13 @@ def mengandung_token(teks):
     # Bentuk base32 (issue #1765): padanan kanal
     # base64 untuk alfabet base32 — hasil dekode
     # tetap harus cocok pola byte token persis.
+    # Huruf kecil ikut dinilai (issue #1784):
+    # encoder lazim mengeluarkan base32 huruf
+    # kecil; kandidat dinormalkan ke huruf besar
+    # sebelum dekode.
     for sumber in (teks, tanpa_spasi, rapat):
-        for m in re.finditer(r"[A-Z2-7]{40,}={0,6}", sumber):
-            s32 = m.group(0)
+        for m in re.finditer(r"[A-Za-z2-7]{40,}={0,6}", sumber):
+            s32 = m.group(0).upper()
             s32 += "=" * ((8 - len(s32) % 8) % 8)
             try:
                 hasil = base64.b32decode(s32)
