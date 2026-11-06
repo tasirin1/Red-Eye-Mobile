@@ -12804,9 +12804,17 @@ class MonitoringService : Service() {
                 return MediaSendOutcome.KEPT
             }
             android.util.Log.w("MonitoringService", "$label rejected (400), dropping file")
-            bersihkanCatatanUnggah(file)
-            deleteQuietly(file)
-            return MediaSendOutcome.DROPPED
+            // Gerbang sukses hapus (issue #1836, keluarga
+            // #1831 di jalur flush): DROPPED hanya jujur
+            // bila isi berkas benar-benar musnah. Gagal
+            // hapus total berarti berkas selamat, jadi
+            // KEPT — jurnal coba/tujuan/upaya dan entri
+            // tertahan tetap konsisten dengan berkasnya.
+            if (deleteQuietly(file)) {
+                bersihkanCatatanUnggah(file)
+                return MediaSendOutcome.DROPPED
+            }
+            return MediaSendOutcome.KEPT
         }
         if (code == 413) {
             // Pengecualian media yang DISENGAJA dari aturan
@@ -12818,9 +12826,13 @@ class MonitoringService : Service() {
             // media selamanya. Kabar drop ke owner dirumuskan
             // netral-sebab supaya tak mengklaim 400 di sini.
             android.util.Log.w("MonitoringService", "$label too large (413), dropping file")
-            bersihkanCatatanUnggah(file)
-            deleteQuietly(file)
-            return MediaSendOutcome.DROPPED
+            // Gerbang sukses hapus sama seperti cabang
+            // 400 di atas (issue #1836).
+            if (deleteQuietly(file)) {
+                bersihkanCatatanUnggah(file)
+                return MediaSendOutcome.DROPPED
+            }
+            return MediaSendOutcome.KEPT
         }
         val errorBody = errorFull.take(200)
         android.util.Log.e("MonitoringService", "✗ Failed to send ${label.lowercase()}: $code $errorBody")
@@ -14362,17 +14374,24 @@ class MonitoringService : Service() {
                         // dibuang + dihitung terbuang, bukan
                         // diunggah ulang selamanya.
                         if (tambahUpayaMedia(file)) {
-                            deleteQuietly(file)
-                            hapusTujuanMedia(file)
-                            hapusUpayaMedia(file)
-                            // Jurnal coba ikut dibersihkan
-                            // (issue #1796): berkas terbuang
-                            // terminal tak boleh menyisakan
-                            // entri yatim di media_coba.txt.
-                            bersihkanCatatanUnggah(file)
-                            dropped++
-                            batchProgress = true
-                            progress = true
+                            // Gerbang sukses hapus (issue
+                            // #1836): jurnal hanya dibersihkan
+                            // dan berkas hanya dihitung terbuang
+                            // bila isinya benar-benar musnah;
+                            // gagal hapus total = berkas
+                            // selamat dengan jurnalnya utuh.
+                            if (deleteQuietly(file)) {
+                                hapusTujuanMedia(file)
+                                hapusUpayaMedia(file)
+                                // Jurnal coba ikut dibersihkan
+                                // (issue #1796): berkas terbuang
+                                // terminal tak boleh menyisakan
+                                // entri yatim di media_coba.txt.
+                                bersihkanCatatanUnggah(file)
+                                dropped++
+                                batchProgress = true
+                                progress = true
+                            }
                         }
                         continue
                     }
@@ -15173,8 +15192,18 @@ class MonitoringService : Service() {
                         // normal di bawah, bukan diunggah
                         // ulang selamanya.
                         if (tambahUpayaMedia(file)) {
-                            deleteQuietly(file)
-                            photoOutcome = MediaSendOutcome.DROPPED
+                            // Gerbang sukses hapus (issue
+                            // #1836): gagal musnah berarti
+                            // berkas selamat — lewati blok
+                            // pasca-kirim di bawah agar jurnal
+                            // tujuan/upaya/coba dan pelepasan
+                            // entri tertahan tidak berjalan
+                            // untuk berkas yang masih ada.
+                            if (deleteQuietly(file)) {
+                                photoOutcome = MediaSendOutcome.DROPPED
+                            } else {
+                                continue
+                            }
                         } else {
                             continue
                         }
