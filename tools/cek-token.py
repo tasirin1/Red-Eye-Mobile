@@ -313,6 +313,16 @@ def mengandung_token_pesan(teks):
     if _pola_mentah_cocok(teks):
         return True
     tanpa_spasi = re.sub(r"\s+", "", teks)
+    # Varian tanpa spasi juga dinilai pola mentah
+    # (issue #1764): satu spasi sesudah titik dua
+    # atau di tengah ekor sebelumnya memutus token
+    # dari permukaan ini, padahal teks yang sama di
+    # permukaan berkas tertangkap lewat pemadatan.
+    # Ini BUKAN pemadatan #1425 — hanya spasi yang
+    # dibuang; prosa yang rapat oleh tanda baca
+    # tetap tidak tersambung.
+    if _pola_mentah_cocok(tanpa_spasi):
+        return True
     for sumber in (teks, tanpa_spasi):
         for m in POLA_KANDIDAT_B64.finditer(sumber):
             if _cocok_b64(m.group(0)):

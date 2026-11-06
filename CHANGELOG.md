@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Penilai pesan kini juga menilai varian tanpa-spasi dengan pola mentah: satu spasi sesudah titik dua token atau di tengah ekornya sebelumnya memutus token dari permukaan pesan, padahal teks yang sama tertangkap di permukaan berkas (issue #1764).
 - Kandidat pasangan belahan lintas-commit di vonis rentang kini juga menerima paruh yang hidup sebagai satu baris murni di berkas kecil: sebelumnya pindai per baris hanya berlaku untuk berkas besar, jadi satu baris komentar saja membatalkan kandidat berkas kecil (issue #1763).
 - Kandidat kepala belahan lintas-commit di vonis rentang kini menoleransi aksara tepi juga (maks. dua aksara non-alfabet di akhir berkas dikupas, seperti sisi pasangannya): satu aksara seperti ';' di akhir berkas kepala sebelumnya membuat kepala tak pernah terpilih (issue #1762).
 - Vonis rentang kini mengupas ekstensi dari tiap nama berkas sebelum menggabungkan nama satu commit: ekstensi pada nama kepala belahan sebelumnya tertinggal di tengah gabungan dan memutus rekonstruksi token (issue #1761).
