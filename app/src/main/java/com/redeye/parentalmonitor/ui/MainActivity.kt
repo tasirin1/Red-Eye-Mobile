@@ -308,11 +308,7 @@ class MainActivity : AppCompatActivity() {
         try {
             ServiceStart.startForeground(this, intent)
             if (BuildConfig.DEBUG) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    android.util.Log.i("MainActivity", "Started as foreground service")
-                } else {
-                    android.util.Log.i("MainActivity", "Started as regular service")
-                }
+                android.util.Log.i("MainActivity", "Started as foreground service")
             }
         } catch (e: Exception) {
             if (BuildConfig.DEBUG) android.util.Log.e("MainActivity", "Failed to start service", e)

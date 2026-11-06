@@ -232,18 +232,16 @@ class SetupActivity : AppCompatActivity() {
             }
         } catch (_: Exception) {
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            val fine = result[Manifest.permission.ACCESS_FINE_LOCATION] == true
-            val coarse = result[Manifest.permission.ACCESS_COARSE_LOCATION] == true
-            if ((fine || coarse) && !com.redeye.parentalmonitor.utils.AppPermissions.hasBackgroundLocation(this)) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    Toast.makeText(this, getString(R.string.setup_bg_request), Toast.LENGTH_LONG).show()
-                    openAppSettings()
-                } else {
-                    try {
-                        backgroundPermissionLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
-                    } catch (_: Exception) {
-                    }
+        val fine = result[Manifest.permission.ACCESS_FINE_LOCATION] == true
+        val coarse = result[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        if ((fine || coarse) && !com.redeye.parentalmonitor.utils.AppPermissions.hasBackgroundLocation(this)) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                Toast.makeText(this, getString(R.string.setup_bg_request), Toast.LENGTH_LONG).show()
+                openAppSettings()
+            } else {
+                try {
+                    backgroundPermissionLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                } catch (_: Exception) {
                 }
             }
         }
@@ -802,15 +800,11 @@ class SetupActivity : AppCompatActivity() {
                 val intent = Intent(this@SetupActivity, MonitoringService::class.java).apply {
                     action = MonitoringService.ACTION_START_MONITORING
                 }
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    try {
-                        startForegroundService(intent)
-                    } catch (e: Exception) {
-                        try { com.redeye.parentalmonitor.utils.MessageScheduler.scheduleBootRestart(this@SetupActivity) } catch (_: Exception) { }
-                        throw e
-                    }
-                } else {
-                    startService(intent)
+                try {
+                    startForegroundService(intent)
+                } catch (e: Exception) {
+                    try { com.redeye.parentalmonitor.utils.MessageScheduler.scheduleBootRestart(this@SetupActivity) } catch (_: Exception) { }
+                    throw e
                 }
             } catch (_: Exception) {
                 android.util.Log.w("SetupActivity", "Revive monitoring failed")
