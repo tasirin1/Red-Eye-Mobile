@@ -2697,9 +2697,25 @@ def _cek_pesan_tag(gagal):
                        "--format=%(refname:short)%09%(objecttype)%09%(*objectname)") or ""
     for baris in daftar_tag.splitlines():
         bagian = baris.split("\t")
-        if len(bagian) != 3 or bagian[1] != "tag":
+        if len(bagian) != 3:
             continue
-        nama_tag, _, target = bagian
+        nama_tag = bagian[0]
+        # NAMA tag ikut dinilai (issue #1804): nama adalah
+        # satu-satunya bagian tag yang selalu terbit —
+        # token ter-encode (base64url sah sebagai nama
+        # ref) dengan anotasi bersih dulu lolos semua
+        # gerbang. Berlaku untuk SEMUA tag, ringan maupun
+        # beranotasi; titik-dua dilarang git di nama ref,
+        # jadi yang bisa tertangkap memang bentuk encode.
+        if mengandung_token_pesan(nama_tag):
+            gagal.append("Kemungkinan token bot asli di NAMA "
+                         "tag %s — nama tag ikut terbit dan "
+                         "hidup permanen; buat ulang tag itu "
+                         "dengan nama bersih. Kredensial hanya "
+                         "via input manual SetupActivity" % nama_tag)
+            return True
+        if bagian[1] != "tag":
+            continue
         pesan_tag = jalan("git", "for-each-ref", "refs/tags/" + nama_tag,
                           "--format=%(contents)") or ""
         if mengandung_token_pesan(pesan_tag) or _pesan_terbelah(pesan_tag):

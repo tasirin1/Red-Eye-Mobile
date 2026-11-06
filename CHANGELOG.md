@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Nama tag kini ikut dinilai gerbang verifikasi-path (semua tag, ringan maupun beranotasi), bukan hanya isi anotasinya: tag bernama token ter-encode dengan anotasi bersih tak lagi lolos, padahal nama tag ikut terbit dan tampil publik (issue #1804).
+
 - Mode forensik `--semua` di verifikasi-path kini menilai metadata author/committer juga, menyamai mode rentang: sapuan riwayat penuh tak lagi buta terhadap token yang tertulis di nama/email author commit lama yang sudah ter-push (issue #1803).
 
 - Gerbang token kini menilai base64 sampai dua lapis: hasil dekode lapis pertama yang masih berupa base64 dinilai ulang satu tingkat, sehingga token ter-encode ganda (lazim pada log/konfig bersarang) tertangkap di kedua permukaan (issue #1802).
