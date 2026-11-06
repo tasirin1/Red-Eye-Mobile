@@ -4545,7 +4545,7 @@ class MonitoringService : Service() {
             "/recordvideo" -> handleRecordVideoCommand(arg)
             "/sms" -> handleSmsCommand(arg, senderId)
             "/smsconfirm" -> handleSmsConfirmCommand(senderId)
-            "/lastnotify" -> handleLastNotifCommand()
+            "/lastnotify" -> handleLastNotifCommand(privateChat)
             "/version" -> handleVersionCommand()
             "/uptime" -> handleUptimeCommand()
             "/alive" -> {
@@ -6306,7 +6306,8 @@ class MonitoringService : Service() {
         }
     }
 
-    private suspend fun handleLastNotifCommand() {
+    private suspend fun handleLastNotifCommand(privateChat: Boolean) {
+        if (!privateChat) { sendToTelegram("\uD83D\uDD12 Rincian hanya via private chat dengan bot."); return }
         val items = try {
             NotificationForwarderService.history()
         } catch (_: Exception) {

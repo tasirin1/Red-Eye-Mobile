@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Perintah /lastnotify kini menolak berjalan di luar chat privat (issue #1700): handler-nya tertinggal dari pola penolakan #1689 sehingga 10 notifikasi terakhir (aplikasi + judul + teks) bisa terpajang di chat terkonfigurasi yang berupa grup; kini diperiksa `privateChat` lebih dulu seperti handler data lainnya.
+
 ## [1.6.639] - 2026-11-06
 
 ### Fixed
