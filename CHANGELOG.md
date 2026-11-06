@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Mode pindai forensik penuh (--semua) kini juga menilai pesan anotasi tag: sebelumnya ia hanya membaca pesan commit, jadi token di pesan tag lama tak pernah tertandai oleh lari forensik (issue #1768).
 - Plafon cakupan vonis rentang kini bersuara: enumerasi pasangan nama yang dilewati pada commit borongan (>60 nama) dan pemotongan kandidat kepala belahan lintas-commit (>50) mencetak peringatan, tidak lagi menyempitkan cakupan diam-diam (issue #1767).
 - Vonis rentang kini juga menyambung nama berkas yang terbelah lintas commit di pohon akhir: kanal nama sebelumnya per commit dan kanal lintas-commit hanya menilai isi, jadi dua paruh token sebagai nama berkas dari commit berbeda tak pernah dinilai bersama (issue #1766).
 - Penilai isi berkas kini juga membuka bentuk encode escape unicode (\uXXXX) dan base32 sebelum menilai: keduanya saudara sekelas base64/hex yang sudah lebih dulu dipolisikan, tetapi sebelumnya tak didekode kanal mana pun (issue #1765).

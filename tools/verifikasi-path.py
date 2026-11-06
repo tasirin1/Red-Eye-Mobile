@@ -2634,6 +2634,35 @@ def _pesan_terbelah(teks):
                 return True
             blok = []
     return nilai(blok)
+def _cek_pesan_tag(gagal):
+    """Pesan ANOTASI TAG (issue #1713): tag beranotasi
+    membawa pesannya sendiri yang ikut terbit bersama
+    rilis, tetapi tak ada kanal yang membacanya — kanal
+    pesan hanya membaca %B commit. SEMUA tag beranotasi
+    dinilai (issue #1741): saringan target-di-dalam-
+    rentang sebelumnya membuat tag yang menunjuk commit
+    lama tak pernah dinilai rentang mana pun, padahal
+    pesan tag itu permanen dan publik. Mengembalikan
+    True bila satu kegagalan ditambahkan."""
+    daftar_tag = jalan("git", "for-each-ref", "refs/tags",
+                       "--format=%(refname:short)%09%(objecttype)%09%(*objectname)") or ""
+    for baris in daftar_tag.splitlines():
+        bagian = baris.split("\t")
+        if len(bagian) != 3 or bagian[1] != "tag":
+            continue
+        nama_tag, _, target = bagian
+        pesan_tag = jalan("git", "for-each-ref", "refs/tags/" + nama_tag,
+                          "--format=%(contents)") or ""
+        if mengandung_token_pesan(pesan_tag) or _pesan_terbelah(pesan_tag):
+            gagal.append("Kemungkinan token bot asli di PESAN anotasi "
+                         "tag %s — pesan anotasi tag ikut terbit dan "
+                         "hidup permanen; buat ulang tag itu tanpa "
+                         "token. Kredensial hanya via input manual "
+                         "SetupActivity" % nama_tag)
+            return True
+    return False
+
+
 def cek_secret_pesan(gagal, rentang):
     """Pindai token di PESAN commit dalam rentang (issue #769).
 
@@ -2667,30 +2696,11 @@ def cek_secret_pesan(gagal, rentang):
                          "SetupActivity" % sha[:8])
             return
 
-    # Pesan ANOTASI TAG (issue #1713): tag beranotasi
-    # membawa pesannya sendiri yang ikut terbit bersama
-    # rilis, tetapi tak ada kanal yang membacanya — kanal
-    # ini hanya membaca %B commit. SEMUA tag beranotasi
-    # dinilai (issue #1741): saringan target-di-dalam-
-    # rentang sebelumnya membuat tag yang menunjuk
-    # commit lama tak pernah dinilai rentang mana pun,
-    # padahal pesan tag itu permanen dan publik.
-    daftar_tag = jalan("git", "for-each-ref", "refs/tags",
-                       "--format=%(refname:short)%09%(objecttype)%09%(*objectname)") or ""
-    for baris in daftar_tag.splitlines():
-        bagian = baris.split("\t")
-        if len(bagian) != 3 or bagian[1] != "tag":
-            continue
-        nama_tag, _, target = bagian
-        pesan_tag = jalan("git", "for-each-ref", "refs/tags/" + nama_tag,
-                          "--format=%(contents)") or ""
-        if mengandung_token_pesan(pesan_tag) or _pesan_terbelah(pesan_tag):
-            gagal.append("Kemungkinan token bot asli di PESAN anotasi "
-                         "tag %s — pesan anotasi tag ikut terbit dan "
-                         "hidup permanen; buat ulang tag itu tanpa "
-                         "token. Kredensial hanya via input manual "
-                         "SetupActivity" % nama_tag)
-            return
+    # Pesan ANOTASI TAG: dinilai pembantu bersama
+    # _cek_pesan_tag (issue #1713, #1741; dipakai
+    # juga mode --semua sejak issue #1768).
+    if _cek_pesan_tag(gagal):
+        return
 
 
 def cek_secret_pesan_semua(gagal):
@@ -2726,6 +2736,11 @@ def cek_secret_pesan_semua(gagal):
                          "rotasi token itu. Kredensial hanya via input "
                          "manual SetupActivity" % sha.strip()[:8])
             return
+    # Pesan anotasi tag ikut dinilai (issue #1768):
+    # mode forensik penuh sebelumnya hanya membaca
+    # %B — perbaikan #1741 untuk mode rentang tidak
+    # pernah mencapai mode ini.
+    _cek_pesan_tag(gagal)
 
 
 def nama_riwayat(rev):
