@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Kandidat kepala belahan lintas-commit di vonis rentang kini menoleransi aksara tepi juga (maks. dua aksara non-alfabet di akhir berkas dikupas, seperti sisi pasangannya): satu aksara seperti ';' di akhir berkas kepala sebelumnya membuat kepala tak pernah terpilih (issue #1762).
 - Vonis rentang kini mengupas ekstensi dari tiap nama berkas sebelum menggabungkan nama satu commit: ekstensi pada nama kepala belahan sebelumnya tertinggal di tengah gabungan dan memutus rekonstruksi token (issue #1761).
 - Ringkasan media terbuang kini menghitung juga berkas kosong/hilang yang dihapus flush: angka yang dilaporkan sebelumnya lebih kecil dari jumlah berkas yang benar-benar hilang pada putaran itu (issue #1760).
 - Pembaca peta tujuan media kini berkunci sama seperti kedua penulisnya: bacaan tanpa kunci sebelumnya bisa robek di tengah penulisan ulang dan menghasilkan tujuan yang salah (issue #1759).

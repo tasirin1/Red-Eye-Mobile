@@ -2471,6 +2471,23 @@ def _cek_belahan_lintas_commit(gagal, tip_rentang):
                             and re.fullmatch(r"[A-Za-z0-9_-]+", padat_baris):
                         murni_pohon[path] = padat_baris
                         break
+        # Tepi kepala ditoleransi juga (issue #1762):
+        # #1739 hanya mengupas tepi sisi PASANGAN —
+        # satu aksara non-alfabet yang tak dibuang
+        # _padatkan di AKHIR berkas kepala (mis. ';')
+        # membuat regex kandidat di bawah yang
+        # berjangkar $ tak pernah cocok, dan aksara
+        # yang sama ikut memutus sambungan pasangan.
+        # Kupas maks 2 aksara tepi belakang ekor tiap
+        # berkas sebelum kanal ini menilai.
+        for _path_ekor in ekor_pohon:
+            _kupas_ekor = ekor_pohon[_path_ekor]
+            for _ in range(2):
+                if _kupas_ekor and not re.match(r"[A-Za-z0-9_-]", _kupas_ekor[-1]):
+                    _kupas_ekor = _kupas_ekor[:-1]
+                else:
+                    break
+            ekor_pohon[_path_ekor] = _kupas_ekor
         daftar_ekor = [p for p in sorted(ekor_pohon)
                        if re.search(r"[0-9]{5,}:[A-Za-z0-9_-]{0,34}$",
                                     ekor_pohon[p])
