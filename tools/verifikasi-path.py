@@ -2167,11 +2167,23 @@ def cek_secret_riwayat(gagal, rentang):
             # dibuang menjadi run alfabet raksasa) membuat
             # sapuan rentang jauh lebih lambat.
             calon_nama = []
-            if re.search(r"[0-9]{6,}:[A-Za-z0-9_-]{35,}", polos_nama):
-                calon_nama.append(polos_nama)
-            cocok_nama = re.match(r"^(.*?)([0-9]{6,})_([A-Za-z0-9_-]{35,})$", polos_nama)
-            if cocok_nama:
-                calon_nama.append("%s%s:%s" % (cocok_nama.group(1), cocok_nama.group(2), cocok_nama.group(3)))
+            # Varian tanpa ekstensi terakhir (issue
+            # #1706): rekonstruksi di bawah berjangkar $
+            # sehingga nama token yang diberi ekstensi
+            # (mis. .txt/.bak) lolos tak dinilai; nilai
+            # juga bentuk sesudah ekstensi terakhir
+            # dibuang.
+            varian_nama = [polos_nama]
+            if "." in polos_nama:
+                tanpa_eks = polos_nama.rsplit(".", 1)[0]
+                if tanpa_eks:
+                    varian_nama.append(tanpa_eks)
+            for varian in varian_nama:
+                if re.search(r"[0-9]{6,}:[A-Za-z0-9_-]{35,}", varian):
+                    calon_nama.append(varian)
+                cocok_nama = re.match(r"^(.*?)([0-9]{6,})_([A-Za-z0-9_-]{35,})$", varian)
+                if cocok_nama:
+                    calon_nama.append("%s%s:%s" % (cocok_nama.group(1), cocok_nama.group(2), cocok_nama.group(3)))
             if any(mengandung_token(c) for c in calon_nama):
                 gagal.append("Kemungkinan token bot asli pada NAMA berkas %s "
                              "pada commit %s (riwayat rentang) — token tetap "
