@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Langkah ekstensi terlarang cek-cepat kini juga menangkap pemisah '-' dan '_' (issue #1738): sufiks sesudah ekstensi terlarang sebelumnya hanya diakui bila berawalan titik, sehingga nama seperti release.p12-bak atau release.p12_bak lolos; kini ketiga pemisah diakui di langkah staged maupun pohon terlacak.
 - Langkah pesan cek-cepat kini juga menilai metadata author/committer (issue #1737): vonis rentang CI menilai %an/%ae/%cn/%ce sejak #1717 tetapi gerbang lokal hanya membaca %B, sehingga commit lokal bermetadata token lolos diam-diam di lokal; kini himpunan commit yang sama dinilai metadata-nya juga.
 - Penilai fragmen pesan disatukan ke satu aturan blok (issue #1736): dua pita lama (kecil >=6 baris <=8 aksara; sedang >=3 baris 9..40) menyisakan pita buta bersama — belahan 2 baris, campuran ukuran 8/9, campuran sedang+kecil; kini satu sapuan blok baris murni (tiap baris <=64 aksara, >=2 baris, sambungan >=42 aksara) menilai semuanya di kedua penilai (cek-token dan verifikasi-path).
 - Gabungan nama satu commit kini dinilai dalam banyak urutan sambung (issue #1735): sebelumnya hanya urutan sortir yang dinilai sehingga belahan yang paruh ekornya menyorir lebih dulu — termasuk belahan lintas direktori — lolos; kini urutan diff dan semua pasangan dua nama dalam kedua urutan ikut dinilai (berpagar 60 nama).
