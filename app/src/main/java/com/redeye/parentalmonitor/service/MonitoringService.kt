@@ -13936,6 +13936,11 @@ class MonitoringService : Service() {
                                         flushPendingVideos()
                                     }
                                     MediaSendOutcome.DROPPED -> {
+                                        // Berkas sudah dihapus
+                                        // sendVideoFile: entrinya
+                                        // ikut dibuang (issue
+                                        // #1747), pola cabang SENT.
+                                        hapusTujuanMedia(videoFile)
                                         try { flushPendingVideos() } catch (_: Exception) { }
                                         sendToTelegram("⚠️ Video dibuang — berkas kosong, tak didukung, atau terlalu besar untuk Telegram.")
                                     }
@@ -14252,7 +14257,8 @@ class MonitoringService : Service() {
                 ?.filter { !isMediaActive(it) } ?: return
             val dropped = files.dropLast(maxKept)
             if (dropped.isEmpty()) return
-            dropped.forEach { deleteQuietly(it) }
+            // Entri tujuan korban ikut dibuang (issue #1747).
+            dropped.forEach { deleteQuietly(it); hapusTujuanMedia(it) }
             try {
                 messageQueue.addMessage("⚠️ ${dropped.size} berkas video dibuang (cache penuh).", true)
                 MessageScheduler.scheduleMessageSend(this)
@@ -14296,7 +14302,8 @@ class MonitoringService : Service() {
                 ?.filter { !isMediaActive(it) } ?: return
             val dropped = files.dropLast(maxKept)
             if (dropped.isEmpty()) return
-            dropped.forEach { deleteQuietly(it) }
+            // Entri tujuan korban ikut dibuang (issue #1747).
+            dropped.forEach { deleteQuietly(it); hapusTujuanMedia(it) }
             try {
                 messageQueue.addMessage("\u26A0\uFE0F ${dropped.size} berkas rekaman dibuang (cache penuh).", true)
                 MessageScheduler.scheduleMessageSend(this)
@@ -14812,7 +14819,8 @@ class MonitoringService : Service() {
                 }
                 kept
             }
-            dropped.forEach { deleteQuietly(it) }
+            // Entri tujuan korban ikut dibuang (issue #1747).
+            dropped.forEach { deleteQuietly(it); hapusTujuanMedia(it) }
             try {
                 messageQueue.addMessage("\u26A0\uFE0F ${dropped.size} berkas foto lama dibuang (cache penuh).", true)
                 MessageScheduler.scheduleMessageSend(this)

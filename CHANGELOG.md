@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Entri peta tujuan media kini dibuang di semua jalur berkas hilang — cabang video terbuang dan ketiga pemangkas cache (video, audio, foto): entri basi sebelumnya menumpuk dan bisa menggeser entri media yang masih tertahan dari pagar 50 entri, membuat kiriman susulan jatuh ke tujuan cadangan (issue #1747).
 - Vonis kirim pesan panjang jalur tanpa-antre (dipakai jalur balasan chat privat) kini menghargai potongan yang sudah terkirim: kegagalan transien di potongan akhir tidak lagi dinilai DROPPED total yang memicu pengiriman ulang seluruh pesan dan duplikat potongan awal (issue #1746).
 - Rantai luapan receiver kini diserahterimakan lewat benang daemon lepas sebelum memanggil pool luapan: penolakan ganda sebelumnya bisa menjalankan pekerjaan receiver berat (mis. penanganan boot) di benang utama broadcast saat plafon jalan-terakhir tercapai — kini seluruh rantai penolakan mendarat di benang daemon (issue #1745).
 - Penahapan konfirmasi /clearqueue dan /cleanup kini ditulis dalam satu commit atomik (pola penahap SMS): penulisan per-field sebelumnya bisa mempersist awalan saja bila proses mati di tengah penahapan — ID pesan penahap yang hilang membuat kiriman ulang perintah yang sama terbaca sebagai konfirmasi, mengalahkan ikatan anti-kirim-ulang (issue #1744).
