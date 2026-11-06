@@ -351,9 +351,25 @@ def mengandung_fragmen_pesan(teks):
     # sehingga bloknya putus, dan sambungan yang
     # dinilai tetap harus lolos mengandung_token.
     def nilai(blok):
-        return (len(blok) >= 2
-                and sum(len(b) for b in blok) >= 42
-                and mengandung_token("".join(blok)))
+        if len(blok) < 2 or sum(len(b) for b in blok) < 42:
+            return False
+        if mengandung_token("".join(blok)):
+            return True
+        # Baris pemisah murni (issue #1750): baris yang
+        # isinya hanya '=', '/', atau ':' ikut tergabung
+        # ke blok (aksaranya anggota alfabet blok) tetapi
+        # tidak dibuang _padatkan dan bukan alfabet ekor
+        # token, jadi gabungan polosnya tak pernah cocok
+        # — blok dinilai ulang tanpa baris-baris itu.
+        # Baris ':' yang ASLI milik token (belahan tepat
+        # di titik dua awalan) tetap tertangkap gabungan
+        # polos di atas, jadi membuangnya di varian ini
+        # tidak membuka lubang.
+        inti = [b for b in blok if not re.fullmatch(r"[=\/:]+", b)]
+        if inti == blok:
+            return False
+        gabung = "".join(inti)
+        return len(gabung) >= 42 and mengandung_token(gabung)
 
     # Satu baris penyela (issue #1749): dua blok
     # yang terpisah TEPAT satu baris non-anggota

@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Penilai fragmen token kini juga menilai blok tanpa baris pemisah murni berisi '=', '/', atau ':': baris semacam itu sebelumnya ikut tergabung dan meracuni gabungan sehingga belahan token yang disela baris pemisah lolos (issue #1750).
 - Penilai fragmen token di pesan kini juga menilai dua blok baris yang terpisah tepat satu baris penyela (mis. baris kosong): dua paruh token yang disela satu baris sebelumnya masing-masing menjadi blok satu baris dan tak pernah dinilai tersambung (issue #1749).
 - Media tertahan kini punya anggaran percobaan (20 kali, sejajar batas coba-ulang antrean pesan): berkas yang selalu dinilai gagal-sementara pada setiap pengiriman susulan akhirnya dibuang dan dilaporkan, bukan diunggah ulang penuh selamanya pada setiap flush (issue #1748).
 - Entri peta tujuan media kini dibuang di semua jalur berkas hilang — cabang video terbuang dan ketiga pemangkas cache (video, audio, foto): entri basi sebelumnya menumpuk dan bisa menggeser entri media yang masih tertahan dari pagar 50 entri, membuat kiriman susulan jatuh ke tujuan cadangan (issue #1747).
