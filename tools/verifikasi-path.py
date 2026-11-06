@@ -2671,11 +2671,13 @@ def cek_secret_pesan(gagal, rentang):
     hidup permanen di riwayat — media yang sama dengan #750.
     """
     daftar_commit = jalan("git", "rev-list", rentang) or ""
+    daftar_pesan = []
     for sha in daftar_commit.splitlines():
         sha = sha.strip()
         if not sha:
             continue
         pesan = jalan("git", "log", "-1", "--format=%B", sha)
+        daftar_pesan.append(pesan or "")
         if mengandung_token_pesan(pesan) or _pesan_terbelah(pesan):
             gagal.append("Kemungkinan token bot asli di PESAN commit %s — "
                          "token di pesan commit hidup permanen di riwayat; "
@@ -2695,6 +2697,31 @@ def cek_secret_pesan(gagal, rentang):
                          "itu. Kredensial hanya via input manual "
                          "SetupActivity" % sha[:8])
             return
+
+    # Gabungan pesan LINTAS commit (issue #1786): token
+    # yang dipecah di batas dua pesan — kepala di ujung
+    # pesan satu commit, ekor di awal pesan commit
+    # berikutnya — tak terlihat penilai per commit di
+    # atas. Gabungan kedua arah urutan dinilai dengan
+    # penilai pesan yang sama; kanal tanpa-spasi dan
+    # penilai fragmen menyambung belahan tepat di
+    # jahitannya. Langkah 5e cek-cepat sudah menggabung
+    # pesan belum-ter-push seperti ini — vonis rentang
+    # CI kini setara.
+    if len(daftar_pesan) > 1:
+        for gabungan in ("\n".join(daftar_pesan),
+                         "\n".join(reversed(daftar_pesan))):
+            if mengandung_token_pesan(gabungan) or _pesan_terbelah(gabungan):
+                gagal.append("Kemungkinan token bot asli "
+                             "TERBELAH lintas pesan commit "
+                             "dalam rentang — kepala dan ekor "
+                             "token hidup di dua pesan commit "
+                             "berurutan dan tersambung bila "
+                             "pesan digabung; tulis ulang "
+                             "kedua pesan itu sebelum push. "
+                             "Kredensial hanya via input "
+                             "manual SetupActivity")
+                return
 
     # Pesan ANOTASI TAG: dinilai pembantu bersama
     # _cek_pesan_tag (issue #1713, #1741; dipakai
@@ -2736,6 +2763,23 @@ def cek_secret_pesan_semua(gagal):
                          "rotasi token itu. Kredensial hanya via input "
                          "manual SetupActivity" % sha.strip()[:8])
             return
+    # Gabungan pesan LINTAS commit (issue #1786):
+    # belahan di batas dua pesan dinilai seperti mode
+    # rentang — gabungan kedua arah urutan dari semua
+    # rekaman yang sudah terkumpul di atas.
+    if len(rekaman_list) > 1:
+        semua_pesan = [r.partition("\x00")[2] for r in rekaman_list]
+        for gabungan in ("\n".join(semua_pesan),
+                         "\n".join(reversed(semua_pesan))):
+            if mengandung_token_pesan(gabungan) or _pesan_terbelah(gabungan):
+                gagal.append("Kemungkinan token bot asli "
+                             "TERBELAH lintas pesan commit "
+                             "dalam riwayat — kepala dan ekor "
+                             "token hidup di dua pesan commit "
+                             "berurutan; rotasi token itu. "
+                             "Kredensial hanya via input "
+                             "manual SetupActivity")
+                return
     # Pesan anotasi tag ikut dinilai (issue #1768):
     # mode forensik penuh sebelumnya hanya membaca
     # %B — perbaikan #1741 untuk mode rentang tidak

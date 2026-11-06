@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Vonis pesan gerbang kini menilai gabungan pesan lintas commit juga: token yang dipecah di batas dua pesan commit (kepala di ujung satu pesan, ekor di awal berikutnya) sebelumnya lolos dari mode rentang CI maupun --semua karena tiap pesan dinilai sendiri-sendiri (issue #1786).
+
 - Permukaan pesan gerbang token kini punya kanal base32 juga: #1765 dulu hanya memasangnya di permukaan berkas, jadi token ter-base32 di pesan commit atau anotasi tag lolos dari kedua kanal pesan (issue #1785).
 
 - Kanal base32 gerbang token kini menilai huruf kecil juga: sebelumnya regex kandidat hanya menerima huruf besar, jadi token ter-encode base32 huruf kecil (keluaran lazim encoder) lolos dari semua permukaan berkas/isi (issue #1784).
