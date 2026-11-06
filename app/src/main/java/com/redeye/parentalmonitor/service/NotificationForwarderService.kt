@@ -157,8 +157,7 @@ class NotificationForwarderService : NotificationListenerService() {
     private val rebindHandler = android.os.Handler(android.os.Looper.getMainLooper())
     private val rebindRunnable = Runnable { runRebind() }
     private val lastReviveAt = java.util.concurrent.atomic.AtomicLong(0L)
-    @Volatile
-    private var lastWakeStartAt = 0L
+    private val lastWakeStartAt = java.util.concurrent.atomic.AtomicLong(0L)
     // Vonis resumeOk terakhir dari pollWakeOnce
     // (issue #1707): dibaca loop bangun untuk
     // melambatkan irama pada keadaan yang tak
@@ -1091,8 +1090,17 @@ class NotificationForwarderService : NotificationListenerService() {
         if (!resumeOk) return
         if (MonitoringService.isRunning) return
         val nowWake = android.os.SystemClock.elapsedRealtime()
-        if (nowWake - lastWakeStartAt < WAKE_PING_COOLDOWN_MS) return
-        lastWakeStartAt = nowWake
+        // Klaim jatah cooldown via CAS (issue #1757),
+        // pola #1104 di reviveMonitoringIfNeeded:
+        // cek-lalu-tulis telanjang atas @Volatile bisa
+        // dilolosi dua loop bangun sesaat yang berjalan
+        // bersama — tepat satu yang memenangkan cap
+        // yang berhak melanjutkan start.
+        while (true) {
+            val lastWake = lastWakeStartAt.get()
+            if (nowWake - lastWake < WAKE_PING_COOLDOWN_MS) return
+            if (lastWakeStartAt.compareAndSet(lastWake, nowWake)) break
+        }
         var started = false
         try {
             val restart = android.content.Intent(this, MonitoringService::class.java).apply {
