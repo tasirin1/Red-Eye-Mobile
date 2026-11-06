@@ -3594,7 +3594,7 @@ class MonitoringService : Service() {
             0L
         }
         val idPesan = try { query.message?.messageId ?: 0L } catch (_: Exception) { 0L }
-        val pressedAt = jangkarMenuSec(lahirAt, idPesan)
+        val pressedAt = jangkarMenuSec(lahirAt, originChat.ifEmpty { chatId }, idPesan)
         if (aksi is com.redeye.parentalmonitor.utils.MenuCallback.AskInput) {
             if (!ownerOk) return
             if (pressedAt <= 0L || serverNowSec() - pressedAt > MUTATING_MAX_AGE_SEC) {
@@ -3682,12 +3682,19 @@ class MonitoringService : Service() {
     // (dicatat di editMenuMessage); pesan yang tak pernah
     // diedit tetap menua dari lahirnya, dan peta kosong
     // sesudah proses hidup lagi (arah aman).
-    private val menuRenderAt = java.util.Collections.synchronizedMap(java.util.LinkedHashMap<Long, Long>(16, 0.75f, true))
+    // Kunci peta = chat + pesan (issue #1777): nomor pesan
+    // Telegram berurutan PER CHAT dan independen antar chat,
+    // jadi kunci nomor saja membuat render menu di satu chat
+    // menyegarkan jangkar menu bernomor sama di chat lain —
+    // gerbang kesegaran harus menilai pesan di chat-nya sendiri.
+    private val menuRenderAt = java.util.Collections.synchronizedMap(java.util.LinkedHashMap<String, Long>(16, 0.75f, true))
 
-    private fun catatRenderMenu(messageId: Long) {
+    private fun kunciRenderMenu(chatId: String, messageId: Long): String = "$chatId:$messageId"
+
+    private fun catatRenderMenu(chatId: String, messageId: Long) {
         if (messageId <= 0L) return
         synchronized(menuRenderAt) {
-            menuRenderAt[messageId] = serverNowSec()
+            menuRenderAt[kunciRenderMenu(chatId, messageId)] = serverNowSec()
             // Eviksi entri TERTUA saja (issue #1175): clear()
             // total membuang juga jangkar yang baru dicatat dan
             // semua menu aktif lain; peta berurutan-akses
@@ -3700,8 +3707,8 @@ class MonitoringService : Service() {
         }
     }
 
-    private fun jangkarMenuSec(tanggalLahir: Long, messageId: Long): Long {
-        val render = try { menuRenderAt[messageId] ?: 0L } catch (_: Exception) { 0L }
+    private fun jangkarMenuSec(tanggalLahir: Long, chatId: String, messageId: Long): Long {
+        val render = try { menuRenderAt[kunciRenderMenu(chatId, messageId)] ?: 0L } catch (_: Exception) { 0L }
         return maxOf(tanggalLahir, render)
     }
 
@@ -3724,7 +3731,7 @@ class MonitoringService : Service() {
             val url = "https://api.telegram.org/bot${botToken}/editMessageText"
             val response = TelegramClient.api.editMessageText(url, body)
             if (response.isSuccessful && response.body()?.ok == true) {
-                catatRenderMenu(messageId)
+                catatRenderMenu(chatId, messageId)
                 return true
             }
             val galat = try { response.errorBody()?.string().orEmpty() } catch (_: Exception) { "" }
@@ -3735,7 +3742,7 @@ class MonitoringService : Service() {
                 NetworkUtils.noteRateLimited(retryAfter)
             }
             val takBerubah = galat.contains("not modified", ignoreCase = true)
-            if (takBerubah) catatRenderMenu(messageId)
+            if (takBerubah) catatRenderMenu(chatId, messageId)
             return takBerubah
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e

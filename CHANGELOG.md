@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Fixed
+
+- Jangkar kesegaran menu kini dikunci per chat + pesan: sebelumnya nomor pesan saja yang menjadi kunci, padahal nomor pesan Telegram independen antar chat — render menu di satu chat bisa menyegarkan gerbang umur 300 detik menu bernomor sama di chat lain (issue #1777).
+
 ## [1.6.644] - 2026-11-06
 
 ### Fixed
