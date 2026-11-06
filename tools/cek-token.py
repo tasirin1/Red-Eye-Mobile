@@ -427,11 +427,18 @@ def mengandung_token_pesan(teks):
         if _pola_mentah_cocok(varian) or \
                 _pola_mentah_cocok(re.sub(r"\s+", "", varian)):
             return True
-    for sumber in (teks, tanpa_spasi):
+    # Komposisi silang (issue #1812): varian terbuka
+    # juga diteruskan ke dekoder di bawah — token yang
+    # di-base64 lalu hasil base64-nya di-persen/escape/
+    # entitas-kan lolos bila varian hanya dinilai pola
+    # mentah. Sumber dekoder kini teks + tanpa spasi +
+    # semua varian terbuka.
+    sumber_semua = [teks, tanpa_spasi] + _varian_terbuka(teks)
+    for sumber in sumber_semua:
         for m in POLA_KANDIDAT_B64.finditer(sumber):
             if _cocok_b64(m.group(0)):
                 return True
-    for sumber in (teks, tanpa_spasi):
+    for sumber in sumber_semua:
         for m in POLA_KANDIDAT_HEX.finditer(sumber):
             s = m.group(0)
             if len(s) % 2 == 1:
@@ -446,7 +453,7 @@ def mengandung_token_pesan(teks):
     # dengan permukaan berkas (#1765 + huruf kecil
     # #1784) — hasil dekode tetap harus cocok pola
     # byte token persis.
-    for sumber in (teks, tanpa_spasi):
+    for sumber in sumber_semua:
         for m in re.finditer(r"[A-Za-z2-7]{40,}={0,6}", sumber):
             s32 = m.group(0).upper()
             s32 += "=" * ((8 - len(s32) % 8) % 8)
@@ -551,7 +558,14 @@ def mengandung_token(teks):
     if rapat != teks and _pola_mentah_cocok(rapat):
         return True
     tanpa_spasi = re.sub(r"\s+", "", teks)
-    for sumber in (teks, tanpa_spasi, rapat):
+    # Komposisi silang (issue #1812): varian terbuka
+    # (mentah + terpadatkan) ikut menjadi sumber
+    # dekoder, sama seperti di permukaan pesan.
+    sumber_semua = [teks, tanpa_spasi, rapat]
+    for varian in _varian_terbuka(teks):
+        sumber_semua.append(varian)
+        sumber_semua.append(_padatkan(varian))
+    for sumber in sumber_semua:
         for m in POLA_KANDIDAT_B64.finditer(sumber):
             if _cocok_b64(m.group(0)):
                 return True
@@ -560,7 +574,7 @@ def mengandung_token(teks):
     # cocok pola token persis, jadi hash panjang biasa tidak tertuduh.
     # Sumber kini termasuk teks terpadatkan (issue #802): hex yang
     # terbelah gabung-string/koma tersambung lagi di sana.
-    for sumber in (teks, tanpa_spasi, rapat):
+    for sumber in sumber_semua:
         for m in POLA_KANDIDAT_HEX.finditer(sumber):
             s = m.group(0)
             if len(s) % 2 == 1:
@@ -598,7 +612,7 @@ def mengandung_token(teks):
     # encoder lazim mengeluarkan base32 huruf
     # kecil; kandidat dinormalkan ke huruf besar
     # sebelum dekode.
-    for sumber in (teks, tanpa_spasi, rapat):
+    for sumber in sumber_semua:
         for m in re.finditer(r"[A-Za-z2-7]{40,}={0,6}", sumber):
             s32 = m.group(0).upper()
             s32 += "=" * ((8 - len(s32) % 8) % 8)

@@ -265,6 +265,22 @@ class UjiKanalBerkasTambahan(unittest.TestCase):
         self.assertFalse(cek_token.mengandung_token(jinak2))
         self.assertFalse(cek_token.mengandung_token_pesan(jinak2))
 
+    def test_komposisi_silang_varian_dekoder(self):
+        # Issue #1812: varian terbuka diteruskan ke
+        # dekoder — encode di atas encode tertangkap.
+        b64 = base64.b64encode(TOKEN.encode()).decode()
+        persen = "".join("%%%02X" % ord(c) for c in b64)
+        self.assertTrue(cek_token.mengandung_token(persen))
+        self.assertTrue(cek_token.mengandung_token_pesan(persen))
+        escx = "".join("\\x%02x" % ord(c) for c in b64)
+        self.assertTrue(cek_token.mengandung_token(escx))
+        self.assertTrue(cek_token.mengandung_token_pesan(escx))
+        hx_persen = "".join("%%%02X" % ord(c) for c in TOKEN.encode().hex())
+        self.assertTrue(cek_token.mengandung_token(hx_persen))
+        jinak = "".join("%%%02X" % ord(c) for c in "teks jinak biasa saja")
+        self.assertFalse(cek_token.mengandung_token(jinak))
+        self.assertFalse(cek_token.mengandung_token_pesan(jinak))
+
     def test_escape_U_dan_dua_lapis(self):
         # Issue #1811: escape \U 8-digit dikenali, dan
         # escape dua lapis (kedua arah) terbuka oleh dua
