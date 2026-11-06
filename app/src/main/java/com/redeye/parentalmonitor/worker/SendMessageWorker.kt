@@ -1031,7 +1031,11 @@ class SendMessageWorker(
             if (response.isSuccessful && response.body()?.ok == true) {
                 SendOutcome.Sent
             } else if (response.code() == 400) {
-                classify400(response, chatId) ?: if (message.length > 4000) sendChunked(message, botToken, chatId, retryCount, origId, deadlineAt, priority, runGen, chunksSent) else sendPlainFallback(message, botToken, chatId)
+                // Pesan >4000 tak pernah mencapai cabang ini
+                // (gerbang #1732 di pintu fungsi memotongnya
+                // lebih dulu) — cabang mati itu dihapus di
+                // issue #1782; fallback-nya selalu teks polos.
+                classify400(response, chatId) ?: sendPlainFallback(message, botToken, chatId)
             } else if (response.code() == 429) {
                 rateLimited(response)
             } else if (response.code() == 401) {

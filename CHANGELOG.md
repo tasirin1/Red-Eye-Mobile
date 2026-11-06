@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Cabang mati pada penanganan respons 400 SendMessageWorker dihapus: pesan panjang sudah dipotong di pintu fungsi sejak #1732, jadi lengan pemotongan di cabang 400 tak pernah terjangkau dan hanya menyesatkan pembaca jalur klasifikasi (issue #1782).
+
 - Bitmap hasil skala pada jepretan Aksesibilitas kini didaur ulang juga pada jalur gagal-salin: sebelumnya bitmap skala berkonfigurasi HARDWARE yang salinan lunaknya gagal ditinggalkan tanpa recycle dan bebasnya menunggu finalizer (issue #1781).
 
 - Daftar foto tertahan kini dibaca dari cache otoritatif sesudah muatan pertama: sebelumnya setiap panggilan — termasuk per berkas di dalam loop flush foto — membayar dua baca prefs terdekripsi hanya untuk menemukan nilai tak berubah, karena penulisnya tak memperbarui penanda cache (issue #1780).
