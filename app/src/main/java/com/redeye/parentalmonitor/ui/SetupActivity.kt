@@ -597,6 +597,24 @@ class SetupActivity : AppCompatActivity() {
         window.addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
         setContentView(R.layout.activity_setup)
 
+        // Tepi-ke-tepi dipaksakan bagi aplikasi target
+        // SDK 35+ sejak Android 15 dan opt-out tema
+        // diabaikan untuk target 36 di Android 16
+        // (issue #1709): tanpa penanganan insets isi
+        // digambar menembus bar sistem dan baris tombol
+        // terbawah bisa tertutup gesture bar. Beri
+        // bantalan bar sistem pada akar tampilan; hanya
+        // API 35+ (di sana penegakannya berlaku), API
+        // lebih lama tak berubah.
+        if (android.os.Build.VERSION.SDK_INT >= 35) {
+            val akar = findViewById<android.view.View>(android.R.id.content)
+            androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(akar) { v, insets ->
+                val bar = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+                v.setPadding(bar.left, bar.top, bar.right, bar.bottom)
+                insets
+            }
+        }
+
         pendingRestoreOwnerId = savedInstanceState?.getLong(STATE_RESTORE_OWNER, 0L) ?: 0L
         pendingRestorePinExpected = savedInstanceState?.getBoolean(STATE_RESTORE_PIN, false) ?: false
         pendingRestoreChatId = savedInstanceState?.getString(STATE_RESTORE_CHAT) ?: ""
