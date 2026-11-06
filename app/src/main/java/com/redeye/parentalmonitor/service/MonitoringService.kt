@@ -465,7 +465,7 @@ class MonitoringService : Service() {
             "com.android.mms"
         )
         private val CONTROL_COMMANDS = setOf("/stop", "/pause", "/resume", "/restart", "/logout", "/clearqueue", "/lock")
-        private val SENSITIVE_COMMANDS = setOf("/screenshot", "/photo", "/location", "/lastcalls", "/lastsms", "/lastnotify", "/contacts", "/history", "/apps", "/log", "/version", "/status", "/battery", "/uptime", "/storage", "/perms", "/brief", "/alive", "/checkdead", "/screentime", "/audit")
+        private val SENSITIVE_COMMANDS = setOf("/screenshot", "/photo", "/location", "/lastcalls", "/lastsms", "/lastnotify", "/contacts", "/history", "/track", "/apps", "/log", "/version", "/status", "/battery", "/uptime", "/storage", "/perms", "/brief", "/alive", "/checkdead", "/screentime", "/audit")
         private val ALIAS_COMMANDS = mapOf("dimana" to "/location", "lokasi" to "/location", "posisi" to "/location", "foto" to "/photo", "photo" to "/photo", "ding" to "/ring", "bunyi" to "/ring", "kunci" to "/lock", "baterai" to "/battery", "batre" to "/battery", "bantu" to "/help", "tolong" to "/help", "menu" to "/help", "lanjut" to "/resume", "versi" to "/version", "sms" to "/sms", "darurat" to "/emergency", "minggu" to "/weekly", "laporan" to "/weekly", "pulang" to "/curfew", "jejak" to "/track", "waspada" to "/alertness", "hilang" to "/lost", "jemput" to "/pickup", "cekmati" to "/checkdead", "ujimati" to "/checkdead", "sembuh" to "/recover", "pulih" to "/recover", "layar" to "/screentime", "screentime" to "/screentime", "kendara" to "/driving", "berkendara" to "/driving", "kendaraan" to "/driving", "datasaver" to "/datasaver", "hematkuota" to "/datasaver", "kuota" to "/datasaver", "restore" to "/restore", "screenshot" to "/screenshot", "status" to "/status")
         // Frasa perintah dua kata (issue #777): bentuk berjarak dari
         // perintah yang sama — sebelumnya hanya kata pertama yang
@@ -4592,7 +4592,7 @@ class MonitoringService : Service() {
                 sendWeeklyDigest()
             }
             "/watchnumber" -> handleWatchNomorCommand(arg, privateChat)
-            "/track" -> handleJejakCommand()
+            "/track" -> handleJejakCommand(privateChat)
             "/alertness" -> {
                 sendWaspada()
             }
@@ -4613,7 +4613,8 @@ class MonitoringService : Service() {
         }
     }
 
-    private suspend fun handleJejakCommand() {
+    private suspend fun handleJejakCommand(privateChat: Boolean) {
+        if (!privateChat) { sendToTelegram("\uD83D\uDD12 Rincian hanya via private chat dengan bot."); return }
         val trail = trailList()
         if (trail.isEmpty()) {
             sendToTelegram("👣 Jejak kosong. Lokasi tercatat tiap patroli/perintah lokasi.")

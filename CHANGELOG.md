@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Perintah /track kini anggota SENSITIVE_COMMANDS dan handler-nya menolak di luar chat privat (issue #1701): komentar #1541 menamai /track sebagai isi terlindungi tetapi set-nya tidak memuatnya, sehingga pengalih balasan tak pernah menyala dan koordinat + tautan rute terkirim ke chat terkonfigurasi (grup); kini dilindungi dua lapis seperti perintah lokasi lainnya.
 - Perintah /lastnotify kini menolak berjalan di luar chat privat (issue #1700): handler-nya tertinggal dari pola penolakan #1689 sehingga 10 notifikasi terakhir (aplikasi + judul + teks) bisa terpajang di chat terkonfigurasi yang berupa grup; kini diperiksa `privateChat` lebih dulu seperti handler data lainnya.
 
 ## [1.6.639] - 2026-11-06
