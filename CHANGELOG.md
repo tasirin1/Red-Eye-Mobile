@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Pasangan lintas-commit kini juga dicari sebagai baris murni di berkas besar (issue #1740): syarat pasangan berkas kecil <=128 KiB sebelumnya membuat paruh token yang hidup sebagai satu baris murni di dalam berkas besar tak pernah jadi kandidat; kini baris terpampat murni 20..96 aksara dari berkas >128 KiB ikut jadi kandidat dengan vonis penyelesaian yang sama.
 - Pasangan lintas-commit gerbang kini menoleransi tepi ternoda (issue #1739): satu aksara non-alfabet yang menempel di tepi berkas pasangan (mis. '!') sebelumnya meruntuhkan syarat kemurnian fullmatch walau isi paruhnya utuh; kini maks 2 aksara tepi per sisi dikupas sebelum menilai, inti tetap wajib murni penuh.
 - Langkah ekstensi terlarang cek-cepat kini juga menangkap pemisah '-' dan '_' (issue #1738): sufiks sesudah ekstensi terlarang sebelumnya hanya diakui bila berawalan titik, sehingga nama seperti release.p12-bak atau release.p12_bak lolos; kini ketiga pemisah diakui di langkah staged maupun pohon terlacak.
 - Langkah pesan cek-cepat kini juga menilai metadata author/committer (issue #1737): vonis rentang CI menilai %an/%ae/%cn/%ce sejak #1717 tetapi gerbang lokal hanya membaca %B, sehingga commit lokal bermetadata token lolos diam-diam di lokal; kini himpunan commit yang sama dinilai metadata-nya juga.

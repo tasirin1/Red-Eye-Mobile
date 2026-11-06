@@ -2408,6 +2408,28 @@ def _cek_belahan_lintas_commit(gagal, tip_rentang):
             if len(isi) <= 131072 and 20 <= len(murni_kupas) <= 96 \
                     and re.fullmatch(r"[A-Za-z0-9_-]+", murni_kupas):
                 murni_pohon[path] = murni_kupas
+            elif len(isi) > 131072:
+                # Pasangan di berkas BESAR (issue #1740):
+                # syarat berkas-kecil di atas membuat
+                # paruh yang hidup sebagai SATU baris
+                # murni di dalam berkas >128 KiB tak
+                # pernah jadi kandidat. Pindai barisnya:
+                # baris terpampat yang murni 20..96
+                # aksara (tepi ternoda dikupas seperti
+                # di atas) jadi kandidat pasangan berkas
+                # ini; vonis tetap penyelesaian token
+                # atas sambungan dengan kepala tertangkap.
+                for baris_besar in isi.splitlines():
+                    padat_baris = _padatkan(baris_besar)
+                    for _ in range(2):
+                        if padat_baris and not re.match(r"[A-Za-z0-9_-]", padat_baris[0]):
+                            padat_baris = padat_baris[1:]
+                        if padat_baris and not re.match(r"[A-Za-z0-9_-]", padat_baris[-1]):
+                            padat_baris = padat_baris[:-1]
+                    if 20 <= len(padat_baris) <= 96 \
+                            and re.fullmatch(r"[A-Za-z0-9_-]+", padat_baris):
+                        murni_pohon[path] = padat_baris
+                        break
         daftar_ekor = [p for p in sorted(ekor_pohon)
                        if re.search(r"[0-9]{5,}:[A-Za-z0-9_-]{0,34}$",
                                     ekor_pohon[p])
