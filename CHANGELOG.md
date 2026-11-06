@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Penghitung berkas dibuang pada flush media tak lagi menghitung berkas yang sama sampai 3 kali: cabang pembuangan terminal (berkas kosong dan video terlalu besar) kini mencatat berkas sebagai sudah dicoba, sehingga potret daftar menetap tidak menawarkannya lagi pada batch berikutnya (issue #1794).
+
 - Pembelajaran username bot kini digerbang token yang masih aktif dan memakai token hasil retry: getMe token lama yang selesai sesudah token diganti tak lagi menulis ulang username bot lama di atas token baru (yang membuat perintah beralamat bot baru dibuang senyap), dan getMe tak lagi menembak token yang baru saja ditolak Telegram sesudah retry 401/403 berhasil (issue #1793).
 
 - Cache sidik token kini satu referensi pasangan (token, hash) yang atomik: sebelumnya dua field terpisah bisa tercampur di sela pergantian token — nilai baru berpasangan hash lama — sehingga penilaian "token sama" di penyelesaian pelacakan update bisa salah dan konfirmasi offset aliran bot lama ikut dimajukan (issue #1792).

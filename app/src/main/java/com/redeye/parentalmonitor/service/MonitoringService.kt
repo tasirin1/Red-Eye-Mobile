@@ -14240,6 +14240,12 @@ class MonitoringService : Service() {
                         // Ikut terhitung terbuang (issue
                         // #1760): ringkasan pemilik menyebut
                         // jumlah berkas yang dibuang.
+                        // Pembuangan terminal WAJIB tercatat
+                        // sudah dicoba (issue #1794): potret
+                        // menetap #1773 akan menawarkannya lagi
+                        // di batch berikutnya dan menghitungnya
+                        // berulang sampai 3x.
+                        attempted.add(file.absolutePath)
                         dropped++
                         batchProgress = true
                         progress = true
@@ -14252,6 +14258,9 @@ class MonitoringService : Service() {
                     // buang sekali dan hitung sebagai dropped.
                     if (maxBytes > 0 && file.length() > maxBytes) {
                         deleteQuietly(file)
+                        // Tercatat sudah dicoba (issue #1794),
+                        // sama seperti cabang kosong di atas.
+                        attempted.add(file.absolutePath)
                         dropped++
                         batchProgress = true
                         progress = true
@@ -14954,6 +14963,10 @@ class MonitoringService : Service() {
                     if (!file.exists() || file.length() == 0L) {
                         deleteQuietly(file)
                         // Ikut terhitung terbuang (issue #1760).
+                        // Tercatat sudah dicoba (issue #1794):
+                        // tanpa ini potret menetap #1773
+                        // menghitung berkas yang sama sampai 3x.
+                        attempted.add(file.absolutePath)
                         droppedPhotos++
                         batchProgress = true
                         photoProgress = true
