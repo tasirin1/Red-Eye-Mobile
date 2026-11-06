@@ -14132,11 +14132,19 @@ class MonitoringService : Service() {
             val flushDeadline = android.os.SystemClock.elapsedRealtime() + MEDIA_FLUSH_DEADLINE_MS
             var batches = 0
             val attempted = HashSet<String>()
+            // Potret listing flush ini (issue #1773):
+            // dibangun sekali, dipakai semua batch —
+            // sebelumnya tiap batch mengulang listFiles
+            // + sortir hanya untuk membuang yang sudah
+            // dicoba. Berkas yang tiba di tengah flush
+            // tertahan gerbang umur dan ikut flush
+            // berikutnya.
+            var snapshotFlush: List<File>? = null
             drain@ while (batches < 3) {
                 val pending = try {
-                    val all = antreMedia().listFiles { file ->
+                    val all = snapshotFlush ?: (antreMedia().listFiles { file ->
                         file.isFile && file.name.startsWith(prefix) && file.name.endsWith(ext)
-                    }?.sortedBy { it.lastModified() } ?: break@drain
+                    }?.sortedBy { it.lastModified() } ?: break@drain).also { snapshotFlush = it }
                     lastFullListing = all
                     all.filter { it.absolutePath !in attempted }.take(max)
                 } catch (e: Exception) {
@@ -14835,11 +14843,14 @@ class MonitoringService : Service() {
             val flushDeadline = android.os.SystemClock.elapsedRealtime() + MEDIA_FLUSH_DEADLINE_MS
             var batches = 0
             val attempted = HashSet<String>()
+            // Potret listing flush ini (issue #1773),
+            // sama seperti flushMediaSkeleton di atas.
+            var snapshotFlush: List<File>? = null
             drain@ while (batches < 3) {
                 val pending = try {
-                    val all = antreMedia().listFiles { file ->
+                    val all = snapshotFlush ?: (antreMedia().listFiles { file ->
                         file.isFile && (file.name.startsWith("camera_") || file.name.startsWith("screenshot_")) && file.name.endsWith(".jpg")
-                    }?.sortedBy { it.lastModified() } ?: break@drain
+                    }?.sortedBy { it.lastModified() } ?: break@drain).also { snapshotFlush = it }
                     lastFullListing = all
                     all.filter { it.absolutePath !in attempted }.take(max)
                 } catch (e: Exception) {

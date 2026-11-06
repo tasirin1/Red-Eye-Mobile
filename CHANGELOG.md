@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Listing direktori media kini dibangun sekali per flush dan dipakai semua batch-nya: sebelumnya tiap batch (maksimum 3 per jenis media) mengulang pemindaian + sortir direktori hanya untuk membuang berkas yang sudah dicoba (issue #1773).
+
 - Jurnal media (tujuan, anggaran upaya, unggah tak pasti) kini didukung cermin memori yang dimuat sekali: sebelumnya setiap akses membaca berkas utuh dari cakram per berkas per siklus flush — penulis tetap mempersist utuh dari cermin, format dan daya tahan berkas tak berubah (issue #1772).
 
 - Himpunan aplikasi dikenal A11y di prefs kini berplafon keras 1000 entri: sebelumnya himpunan hanya menyusut lewat rekonsiliasi berkala, jadi selama layanan Aksesibilitas lama tidak aktif entri basi menumpuk tanpa batas (issue #1771).
