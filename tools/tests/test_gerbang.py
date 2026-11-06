@@ -639,6 +639,28 @@ class UjiPesanVerifikasiPath(unittest.TestCase):
             gagal, ["catatan " + "y" * 30 + " selesai"]))
         self.assertFalse(gagal)
 
+    def test_fragmen_tengah_pendek(self):
+        # Issue #1838: fragmen 11 aksara di TENGAH
+        # pesan + pasangannya di tepi branch sebelumnya
+        # lolos dari kedua mekanisme (lantai larian 12
+        # membuang run-nya); lantai awal kini 8.
+        enc = base64.urlsafe_b64encode(
+            TOKEN.encode()).decode().rstrip("=")
+        kepala, ekor = enc[:11], enc[11:]
+
+        def palsu(*args):
+            gabung = " ".join(args)
+            if "refs/heads" in gabung:
+                return "wip/" + ekor
+            return ""
+
+        self._pasang_jalan(palsu)
+        gagal = []
+        self.assertTrue(verifikasi._cek_pesan_tag(
+            gagal, ["prosa biasa " + kepala + " lanjutan"]))
+        self.assertTrue(any("lintas permukaan" in g for g in gagal),
+                        gagal)
+
     def test_tag_bersarang(self):
         # Issue #1826: objek tag dalam tanpa ref sendiri
         # — pesan tag dalamnya kini ditelusuri lewat

@@ -2963,10 +2963,16 @@ def _cek_pesan_tag(gagal, pesan_commit=None):
     # alfabet token dikumpulkan dari semua permukaan
     # + pesan dan dipasangkan antar-larian. Lantai
     # naik bertingkat bila jumlah pasangan meledak,
-    # agar biaya tetap terikat.
+    # agar biaya tetap terikat. Lantai awal 8 sejak
+    # issue #1838: fragmen 11 aksara di tengah pesan
+    # sebelumnya lolos dari kedua mekanisme (permukaan
+    # menuntut ketetanggaan tepi, larian membuang run
+    # di bawah 12); terukur di repo nyata biayanya
+    # tetap seorde karena tangga adaptif yang sama
+    # tetap menjadi pengikatnya.
     mentah = list(permukaan) + daftar_pesan
     larian = []
-    for lantai in (12, 16, 20, 24, 28):
+    for lantai in (8, 12, 16, 20, 24, 28):
         larian = []
         sudah = set()
         for t in mentah:
