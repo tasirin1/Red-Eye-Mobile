@@ -80,7 +80,7 @@ jobs:
     permissions:
       contents: read
     env:
-      GRADLE_SHA256: d725d707bfabd4dfdc958c624003b3c80accc03f7037b5122c4b1d0ef15cecab
+      GRADLE_SHA256: bd71102213493060956ec229d946beee57158dbd89d0e62b91bca0fa2c5f3531
 
     steps:
       - name: Checkout
@@ -97,27 +97,27 @@ jobs:
         run: |
           SDKMGR="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
           yes | "$SDKMGR" --licenses > /dev/null
-          "$SDKMGR" "platforms;android-35" "build-tools;35.0.0"
+          "$SDKMGR" "platforms;android-35" "platforms;android-36" "build-tools;35.0.0" "build-tools;36.0.0"
 
-      - name: Cache Gradle 8.9
+      - name: Cache Gradle 8.14.3
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
-          path: /opt/gradle-8.9
-          key: gradle-8.9-bin-${{ env.GRADLE_SHA256 }}
+          path: /opt/gradle-8.14.3
+          key: gradle-8.14.3-bin-${{ env.GRADLE_SHA256 }}
 
-      - name: Setup Gradle 8.9
+      - name: Setup Gradle 8.14.3
         run: |
-          if [ -x /opt/gradle-8.9/bin/gradle ] && [ "$(cat /opt/gradle-8.9/.sha256 2>/dev/null)" = "$GRADLE_SHA256" ]; then
-            echo "Gradle 8.9 dari cache terverifikasi."
+          if [ -x /opt/gradle-8.14.3/bin/gradle ] && [ "$(cat /opt/gradle-8.14.3/.sha256 2>/dev/null)" = "$GRADLE_SHA256" ]; then
+            echo "Gradle 8.14.3 dari cache terverifikasi."
           else
-            rm -rf /opt/gradle-8.9 /tmp/gradle.zip
-            wget -q https://services.gradle.org/distributions/gradle-8.9-bin.zip -O /tmp/gradle.zip
+            rm -rf /opt/gradle-8.14.3 /tmp/gradle.zip
+            wget -q https://services.gradle.org/distributions/gradle-8.14.3-bin.zip -O /tmp/gradle.zip
             echo "$GRADLE_SHA256  /tmp/gradle.zip" | sha256sum -c -
             unzip -q /tmp/gradle.zip -d /opt
-            echo "$GRADLE_SHA256" > /opt/gradle-8.9/.sha256
+            echo "$GRADLE_SHA256" > /opt/gradle-8.14.3/.sha256
             rm -f /tmp/gradle.zip
           fi
-          echo "/opt/gradle-8.9/bin" >> "$GITHUB_PATH"
+          echo "/opt/gradle-8.14.3/bin" >> "$GITHUB_PATH"
 
       - name: Cek tag cocok versionName
         if: startsWith(github.ref, 'refs/tags/v')

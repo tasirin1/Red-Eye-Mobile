@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Toolchain build naik ke generasi kini (issue #1674): Gradle 8.9 -> 8.14.3 (checksum distribusi baru di wrapper dan CI), AGP 8.7.3 -> 8.13.2 (garis 8.x terakhir; AGP 9 sengaja tidak dilompati karena memaksa Kotlin bawaan + DSL baru + Gradle 9 sekaligus), Kotlin 1.9.20 -> 2.3.21, detekt 1.23.7 -> 1.23.8. CI kini juga memasang platform android-36 + build-tools 36.0.0. Tangga ini diuji hijau dulu di Colab (kompilasi, uji unit, assemble debug/release, detekt) sebelum diterapkan; vonis resmi tetap CI.
+
 ## [1.6.638] - 2026-11-05
 
 ### Fixed
