@@ -95,6 +95,13 @@ class GeofenceLogicTest {
         assertFalse(GeofenceLogic.jemputHit(200, 150f, 201f))
         assertFalse(GeofenceLogic.jemputHit(200, 150f, -1f))
         assertFalse(GeofenceLogic.jemputHit(200, 150f, 0f))
+        // #1797: lantai akurasi #771 berlaku juga di sini — radius
+        // kecil memakai batas maxOf(radius/2, min(50, radius)),
+        // bukan setengah radius murni.
+        assertTrue(GeofenceLogic.jemputHit(50, 40f, 30f))
+        assertFalse(GeofenceLogic.jemputHit(50, 40f, 51f))
+        assertTrue(GeofenceLogic.jemputHit(30, 20f, 30f))
+        assertFalse(GeofenceLogic.jemputHit(30, 20f, 31f))
     }
 
     @Test

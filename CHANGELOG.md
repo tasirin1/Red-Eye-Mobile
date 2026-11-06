@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Gerbang akurasi kabar jemput (`/pickup`) diselaraskan dengan gerbang geofence lain: radius di bawah 100 m kini memakai lantai akurasi yang sama (maksimum dari setengah radius dan 50 m atau radius bila lebih kecil), sehingga kabar "siap dijemput" tidak lagi praktis mustahil terpicu oleh galat GPS kota biasa pada radius kecil (issue #1797).
+
 - Jurnal unggah-tak-pasti (`media_coba.txt`) kini ikut dibersihkan pada semua jalur hapus terminal flush dan prune cache media: sebelumnya berkas yang dibuang karena anggaran percobaan habis atau ter-prune menyisakan entri yatim yang menetap sampai terdesak plafon dan bisa menggeser entri hidup berkas lain (issue #1796).
 
 - Prune cache media sesudah flush tak lagi menilai berkas hantu: daftar potret awal flush kini disaring keberadaannya, sehingga berkas yang terkirim sukses selama flush tidak ikut terhitung isi cache dan tidak dilaporkan palsu sebagai "dibuang (cache penuh)" (issue #1795).

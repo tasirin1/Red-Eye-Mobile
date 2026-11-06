@@ -17,7 +17,13 @@ object GeofenceLogic {
         // menuntut akurasi paling tidak setengah radius — pola gerbang
         // perubahan state transition (issue #716) — agar satu fix yang
         // sangat tidak pasti tidak memicu kabar jemput palsu.
-        return jemputRadiusM > 0 && distM <= jemputRadiusM && accuracyM > 0f && accuracyM <= jemputRadiusM / 2f
+        // Lantai akurasi yang sama seperti transition/judgedOutside
+        // (issue #771, diselaraskan di #1797): pada radius < 100 m
+        // gerbang setengah radius murni lebih sempit dari galat GPS
+        // kota biasa, sehingga kabar jemput praktis tak pernah
+        // terpicu walau anak sudah di dalam radius.
+        val limit = maxOf(jemputRadiusM / 2, minOf(50, jemputRadiusM))
+        return jemputRadiusM > 0 && distM <= jemputRadiusM && accuracyM > 0f && accuracyM <= limit.toFloat()
     }
 
     fun judgedOutside(distM: Float, radiusM: Int, accuracyM: Float): Boolean {
