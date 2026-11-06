@@ -1143,7 +1143,7 @@ class SetupActivity : AppCompatActivity() {
                         // Toast dari Activity yang sudah hancur
                         // bisa gagal tampil di sebagian perangkat.
                         if (isFinishing || isDestroyed) return@withContext
-                        Toast.makeText(this@SetupActivity, getString(R.string.setup_save_failed, outcome.code), Toast.LENGTH_LONG).show()
+                        Toast.makeText(this@SetupActivity, getString(R.string.setup_save_failed, outcome.code.toString()), Toast.LENGTH_LONG).show()
                     }
                     return@launch
                 }
@@ -1747,7 +1747,7 @@ class SetupActivity : AppCompatActivity() {
                     markCredentialErrorIfStored(outcome.code, token, chatId, storedToken, storedChatId)
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                         if (isFinishing || isDestroyed) return@withContext
-                        Toast.makeText(this@SetupActivity, getString(R.string.setup_test_fail, outcome.code), Toast.LENGTH_LONG).show()
+                        Toast.makeText(this@SetupActivity, getString(R.string.setup_test_fail, outcome.code.toString()), Toast.LENGTH_LONG).show()
                     }
                     if (outcome.fromGetMe) return@launch
                 }
@@ -2212,7 +2212,7 @@ class SetupActivity : AppCompatActivity() {
                 val sisaRate = try { NetworkUtils.rateLimitedRemainMs() } catch (_: Exception) { 0L }
                 if (sisaRate > 0L) {
                     queueStatusMessage(text)
-                    val toastWait = getString(R.string.setup_status_failed, 429)
+                    val toastWait = getString(R.string.setup_status_failed, "429")
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                         if (isFinishing || isDestroyed) return@withContext
                         Toast.makeText(this@SetupActivity, toastWait, Toast.LENGTH_LONG).show()
@@ -2271,7 +2271,7 @@ class SetupActivity : AppCompatActivity() {
                         } catch (_: Exception) {
                         }
                         queueStatusMessage(text)
-                        val toastRetry = getString(R.string.setup_status_failed, failCode)
+                        val toastRetry = getString(R.string.setup_status_failed, failCode.toString())
                         kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                             if (isFinishing || isDestroyed) return@withContext
                             Toast.makeText(this@SetupActivity, toastRetry, Toast.LENGTH_LONG).show()
@@ -2332,7 +2332,7 @@ class SetupActivity : AppCompatActivity() {
                     NetworkUtils.tutupBadanError(resp)
                     queueStatusMessage(text)
                 }
-                val toastRes = if (ok) getString(R.string.setup_status_sent) else getString(R.string.setup_status_failed, failCode)
+                val toastRes = if (ok) getString(R.string.setup_status_sent) else getString(R.string.setup_status_failed, failCode.toString())
                 val toastLen = if (ok) Toast.LENGTH_SHORT else Toast.LENGTH_LONG
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                     if (isFinishing || isDestroyed) return@withContext
