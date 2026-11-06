@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.641] - 2026-11-06
+
 ### Fixed
 - Penilai fragmen pesan kini bersumber tunggal di tools/cek-token.py (issue #1742): verifikasi-path memuat penilai kanonik yang sama dengan gerbang lokal (pola pemuat yang sama dengan _padatkan) dan salinan lokalnya turun menjadi cadangan beraturan identik — menutup risiko divergensi struktural yang melahirkan #1719.
 - Pesan anotasi tag kini dinilai untuk SEMUA tag, bukan hanya yang targetnya di dalam rentang (issue #1741): saringan keanggotaan rentang sebelumnya membuat tag yang menunjuk commit lama tak pernah dinilai rentang mana pun, padahal pesan anotasi itu permanen dan ikut terbit.
