@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Bitmap hasil skala pada jepretan Aksesibilitas kini didaur ulang juga pada jalur gagal-salin: sebelumnya bitmap skala berkonfigurasi HARDWARE yang salinan lunaknya gagal ditinggalkan tanpa recycle dan bebasnya menunggu finalizer (issue #1781).
+
 - Daftar foto tertahan kini dibaca dari cache otoritatif sesudah muatan pertama: sebelumnya setiap panggilan — termasuk per berkas di dalam loop flush foto — membayar dua baca prefs terdekripsi hanya untuk menemukan nilai tak berubah, karena penulisnya tak memperbarui penanda cache (issue #1780).
 
 - Prune cache media kini membersihkan jurnal upaya juga, bukan hanya jurnal tujuan: berkas yang dibuang rotasi cache sebelumnya meninggalkan entri upaya yatim di media_upaya.txt sampai terdesak plafon 100 entri (issue #1779).

@@ -182,6 +182,12 @@ object ShotA11yCapture {
                                     try { scaled.recycle() } catch (_: Exception) { }
                                     return lunak
                                 }
+                                // Salin lunak gagal (issue #1781):
+                                // bitmap skala tak terpakai lagi
+                                // sesudah ini — daur ulang sekarang
+                                // sebelum jatuh ke jalur salin
+                                // penuh, jangan menunggu finalizer.
+                                try { scaled.recycle() } catch (_: Exception) { }
                             } else {
                                 return scaled
                             }
