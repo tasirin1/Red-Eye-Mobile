@@ -11601,7 +11601,7 @@ class MonitoringService : Service() {
             cameraService.capturePhoto(
                 lensFacing = selectedLensFacing(),
                 onPhotoTaken = { photoFile ->
-                    handleCapturedPhoto(photoFile, attempt, wd, reportResult)
+                    handleCapturedPhoto(photoFile, attempt, wd, reportResult, chatTujuan)
                 },
                 onError = { exception ->
                     handleCaptureError(exception, attempt, wd, reportResult)
@@ -11651,7 +11651,7 @@ class MonitoringService : Service() {
         return true
     }
 
-    private fun handleCapturedPhoto(photoFile: File, attempt: Int, wd: Job, reportResult: Boolean) {
+    private fun handleCapturedPhoto(photoFile: File, attempt: Int, wd: Job, reportResult: Boolean, chatTujuan: String = "") {
         if (cameraAttempt.get() != attempt) {
             try {
                 photoFile.delete()
@@ -11734,7 +11734,7 @@ class MonitoringService : Service() {
         }
         finishCaptureAttempt(wd)
         markMediaActive(photoFile)
-        sendCapturedPhoto(photoFile, reportResult, photoHashNow, analisisFoto.third, try { cameraService.lastLensFacing } catch (_: Exception) { -1 }, try { selectedLensFacing() } catch (_: Exception) { -1 })
+        sendCapturedPhoto(photoFile, reportResult, photoHashNow, analisisFoto.third, try { cameraService.lastLensFacing } catch (_: Exception) { -1 }, try { selectedLensFacing() } catch (_: Exception) { -1 }, chatTujuan)
     }
 
     private fun handleCaptureError(exception: Exception, attempt: Int, wd: Job, reportResult: Boolean) {
@@ -11795,7 +11795,7 @@ class MonitoringService : Service() {
         }
     }
 
-    private fun sendCapturedPhoto(photoFile: File, reportResult: Boolean, photoHashNow: Long, photoSpreadNow: Int = -1, lensUsed: Int = -1, lensAsked: Int = -1) {
+    private fun sendCapturedPhoto(photoFile: File, reportResult: Boolean, photoHashNow: Long, photoSpreadNow: Int = -1, lensUsed: Int = -1, lensAsked: Int = -1, chatTujuan: String = "") {
         // Spread grid untuk catatan 'nyaris tanpa detail'
         // (issue #1540) — tiba dari dekode tunggal di
         // handleCapturedPhoto (issue #1588); dihitung
