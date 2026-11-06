@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Daftar foto tertahan kini dibaca dari cache otoritatif sesudah muatan pertama: sebelumnya setiap panggilan — termasuk per berkas di dalam loop flush foto — membayar dua baca prefs terdekripsi hanya untuk menemukan nilai tak berubah, karena penulisnya tak memperbarui penanda cache (issue #1780).
+
 - Prune cache media kini membersihkan jurnal upaya juga, bukan hanya jurnal tujuan: berkas yang dibuang rotasi cache sebelumnya meninggalkan entri upaya yatim di media_upaya.txt sampai terdesak plafon 100 entri (issue #1779).
 
 - Pelacakan update Telegram tak lagi mendekripsi token + menghitung SHA-256 pada setiap update: sidik token kini di-cache per nilai token dan loop poll meneruskan token snapshot-nya — sebelumnya s.d. 50 dekripsi + hash berulang per batch untuk sidik yang sama (issue #1778).

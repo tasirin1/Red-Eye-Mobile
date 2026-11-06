@@ -11834,14 +11834,24 @@ class MonitoringService : Service() {
     // loop flush. Kini urai hanya bila string mentah / hash
     // warisan berubah; daftar hasil perlakuan baca-saja oleh
     // semua pemanggil (mutasi selalu membangun daftar baru).
+    // Sejak issue #1780 cache bersifat otoritatif sesudah
+    // muatan pertama: satu-satunya penulis daftar ini adalah
+    // storeHeldPhotoEntries di berkas ini, yang memperbarui
+    // cache pada tulisan yang berhasil — jadi bacaan tak lagi
+    // membayar dua baca prefs terdekripsi pada SETIAP
+    // panggilan (flush foto memanggilnya per berkas) hanya
+    // untuk menemukan nilai yang tak berubah.
     private var heldEntriesCacheRaw: String? = null
     private var heldEntriesCacheLegacy: Long = 0L
     private var heldEntriesCache: List<HeldPhotos.Entry> = emptyList()
+    @Volatile
+    private var heldEntriesCacheLoaded = false
 
     private fun heldPhotoEntriesNow(): List<HeldPhotos.Entry> {
-        val raw = try { preferencesManager.heldPhotoEntriesRaw } catch (_: Exception) { "" }
-        val legacy = try { preferencesManager.heldPhotoHash } catch (_: Exception) { 0L }
         synchronized(heldEntriesCacheLock) {
+            if (heldEntriesCacheLoaded) return heldEntriesCache
+            val raw = try { preferencesManager.heldPhotoEntriesRaw } catch (_: Exception) { "" }
+            val legacy = try { preferencesManager.heldPhotoHash } catch (_: Exception) { 0L }
             if (heldEntriesCacheRaw == raw && heldEntriesCacheLegacy == legacy) return heldEntriesCache
             val entries = ArrayList<HeldPhotos.Entry>()
             try { entries.addAll(HeldPhotos.parse(raw)) } catch (_: Exception) { }
@@ -11849,6 +11859,7 @@ class MonitoringService : Service() {
             heldEntriesCache = entries
             heldEntriesCacheRaw = raw
             heldEntriesCacheLegacy = legacy
+            heldEntriesCacheLoaded = true
             return entries
         }
     }
@@ -11856,7 +11867,20 @@ class MonitoringService : Service() {
     private fun storeHeldPhotoEntries(entries: List<HeldPhotos.Entry>) {
         // Satu edit atomik untuk pasangan daftar + penolkan
         // warisan (issue #1147).
-        try { preferencesManager.setHeldPhotoEntriesAndClearLegacySync(HeldPhotos.serialize(entries)) } catch (_: Exception) { }
+        val tertulis = try { preferencesManager.setHeldPhotoEntriesAndClearLegacySync(HeldPhotos.serialize(entries)) } catch (_: Exception) { false }
+        // Tulisan berhasil memperbarui cache otoritatif
+        // (issue #1780): tanpa ini pembaca berikutnya membaca
+        // ulang prefs hanya untuk menemukan perubahan yang
+        // baru saja dibuat proses ini sendiri. Gagal tulis
+        // membiarkan cache apa adanya (keadaan cakram lama).
+        if (tertulis) {
+            synchronized(heldEntriesCacheLock) {
+                heldEntriesCache = entries
+                heldEntriesCacheRaw = HeldPhotos.serialize(entries)
+                heldEntriesCacheLegacy = 0L
+                heldEntriesCacheLoaded = true
+            }
+        }
     }
 
     // Baca-ubah-tulis daftar foto tertahan di bawah satu kunci: situs-situs
