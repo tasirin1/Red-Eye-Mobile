@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.647] - 2026-11-06
+
 ### Fixed
 
 - Langkah uji regresi gerbang Python kini juga ada di job verifikasi build.yml yang menggerbang build dan rilis — sebelumnya langkah itu hanya ada di workflow Verifikasi yang berjalan independen, jadi regresi gerbang yang hanya tertangkap suite tidak menghalangi rilis terbit dari tag yang sama (issue #1817).
