@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Gerbang token: dekoder hex dan base32 kini dua lapis seperti base64, termasuk silang antar-dekoder (hex dari hex, base32 dari base32, b64(hex), hex(b64), b64(b32), b32(b64)) — sebelumnya perlakuan dua lapis #1802 hanya berlaku untuk base64 sehingga keenam komposisi itu lolos di kedua permukaan (issue #1813).
 - Gerbang token: komposisi silang satu lapis kini tertangkap — varian terbuka (persen/entitas/escape yang sudah dibuka) diteruskan juga ke dekoder base64/hex/base32, jadi token yang di-base64 lalu hasil base64-nya di-persen/`\x`/entitas-kan (atau di-hex lalu di-persen/di-`\u`-kan) tidak lagi lolos padahal tiap lapisnya sendirian sudah tertutup (issue #1812).
 - Gerbang token: escape `\UXXXXXXXX` (Python 8-digit) kini dikenali dekoder escape, dan escape dua lapis kedua arah (backslash ikut ter-escape, `\x` di atas `\u`) tertangkap — sebelumnya `\U` tak dikenali sama sekali dan escape bertingkat hanya tertangkap satu arah (issue #1811).
 - Gerbang token: encode web dua lapis kini tertangkap di kedua permukaan — pembuka varian berjalan dua lintasan, jadi titik-dua tertulis `%253A` (persen ganda) atau entitas bertingkat `&#38;#58;`/`&amp;#58;` terbuka sampai aksara aslinya (issue #1810).

@@ -265,6 +265,29 @@ class UjiKanalBerkasTambahan(unittest.TestCase):
         self.assertFalse(cek_token.mengandung_token(jinak2))
         self.assertFalse(cek_token.mengandung_token_pesan(jinak2))
 
+    def test_dekoder_dua_lapis_semua_pasangan(self):
+        # Issue #1813: hex dan base32 kini dua lapis
+        # seperti base64 #1802, termasuk silang antar
+        # dekoder — total tepat dua lapis.
+        hx = TOKEN.encode().hex()
+        b32 = base64.b32encode(TOKEN.encode()).decode()
+        b64 = base64.b64encode(TOKEN.encode()).decode()
+        for nama, s in [
+            ("hex(hex)", hx.encode().hex()),
+            ("b32(b32)", base64.b32encode(b32.encode()).decode()),
+            ("b64(hex)", base64.b64encode(hx.encode()).decode()),
+            ("hex(b64)", b64.encode().hex()),
+            ("b64(b32)", base64.b64encode(b32.encode()).decode()),
+            ("b32(b64)", base64.b32encode(b64.encode()).decode()),
+        ]:
+            with self.subTest(pasangan=nama):
+                self.assertTrue(cek_token.mengandung_token(s))
+                self.assertTrue(cek_token.mengandung_token_pesan(s))
+        jinak = base64.b64encode(
+            "teks jinak biasa saja".encode().hex().encode()).decode()
+        self.assertFalse(cek_token.mengandung_token(jinak))
+        self.assertFalse(cek_token.mengandung_token_pesan(jinak))
+
     def test_komposisi_silang_varian_dekoder(self):
         # Issue #1812: varian terbuka diteruskan ke
         # dekoder — encode di atas encode tertangkap.

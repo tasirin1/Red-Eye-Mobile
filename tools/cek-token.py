@@ -134,12 +134,61 @@ def _cocok_b64(kandidat, kedalaman=0):
                 # dinilai ulang satu tingkat — log/konfig
                 # bersarang lazim meng-encode dua kali.
                 # Kedalaman dibatasi tepat dua lapis.
-                lapis = hasil.decode("ascii", "ignore")
-                for m2 in POLA_KANDIDAT_B64.finditer(lapis):
-                    if _cocok_b64(m2.group(0), kedalaman + 1):
-                        return True
+                # Penilaian lapis bawah kini mencakup
+                # ketiga encoding (issue #1813).
+                if _nilai_lapis_bawah(hasil):
+                    return True
     return False
 
+
+def _cocok_hex(kandidat, kedalaman=0):
+    s = kandidat
+    if len(s) % 2 == 1:
+        s = s[:-1]
+    try:
+        hasil = bytes.fromhex(s)
+    except Exception:
+        return False
+    if POLA_BYTE.search(hasil):
+        return True
+    if kedalaman < 1:
+        return _nilai_lapis_bawah(hasil)
+    return False
+
+
+def _cocok_b32(kandidat, kedalaman=0):
+    s32 = kandidat.upper()
+    s32 += "=" * ((8 - len(s32) % 8) % 8)
+    try:
+        hasil = base64.b32decode(s32)
+    except Exception:
+        return False
+    if POLA_BYTE.search(hasil):
+        return True
+    if kedalaman < 1:
+        return _nilai_lapis_bawah(hasil)
+    return False
+
+
+def _nilai_lapis_bawah(hasil):
+    """Penilaian satu tingkat atas hasil dekode
+    (issue #1813): teks ASCII hasil dekode dipindai
+    kandidat base64/hex/base32 dan dinilai dekoder
+    masing-masing pada kedalaman 1 (pola saja, tanpa
+    rekursi lanjutan) — total tepat dua lapis untuk
+    semua pasangan encoding, menyelaraskan hex dan
+    base32 dengan base64 #1802."""
+    lapis = hasil.decode("ascii", "ignore")
+    for m in POLA_KANDIDAT_B64.finditer(lapis):
+        if _cocok_b64(m.group(0), 1):
+            return True
+    for m in POLA_KANDIDAT_HEX.finditer(lapis):
+        if _cocok_hex(m.group(0), 1):
+            return True
+    for m in re.finditer(r"[A-Za-z2-7]{40,}={0,6}", lapis):
+        if _cocok_b32(m.group(0), 1):
+            return True
+    return False
 
 def _padatkan(teks):
     # Sisipan interpolasi "${...}" dibuang utuh lebih dulu (menyamai
@@ -440,14 +489,7 @@ def mengandung_token_pesan(teks):
                 return True
     for sumber in sumber_semua:
         for m in POLA_KANDIDAT_HEX.finditer(sumber):
-            s = m.group(0)
-            if len(s) % 2 == 1:
-                s = s[:-1]
-            try:
-                hasil = bytes.fromhex(s)
-            except Exception:
-                continue
-            if POLA_BYTE.search(hasil):
+            if _cocok_hex(m.group(0)):
                 return True
     # Bentuk base32 (issue #1785): kanal yang sama
     # dengan permukaan berkas (#1765 + huruf kecil
@@ -455,13 +497,7 @@ def mengandung_token_pesan(teks):
     # byte token persis.
     for sumber in sumber_semua:
         for m in re.finditer(r"[A-Za-z2-7]{40,}={0,6}", sumber):
-            s32 = m.group(0).upper()
-            s32 += "=" * ((8 - len(s32) % 8) % 8)
-            try:
-                hasil = base64.b32decode(s32)
-            except Exception:
-                continue
-            if POLA_BYTE.search(hasil):
+            if _cocok_b32(m.group(0)):
                 return True
     return False
 
@@ -576,14 +612,7 @@ def mengandung_token(teks):
     # terbelah gabung-string/koma tersambung lagi di sana.
     for sumber in sumber_semua:
         for m in POLA_KANDIDAT_HEX.finditer(sumber):
-            s = m.group(0)
-            if len(s) % 2 == 1:
-                s = s[:-1]
-            try:
-                hasil = bytes.fromhex(s)
-            except Exception:
-                continue
-            if POLA_BYTE.search(hasil):
+            if _cocok_hex(m.group(0)):
                 return True
     # Bentuk byteArrayOf(0xNN, ...) (issue #802): urutan panjang
     # literal byte hex berkoma adalah bentuk tempelan hex yang lazim
@@ -614,13 +643,7 @@ def mengandung_token(teks):
     # sebelum dekode.
     for sumber in sumber_semua:
         for m in re.finditer(r"[A-Za-z2-7]{40,}={0,6}", sumber):
-            s32 = m.group(0).upper()
-            s32 += "=" * ((8 - len(s32) % 8) % 8)
-            try:
-                hasil = base64.b32decode(s32)
-            except Exception:
-                continue
-            if POLA_BYTE.search(hasil):
+            if _cocok_b32(m.group(0)):
                 return True
     return False
 
