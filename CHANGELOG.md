@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Vonis rentang kini mengupas ekstensi dari tiap nama berkas sebelum menggabungkan nama satu commit: ekstensi pada nama kepala belahan sebelumnya tertinggal di tengah gabungan dan memutus rekonstruksi token (issue #1761).
 - Ringkasan media terbuang kini menghitung juga berkas kosong/hilang yang dihapus flush: angka yang dilaporkan sebelumnya lebih kecil dari jumlah berkas yang benar-benar hilang pada putaran itu (issue #1760).
 - Pembaca peta tujuan media kini berkunci sama seperti kedua penulisnya: bacaan tanpa kunci sebelumnya bisa robek di tengah penulisan ulang dan menghasilkan tujuan yang salah (issue #1759).
 - Tujuh perintah status sensitif yang tersisa kini juga menolak di grup dan hanya menjawab lewat chat privat: /perms, /battery, /alive, /checkdead, /storage, /version, dan /uptime — inventaris izin, model HP, dan postur layanan tidak lagi terbit ke seluruh anggota grup (issue #1758).

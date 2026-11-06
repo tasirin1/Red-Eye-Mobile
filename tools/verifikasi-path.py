@@ -2255,6 +2255,28 @@ def cek_secret_riwayat(gagal, rentang):
                     for _j_gab in range(len(nama_gab_list)):
                         if _i_gab != _j_gab:
                             _tambah_gabungan(nama_gab_list[_i_gab] + nama_gab_list[_j_gab])
+            # Varian inti per nama (issue #1761):
+            # ekstensi dikupas dari TIAP nama sebelum
+            # digabung — kupas atas string gabungan
+            # hanya melepas ekstensi nama terakhir,
+            # jadi ekstensi nama KEPALA tertinggal di
+            # tengah dan memutus run ekor rekonstruksi.
+            def _kupas_inti(nama_inti):
+                for _ in range(3):
+                    if "." not in nama_inti:
+                        break
+                    nama_inti = nama_inti.rsplit(".", 1)[0]
+                    if not nama_inti:
+                        break
+                return nama_inti
+            nama_inti_list = [_kupas_inti(n) for n in nama_gab_list]
+            _tambah_gabungan("".join(sorted(nama_inti_list)))
+            _tambah_gabungan("".join(nama_inti_list))
+            if len(nama_inti_list) <= 60:
+                for _i_gab in range(len(nama_inti_list)):
+                    for _j_gab in range(len(nama_inti_list)):
+                        if _i_gab != _j_gab:
+                            _tambah_gabungan(nama_inti_list[_i_gab] + nama_inti_list[_j_gab])
             calon_gab = []
             for gabungan_nama in daftar_gabungan:
                 varian_gab = [gabungan_nama]
