@@ -25,6 +25,12 @@ import sys
 import urllib.parse
 
 POLA = re.compile(r"[0-9]{6,}:[A-Za-z0-9_-]{35,}")
+# Aksara format tak kasatmata (issue #1800): ZWSP/ZWNJ/ZWJ,
+# penggabung kata, BOM, tanda hubung lunak, kontrol bidi,
+# dan operator tak kasatmata. Tak pernah bermakna di teks
+# sumber/pesan, tetapi satu sisipan di tengah token
+# memutus pola DAN tak terlihat pada diff.
+POLA_FORMAT = re.compile(r"[\u00ad\u200b-\u200f\u202a-\u202e\u2060-\u2064\ufeff]+")
 _POLA_HEX = re.compile(r"[0-9a-fA-F]+\Z")
 # Penanda contoh eksplisit (issue #1530): teks di antara
 # dua penanda ini adalah CONTOH token terdokumentasi dan
@@ -133,7 +139,10 @@ def _padatkan(teks):
     # dibuang: merapatkan semua tanda baca kode terbukti menyambung
     # kata-kata kode biasa (fixture uji "A".repeat(35) dsb.) menjadi
     # ekor pola palsu.
-    rapat = re.sub(r"\$\{[^}]*\}", "", teks)
+    # Aksara format dibuang lebih dulu (issue #1800),
+    # sebelum pemisah lain dirapatkan.
+    rapat = POLA_FORMAT.sub("", teks)
+    rapat = re.sub(r"\$\{[^}]*\}", "", rapat)
     rapat = re.sub(r"[\s\"'\\+]+", "", rapat)
     rapat = re.sub(r"(?<=[A-Za-z0-9_-])\.(?=[A-Za-z0-9_-])", "", rapat)
     # Koma yang diapit karakter token juga pemisah belah (issue #802):
@@ -339,6 +348,11 @@ def mengandung_token_pesan(teks):
     if not teks:
         return False
     teks = _samarkan_contoh(teks)
+    # Aksara format tak kasatmata dibuang (issue #1800):
+    # ini BUKAN pemadatan #1425 — aksara ini tak pernah
+    # bermakna di pesan dan hanya bisa menjadi sisipan
+    # pemutus pola yang tak terlihat peninjau.
+    teks = POLA_FORMAT.sub("", teks)
     if _pola_mentah_cocok(teks):
         return True
     tanpa_spasi = re.sub(r"\s+", "", teks)
