@@ -8384,7 +8384,14 @@ class MonitoringService : Service() {
                     else -> SendStatus.DROPPED
                 }
             }
-            return SendStatus.DROPPED
+            // Tanpa antre (issue #1746): potongan yang
+            // sudah terkirim tetap terkirim. Menilai
+            // DROPPED di sini membuat pemanggil jalur
+            // override mengirim ulang SELURUH pesan dan
+            // menggandakan potongan awal; cabang
+            // campuran di atas menilai hasil parsial
+            // yang sama sebagai SENT.
+            return if (sentAny) SendStatus.SENT else SendStatus.DROPPED
         }
         return if (sentAny) SendStatus.SENT else SendStatus.DROPPED
     }
