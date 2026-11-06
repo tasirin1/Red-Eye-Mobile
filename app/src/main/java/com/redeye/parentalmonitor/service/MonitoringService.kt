@@ -5196,7 +5196,13 @@ class MonitoringService : Service() {
         // restore senyap — pemeriksa saat layanan mulai
         // menerapkannya sesudah tenggat (atau mengabarkan
         // gugurnya bila epoch berubah).
-        try {
+        // Kegagalan menyimpan tak lagi ditelan senyap
+        // (issue #1727): restore tetap berjalan di
+        // memori, tetapi pemilik diberi tahu bahwa
+        // restart proses di dalam jendela akan
+        // menggugurkannya — janji #1534 tak boleh
+        // mengklaim ketahanan yang tak ada.
+        val tersimpan = try {
             val jsonRestore = org.json.JSONObject()
                 .put("token", data.token).put("chat", data.chatId)
                 .put("interval", data.syncInterval).put("camera", data.cameraInterval)
@@ -5205,11 +5211,14 @@ class MonitoringService : Service() {
                 .put("legacy", data.legacy).put("epoch", restoreEpoch).toString()
             preferencesManager.saveRestoreConfirmed(jsonRestore, System.currentTimeMillis() + RESTORE_CANCEL_WINDOW_MS)
         } catch (_: Exception) {
+            false
         }
+        if (!tersimpan) audit("restore gagal disimpan persisten", "private")
         audit("restore validasi lolos", "private")
         sendToTelegram(
-            "✅ Token/chat baru lolos validasi dan tes kirim.\n" +
-                "Setelan akan dipakai dalam 60 detik. Kirim /restore batal untuk membatalkan."
+            "\u2705 Token/chat baru lolos validasi dan tes kirim.\n" +
+                "Setelan akan dipakai dalam 60 detik. Kirim /restore batal untuk membatalkan." +
+                (if (tersimpan) "" else "\n\u26A0\uFE0F Catatan restore gagal disimpan: bila aplikasi mati/restart sebelum 60 detik, restore ini batal dan setelan lama bertahan.")
         )
         serviceScope.launch {
             delay(RESTORE_CANCEL_WINDOW_MS)

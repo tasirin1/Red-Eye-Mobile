@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Kegagalan menyimpan catatan restore kini diberitahukan ke pemilik (issue #1727): hasil commit saveRestoreConfirmed diperiksa; bila gagal, kejadian itu diaudit dan pesan konfirmasi restore menyertakan peringatan bahwa restart proses di dalam jendela 60 detik akan membatalkan restore — sebelumnya kegagalan itu ditelan senyap di balik janji yang sama.
 - Benang jalan-terakhir luapan receiver kini berplafon 16 benang bersamaan (issue #1726): sebelumnya setiap penolakan pada saturasi ganda membuat satu benang daemon baru tanpa batas; di atas plafon tugas dijalankan di tempat dengan penjaga penuh agar jumlah benang berpagar tetapi tugas dan finish()-nya tetap berjalan.
 - Handler luapan receiver kini menangkap Throwable, bukan hanya Exception (issue #1725): kegagalan membuat benang jalan-terakhir dengan kelas Error (mis. OutOfMemoryError) sebelumnya membuat tugas hilang senyap tanpa finish() pendingResult dan Error-nya merambat ke benang utama broadcast; kini tugas dijalankan dengan penjaga penuh sebagai jalan terakhir.
 - Loop bangun NotificationForwarderService kini menyimpan vonis resume pada jalur gagal-baca prefs juga (issue #1724): pollWakeOnce sebelumnya keluar sebelum lastResumeOk diperbarui sehingga vonis basi bisa mempertahankan irama 60 detik; prefs yang tak terbaca kini dianggap resume-tak-ok.
