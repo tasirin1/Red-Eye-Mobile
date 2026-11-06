@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- getQueueSize() kini menjawab dari ukuran cache yang sudah termuat: sebelumnya setiap panggilan membayar pemindaian kesegaran atas seluruh antrean, termasuk dari dalam loop potongan sinkron yang memanggilnya berulang kali per siklus (issue #1775).
+
 - Penyerahan tugas A11y tak lagi memindai antrean berkunci pada setiap peristiwa aksesibilitas: pola anti-buang (tugas tertolak antrean penuh jalan sebaris, klaim atomik memastikan tepat satu kali jalan) kini memakai penanda mulai O(1) + ukuran antrean, menggantikan queue.contains yang memindai linear sampai 64 entri per peristiwa (issue #1774).
 
 - Listing direktori media kini dibangun sekali per flush dan dipakai semua batch-nya: sebelumnya tiap batch (maksimum 3 per jenis media) mengulang pemindaian + sortir direktori hanya untuk membuang berkas yang sudah dicoba (issue #1773).

@@ -1432,6 +1432,20 @@ class MessageQueue private constructor(context: Context) {
                 pruneVolatileLocked()
                 return volatileQueue.size
             }
+            // Ukuran murah (issue #1775): cache yang
+            // sudah termuat dijawab langsung dari
+            // ukurannya — sebelumnya pertanyaan ini
+            // membayar readLocked() penuh (pindai
+            // kesegaran atas seluruh antrean + alokasi
+            // daftar saring) pada SETIAP panggilan,
+            // termasuk dari dalam loop potongan sinkron.
+            // Selisih yang mungkin: pesan kedaluwarsa
+            // yang belum terpangkas ikut terhitung
+            // sampai bacaan nyata berikutnya (jalur
+            // tulis/drain memangkasnya) — untuk pemakai
+            // angka ini (tampilan status + batas lunak
+            // asupan) selisih sesaat itu aman.
+            cached?.let { return it.size }
             return readLocked().size
         }
     }
