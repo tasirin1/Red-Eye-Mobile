@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Fixed
+
+- Ukuran pratinjau metering kamera kini berplafon pada cabang fallback juga: bila perangkat tak punya ukuran di bawah plafon, yang dipilih ukuran paling kecil, bukan yang terdekat ke ukuran foto — buffer pratinjau raksasa di perangkat eksotik terhindari (issue #1769).
+
 ## [1.6.643] - 2026-11-06
 
 ### Fixed

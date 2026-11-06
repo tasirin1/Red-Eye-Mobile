@@ -1135,8 +1135,17 @@ class CameraService(private val context: Context) {
             if (sizes.isNullOrEmpty()) fallback
             else {
                 val fitting = sizes.filter { it.width <= 1280 && it.height <= 720 }
-                val pool = if (fitting.isNotEmpty()) fitting else sizes.toList()
-                val chosen = pool.minByOrNull { kotlin.math.abs(it.width - fallback.first) + kotlin.math.abs(it.height - fallback.second) }
+                val chosen = if (fitting.isNotEmpty()) {
+                    fitting.minByOrNull { kotlin.math.abs(it.width - fallback.first) + kotlin.math.abs(it.height - fallback.second) }
+                } else {
+                    // Tak ada ukuran di bawah plafon (issue
+                    // #1769): ambil yang PALING KECIL, bukan
+                    // terdekat ke ukuran foto — pratinjau
+                    // metering tak butuh besar, dan memilih
+                    // terdekat bisa mendarat di buffer
+                    // raksasa pada perangkat eksotik.
+                    sizes.minByOrNull { it.width.toLong() * it.height.toLong() }
+                }
                 if (chosen != null) chosen.width to chosen.height else fallback
             }
         } catch (_: Exception) {
