@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Pembersihan jurnal coba kini menghapus entri per awalan nama berkas, bukan per kunci persis nama|panjang: kunci persis tak pernah cocok di semua situs yang membersihkan sesudah berkas dihapus (panjang berkas yang sudah hilang selalu terbaca 0), jadi pembersihan jurnal coba dari #1796/#1808/#1809 selama ini tidak aktif dan entri yatim menumpuk sampai terdesak plafon (issue #1819).
 - Gerbang blok pairing /start kini menilai chat yang menghasilkan respons (responseChat), bukan snapshot awal putaran: satu-satunya pemakaian snapshot basi yang tersisa dari perbaikan #1806, yang bisa menelan upaya pairing sah pada batch pasca-retry 401/403 (issue #1818).
 
 ## [1.6.647] - 2026-11-06

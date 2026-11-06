@@ -14745,7 +14745,17 @@ class MonitoringService : Service() {
     @Synchronized
     private fun bersihkanCatatanUnggah(file: java.io.File) {
         try {
-            if (cobaLocked().remove(file.name + "|" + file.length())) tulisCobaLocked()
+            // Hapus per awalan nama, bukan kunci persis
+            // (issue #1819): kunci memuat file.length(),
+            // dan sebagian besar situs memanggil fungsi
+            // ini SESUDAH berkas dihapus — length() berkas
+            // yang sudah hilang selalu 0, jadi kunci
+            // persisnya tak pernah cocok dan entri aslinya
+            // menetap. Nama berkas media unik per berkas
+            // dan pemisah "|" menjaga awalan tak menelan
+            // nama lain yang berawalan sama.
+            val awalan = file.name + "|"
+            if (cobaLocked().removeAll { it.startsWith(awalan) }) tulisCobaLocked()
         } catch (_: Exception) {
         }
     }
