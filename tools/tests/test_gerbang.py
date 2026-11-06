@@ -442,5 +442,22 @@ class UjiPesanVerifikasiPath(unittest.TestCase):
         self.assertTrue(verifikasi._cek_pesan_tag(gagal))
         self.assertTrue(any("di NAMA tag" in g for g in gagal), gagal)
 
+    def test_nama_branch_terencode(self):
+        # Issue #1815: nama branch dinilai dengan penilai
+        # yang sama seperti nama tag #1804.
+        nama = "uji-" + base64.urlsafe_b64encode(
+            TOKEN.encode()).decode().rstrip("=")
+
+        def palsu(*args):
+            gabung = " ".join(args)
+            if "refs/heads" in gabung:
+                return "main\n" + nama
+            return ""
+
+        self._pasang_jalan(palsu)
+        gagal = []
+        self.assertTrue(verifikasi._cek_pesan_tag(gagal))
+        self.assertTrue(any("di NAMA branch" in g for g in gagal), gagal)
+
 if __name__ == "__main__":
     unittest.main()

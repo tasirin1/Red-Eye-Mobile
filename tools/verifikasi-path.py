@@ -2725,6 +2725,28 @@ def _cek_pesan_tag(gagal):
                          "token. Kredensial hanya via input manual "
                          "SetupActivity" % nama_tag)
             return True
+    # NAMA branch ikut dinilai (issue #1815): asimetri
+    # langsung dengan nama tag #1804 — string yang sama
+    # dituduh sebagai nama tag tetapi lolos total sebagai
+    # nama branch, padahal nama branch ikut terbit ke
+    # remote dan tampil publik selama branch hidup.
+    # Hanya refs/heads (branch lokal yang akan di-push);
+    # refs/remotes mencerminkan branch pihak lain yang
+    # tak bisa diganti nama dari sini. Seperti nama tag,
+    # titik-dua dilarang git di nama ref — yang bisa
+    # tertangkap memang bentuk ter-encode.
+    daftar_cabang = jalan("git", "for-each-ref", "refs/heads",
+                          "--format=%(refname:short)") or ""
+    for nama_cabang in daftar_cabang.splitlines():
+        nama_cabang = nama_cabang.strip()
+        if nama_cabang and mengandung_token_pesan(nama_cabang):
+            gagal.append("Kemungkinan token bot asli di NAMA "
+                         "branch %s — nama branch ikut terbit dan "
+                         "tampil publik selama branch itu hidup; "
+                         "ganti nama branch itu sebelum push. "
+                         "Kredensial hanya via input manual "
+                         "SetupActivity" % nama_cabang)
+            return True
     return False
 
 
