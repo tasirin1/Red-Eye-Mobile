@@ -1918,6 +1918,25 @@ def _muat_padatkan():
 _padatkan = _muat_padatkan()
 
 
+def _muat_penilai_fragmen():
+    # Penilai fragmen pesan kanonik (issue #1742):
+    # satu sumber di tools/cek-token.py agar gerbang
+    # lokal dan vonis rentang tak bisa berbeda lagi
+    # seperti yang melahirkan #1719.
+    try:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "cek_token", os.path.join(AKAR, "tools", "cek-token.py"))
+        modul = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(modul)
+        return modul.mengandung_fragmen_pesan
+    except Exception:
+        return None
+
+
+_penilai_fragmen = _muat_penilai_fragmen()
+
+
 def _konfirmasi_diff_berdiri(diff):
     """Konfirmasi konteks untuk tuduhan fragmen diff (issue #1626).
 
@@ -2462,6 +2481,13 @@ def _pesan_terbelah(teks):
     mirip prosa: sambung bloknya lalu nilai dengan
     pemindai bersama.
     """
+    # Sumber tunggal (issue #1742): delegasikan ke
+    # penilai kanonik cek-token bila termuat; badan
+    # di bawah adalah cadangan lokal beraturan sama
+    # (blok gabungan #1736) untuk keadaan pemuatan
+    # gagal — bukan salinan yang dipelihara terpisah.
+    if _penilai_fragmen is not None:
+        return _penilai_fragmen(teks)
     if not teks:
         return False
 

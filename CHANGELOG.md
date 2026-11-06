@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Penilai fragmen pesan kini bersumber tunggal di tools/cek-token.py (issue #1742): verifikasi-path memuat penilai kanonik yang sama dengan gerbang lokal (pola pemuat yang sama dengan _padatkan) dan salinan lokalnya turun menjadi cadangan beraturan identik — menutup risiko divergensi struktural yang melahirkan #1719.
 - Pesan anotasi tag kini dinilai untuk SEMUA tag, bukan hanya yang targetnya di dalam rentang (issue #1741): saringan keanggotaan rentang sebelumnya membuat tag yang menunjuk commit lama tak pernah dinilai rentang mana pun, padahal pesan anotasi itu permanen dan ikut terbit.
 - Pasangan lintas-commit kini juga dicari sebagai baris murni di berkas besar (issue #1740): syarat pasangan berkas kecil <=128 KiB sebelumnya membuat paruh token yang hidup sebagai satu baris murni di dalam berkas besar tak pernah jadi kandidat; kini baris terpampat murni 20..96 aksara dari berkas >128 KiB ikut jadi kandidat dengan vonis penyelesaian yang sama.
 - Pasangan lintas-commit gerbang kini menoleransi tepi ternoda (issue #1739): satu aksara non-alfabet yang menempel di tepi berkas pasangan (mis. '!') sebelumnya meruntuhkan syarat kemurnian fullmatch walau isi paruhnya utuh; kini maks 2 aksara tepi per sisi dikupas sebelum menilai, inti tetap wajib murni penuh.
