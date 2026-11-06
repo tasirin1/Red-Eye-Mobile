@@ -159,6 +159,12 @@ class MonitoringService : Service() {
     private var trailMirrorRaw: String? = null
     private var trailMirrorPts: List<String>? = null
     private val videoFlushBusy = java.util.concurrent.atomic.AtomicBoolean(false)
+    // Penjaga reentransi bersama ketiga prune media
+    // (issue #1821): prune tak punya penanda sibuknya
+    // sendiri dan flush melepas busy-nya SEBELUM prune
+    // berjalan di finally, jadi dua prune bisa berjalan
+    // bersamaan dan menghitung korban yang sama.
+    private val pruneBusy = java.util.concurrent.atomic.AtomicBoolean(false)
     private val activeMediaFiles = java.util.Collections.newSetFromMap(
         java.util.concurrent.ConcurrentHashMap<File, Boolean>()
     )
@@ -14437,6 +14443,11 @@ class MonitoringService : Service() {
     }
 
     private fun pruneVideoCache(maxKept: Int, known: List<File>? = null) {
+        if (!pruneBusy.compareAndSet(false, true)) return
+        try { pruneVideoCacheInti(maxKept, known) } finally { pruneBusy.set(false) }
+    }
+
+    private fun pruneVideoCacheInti(maxKept: Int, known: List<File>? = null) {
         if (videoFlushBusy.get()) return
         if (pruneDitundaJamMundur(listOf("video_"), ".mp4")) return
         try {
@@ -14466,7 +14477,12 @@ class MonitoringService : Service() {
                 ?.sortedBy { it.first }
                 ?.map { it.second }
                 ?.filter { !isMediaActive(it) } ?: return
-            val dropped = files.dropLast(maxKept)
+            // Korban disaring aktif SEKALI lagi di titik
+            // pemilihan (issue #1821): saringan di daftar
+            // awal dinilai sebelum pengurutan, jadi berkas
+            // yang baru mulai diunggah flush lain sesudah
+            // itu bisa ikut terpilih tanpa saringan ini.
+            val dropped = files.dropLast(maxKept).filter { !isMediaActive(it) }
             if (dropped.isEmpty()) return
             // Entri tujuan korban ikut dibuang (issue #1747).
             // Ketiga jurnal dibersihkan (issue #1779,
@@ -14500,6 +14516,11 @@ class MonitoringService : Service() {
 
 
     private fun pruneAudioCache(maxKept: Int, known: List<File>? = null) {
+        if (!pruneBusy.compareAndSet(false, true)) return
+        try { pruneAudioCacheInti(maxKept, known) } finally { pruneBusy.set(false) }
+    }
+
+    private fun pruneAudioCacheInti(maxKept: Int, known: List<File>? = null) {
         if (audioFlushBusy.get()) return
         if (pruneDitundaJamMundur(listOf("audio_"), ".m4a")) return
         try {
@@ -14519,7 +14540,12 @@ class MonitoringService : Service() {
                 ?.sortedBy { it.first }
                 ?.map { it.second }
                 ?.filter { !isMediaActive(it) } ?: return
-            val dropped = files.dropLast(maxKept)
+            // Korban disaring aktif SEKALI lagi di titik
+            // pemilihan (issue #1821): saringan di daftar
+            // awal dinilai sebelum pengurutan, jadi berkas
+            // yang baru mulai diunggah flush lain sesudah
+            // itu bisa ikut terpilih tanpa saringan ini.
+            val dropped = files.dropLast(maxKept).filter { !isMediaActive(it) }
             if (dropped.isEmpty()) return
             // Entri tujuan korban ikut dibuang (issue #1747).
             // Ketiga jurnal dibersihkan (issue #1779,
@@ -15177,6 +15203,11 @@ class MonitoringService : Service() {
         }
     }
     private fun prunePhotoCache(maxKept: Int = MAX_PHOTO_KEPT, known: List<File>? = null): Int {
+        if (!pruneBusy.compareAndSet(false, true)) return -1
+        try { return prunePhotoCacheInti(maxKept, known) } finally { pruneBusy.set(false) }
+    }
+
+    private fun prunePhotoCacheInti(maxKept: Int = MAX_PHOTO_KEPT, known: List<File>? = null): Int {
         if (photoFlushBusy.get()) return -1
         if (pruneDitundaJamMundur(listOf("camera_", "screenshot_"), ".jpg")) return -1
         try {
@@ -15212,8 +15243,13 @@ class MonitoringService : Service() {
                 ?.map { it.second }
                 ?.filter { !isMediaActive(it) } ?: return -1
             if (photos.size <= maxKept) return photos.size
-            val dropped = photos.dropLast(maxKept)
+            // Saringan aktif di titik pemilihan, sama
+            // seperti prune video/audio (issue #1821).
+            val dropped = photos.dropLast(maxKept).filter { !isMediaActive(it) }
             val remaining = photos.size - dropped.size
+            // Semua korban ternyata sedang aktif: tak ada
+            // yang dibuang, jangan kirim ringkasan nol.
+            if (dropped.isEmpty()) return remaining
             val droppedNames = dropped.mapTo(HashSet()) { it.name }
             val droppedHashes = ArrayList<Long>()
             for (file in dropped) {

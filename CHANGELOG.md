@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Ketiga prune media kini berbagi satu penjaga reentransi (pruneBusy) dan korban disaring ulang terhadap berkas yang sedang aktif tepat di titik pemilihan: sebelumnya flush melepas penanda sibuknya sebelum prune berjalan di finally dan prune tak punya penanda sendiri, jadi dua prune bisa menghitung korban yang sama dan prune bisa menghapus berkas yang baru mulai diunggah flush lain (issue #1821).
 - Pelepasan entri foto tertahan di prune foto dan /cleanup kini satu korban satu entri warisan (withoutOneHash per hash, meniru jalur flush) dan hash sentinel tak-terdekode (0/1) disaring keluar: pelepasan massal withoutHashes sebelumnya bisa ikut melepas entri foto lain yang masih antre bila sidiknya kebetulan sama, melanggar prinsip #991 (issue #1820).
 - Pembersihan jurnal coba kini menghapus entri per awalan nama berkas, bukan per kunci persis nama|panjang: kunci persis tak pernah cocok di semua situs yang membersihkan sesudah berkas dihapus (panjang berkas yang sudah hilang selalu terbaca 0), jadi pembersihan jurnal coba dari #1796/#1808/#1809 selama ini tidak aktif dan entri yatim menumpuk sampai terdesak plafon (issue #1819).
 - Gerbang blok pairing /start kini menilai chat yang menghasilkan respons (responseChat), bukan snapshot awal putaran: satu-satunya pemakaian snapshot basi yang tersisa dari perbaikan #1806, yang bisa menelan upaya pairing sah pada batch pasca-retry 401/403 (issue #1818).
