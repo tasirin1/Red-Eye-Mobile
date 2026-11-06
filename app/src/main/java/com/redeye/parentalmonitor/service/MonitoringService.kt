@@ -4825,23 +4825,12 @@ class MonitoringService : Service() {
         val tahapDuaC = stagedSpec == spec && stagedAtC > 0L && nowC - stagedAtC in 0..(5 * 60_000L) &&
             (stagedByC.isEmpty() || stagedByC == senderId) && !kirimUlangC
         if (!tahapDuaC) {
-            try {
-                preferencesManager.pendingCleanupSpec = spec
-                preferencesManager.pendingCleanupAt = nowC
-                preferencesManager.pendingCleanupOwner = senderId
-                preferencesManager.pendingCleanupMsgId = messageId
-            } catch (_: Exception) {
-            }
+            // Satu commit atomik (issue #1744).
+            preferencesManager.savePendingCleanup(spec, nowC, senderId, messageId)
             sendToTelegram("⚠️ Bersihkan media $target lebih tua dari $days hari? Media yang belum terkirim ikut terhapus. Ulangi perintah yang sama dalam 5 menit untuk konfirmasi.")
             return
         }
-        try {
-            preferencesManager.pendingCleanupSpec = ""
-            preferencesManager.pendingCleanupAt = 0L
-            preferencesManager.pendingCleanupOwner = ""
-            preferencesManager.pendingCleanupMsgId = 0L
-        } catch (_: Exception) {
-        }
+        preferencesManager.clearPendingCleanup()
         val cutoff = System.currentTimeMillis() - days.toLong() * 86_400_000L
         var count = 0
         var bytes = 0L
@@ -6685,21 +6674,12 @@ class MonitoringService : Service() {
         val tahapDua = stagedAt > 0L && nowMs - stagedAt in 0..(5 * 60_000L) &&
             (stagedBy.isEmpty() || stagedBy == senderId) && !kirimUlang
         if (!tahapDua) {
-            try {
-                preferencesManager.pendingClearQueueAt = nowMs
-                preferencesManager.pendingClearQueueOwner = senderId
-                preferencesManager.pendingClearQueueMsgId = messageId
-            } catch (_: Exception) {
-            }
+            // Satu commit atomik (issue #1744).
+            preferencesManager.savePendingClearQueue(nowMs, senderId, messageId)
             sendToTelegram("⚠️ Buang SELURUH antrean ($queued pesan belum terkirim, termasuk peringatan prioritas)? Tindakan ini tidak bisa dibatalkan.\nKetuk 🗑️ Buang antrean lagi (atau kirim /clearqueue) dalam 5 menit untuk konfirmasi.", null, true)
             return
         }
-        try {
-            preferencesManager.pendingClearQueueAt = 0L
-            preferencesManager.pendingClearQueueOwner = ""
-            preferencesManager.pendingClearQueueMsgId = 0L
-        } catch (_: Exception) {
-        }
+        preferencesManager.clearPendingClearQueue()
         val cleared = try {
             messageQueue.clearQueue()
         } catch (_: Exception) {

@@ -1712,6 +1712,60 @@ class PreferencesManager(context: Context) {
         get() = prefLong(KEY_PENDING_CLEAR_MSG, 0L)
         set(value) = sharedPreferences.edit().putLong(KEY_PENDING_CLEAR_MSG, value).apply()
 
+    // Penulisan tahap konfirmasi SATU commit
+    // (issue #1744), pola writeSmsPendingSync:
+    // penulisan per-field dengan apply() terpisah
+    // bisa mempersist awalan saja bila proses mati
+    // di tengah penahapan — ID pesan yang ditulis
+    // terakhir hilang dan ikatan #1601 yang
+    // bergantung padanya gugur, sehingga kiriman
+    // ulang update tahap-1 terbaca konfirmasi.
+    fun savePendingCleanup(spec: String, at: Long, owner: String, msgId: Long) {
+        try {
+            sharedPreferences.edit()
+                .putString(KEY_PENDING_CLEANUP_SPEC, spec)
+                .putLong(KEY_PENDING_CLEANUP_AT, at)
+                .putString(KEY_PENDING_CLEANUP_OWNER, owner)
+                .putLong(KEY_PENDING_CLEANUP_MSG, msgId)
+                .commit()
+        } catch (_: Exception) {
+        }
+    }
+
+    fun clearPendingCleanup() {
+        try {
+            sharedPreferences.edit()
+                .remove(KEY_PENDING_CLEANUP_SPEC)
+                .remove(KEY_PENDING_CLEANUP_AT)
+                .remove(KEY_PENDING_CLEANUP_OWNER)
+                .remove(KEY_PENDING_CLEANUP_MSG)
+                .commit()
+        } catch (_: Exception) {
+        }
+    }
+
+    fun savePendingClearQueue(at: Long, owner: String, msgId: Long) {
+        try {
+            sharedPreferences.edit()
+                .putLong(KEY_PENDING_CLEAR_AT, at)
+                .putString(KEY_PENDING_CLEAR_OWNER, owner)
+                .putLong(KEY_PENDING_CLEAR_MSG, msgId)
+                .commit()
+        } catch (_: Exception) {
+        }
+    }
+
+    fun clearPendingClearQueue() {
+        try {
+            sharedPreferences.edit()
+                .remove(KEY_PENDING_CLEAR_AT)
+                .remove(KEY_PENDING_CLEAR_OWNER)
+                .remove(KEY_PENDING_CLEAR_MSG)
+                .commit()
+        } catch (_: Exception) {
+        }
+    }
+
     var pendingSmsNumber: String
         get() = prefString(KEY_PENDING_SMS_NUMBER, "")
         set(value) = sharedPreferences.edit().putString(KEY_PENDING_SMS_NUMBER, value).apply()

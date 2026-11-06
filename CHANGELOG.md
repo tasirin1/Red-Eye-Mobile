@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Penahapan konfirmasi /clearqueue dan /cleanup kini ditulis dalam satu commit atomik (pola penahap SMS): penulisan per-field sebelumnya bisa mempersist awalan saja bila proses mati di tengah penahapan — ID pesan penahap yang hilang membuat kiriman ulang perintah yang sama terbaca sebagai konfirmasi, mengalahkan ikatan anti-kirim-ulang (issue #1744).
 - Pemeriksa restore tertahan di awal layanan kini mengklaim sesinya secara atomik di bawah kunci yang sama dengan pembatalan, dan pembatalan membersihkan catatannya di dalam ruas kunci yang sama: /restore batal yang tiba di celah antara baca catatan dan pemasangan penanda tidak lagi dijawab tidak ada sesi sementara restore-nya tetap diterapkan (issue #1743).
 
 ## [1.6.642] - 2026-11-06
