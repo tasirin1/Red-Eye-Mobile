@@ -14161,6 +14161,10 @@ class MonitoringService : Service() {
                     if (umurBerkas in 0L until 10_000L) continue
                     if (!file.exists() || file.length() == 0L) {
                         deleteQuietly(file)
+                        // Ikut terhitung terbuang (issue
+                        // #1760): ringkasan pemilik menyebut
+                        // jumlah berkas yang dibuang.
+                        dropped++
                         batchProgress = true
                         progress = true
                         continue
@@ -14775,6 +14779,8 @@ class MonitoringService : Service() {
                     if (umurBerkas in 0L until 10_000L) continue
                     if (!file.exists() || file.length() == 0L) {
                         deleteQuietly(file)
+                        // Ikut terhitung terbuang (issue #1760).
+                        droppedPhotos++
                         batchProgress = true
                         photoProgress = true
                         continue
