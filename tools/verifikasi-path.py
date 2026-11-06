@@ -2527,13 +2527,14 @@ def cek_secret_pesan(gagal, rentang):
                          "SetupActivity" % sha[:8])
             return
 
-    # Pesan ANOTASI TAG (issue #1713): tag beranotasi yang
-    # menunjuk commit dalam rentang membawa pesannya
-    # sendiri yang ikut terbit bersama rilis, tetapi tak
-    # ada kanal yang membacanya — kanal ini hanya membaca
-    # %B commit. Nilai pesan tag beranotasi yang targetnya
-    # di dalam rentang dengan penilai pesan yang sama.
-    himpunan = set(x.strip() for x in daftar_commit.splitlines() if x.strip())
+    # Pesan ANOTASI TAG (issue #1713): tag beranotasi
+    # membawa pesannya sendiri yang ikut terbit bersama
+    # rilis, tetapi tak ada kanal yang membacanya — kanal
+    # ini hanya membaca %B commit. SEMUA tag beranotasi
+    # dinilai (issue #1741): saringan target-di-dalam-
+    # rentang sebelumnya membuat tag yang menunjuk
+    # commit lama tak pernah dinilai rentang mana pun,
+    # padahal pesan tag itu permanen dan publik.
     daftar_tag = jalan("git", "for-each-ref", "refs/tags",
                        "--format=%(refname:short)%09%(objecttype)%09%(*objectname)") or ""
     for baris in daftar_tag.splitlines():
@@ -2541,8 +2542,6 @@ def cek_secret_pesan(gagal, rentang):
         if len(bagian) != 3 or bagian[1] != "tag":
             continue
         nama_tag, _, target = bagian
-        if target not in himpunan:
-            continue
         pesan_tag = jalan("git", "for-each-ref", "refs/tags/" + nama_tag,
                           "--format=%(contents)") or ""
         if mengandung_token_pesan(pesan_tag) or _pesan_terbelah(pesan_tag):
