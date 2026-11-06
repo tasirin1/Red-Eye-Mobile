@@ -4919,7 +4919,7 @@ class MonitoringService : Service() {
         var count = 0
         var bytes = 0L
         val namaFotoHapus = HashSet<String>()
-        val hashFotoHapus = HashSet<Long>()
+        val hashFotoHapus = ArrayList<Long>()
         try {
             antreMedia().listFiles()?.forEach { file ->
                 if (!file.isFile || isMediaActive(file)) return@forEach
@@ -4972,7 +4972,7 @@ class MonitoringService : Service() {
                         bersihkanCatatanUnggah(file)
                         if (photo) {
                             namaFotoHapus.add(name)
-                            if (hashFoto != null) hashFotoHapus.add(hashFoto)
+                            if (hashFoto != null && PhotoFingerprint.isComparableFingerprint(hashFoto)) hashFotoHapus.add(hashFoto)
                         }
                     }
                 }
@@ -4984,7 +4984,13 @@ class MonitoringService : Service() {
                 mutateHeldPhotoEntries { fresh ->
                     var kept = HeldPhotos.withoutNames(fresh, namaFotoHapus)
                     if (kept.any { it.raw == null && it.name == null }) {
-                        kept = HeldPhotos.withoutHashes(kept, hashFotoHapus)
+                        // Satu korban melepas paling banyak
+                        // SATU entri warisan (issue #1820,
+                        // prinsip #991 yang dijaga jalur
+                        // flush): withoutHashes massal bisa
+                        // melepas entri berkas lain ber-hash
+                        // sama yang masih antre.
+                        for (h in hashFotoHapus) kept = HeldPhotos.withoutOneHash(kept, h)
                     }
                     kept
                 }
@@ -15209,14 +15215,25 @@ class MonitoringService : Service() {
             val dropped = photos.dropLast(maxKept)
             val remaining = photos.size - dropped.size
             val droppedNames = dropped.mapTo(HashSet()) { it.name }
-            val droppedHashes = HashSet<Long>()
+            val droppedHashes = ArrayList<Long>()
             for (file in dropped) {
-                try { droppedHashes.add(PhotoFingerprint.analyze(file).second) } catch (_: Exception) { }
+                try {
+                    val h = PhotoFingerprint.analyze(file).second
+                    // Sentinel tak-terdekode (0/1) tak masuk
+                    // daftar lepas (issue #1820).
+                    if (PhotoFingerprint.isComparableFingerprint(h)) droppedHashes.add(h)
+                } catch (_: Exception) { }
             }
             mutateHeldPhotoEntries { fresh ->
                 var kept = HeldPhotos.withoutNames(fresh, droppedNames)
                 if (kept.any { it.raw == null && it.name == null }) {
-                    kept = HeldPhotos.withoutHashes(kept, droppedHashes)
+                    // Satu korban melepas paling banyak
+                    // SATU entri warisan (issue #1820,
+                    // prinsip #991 yang dijaga jalur
+                    // flush): withoutHashes massal bisa
+                    // melepas entri berkas lain ber-hash
+                    // sama yang masih antre.
+                    for (h in droppedHashes) kept = HeldPhotos.withoutOneHash(kept, h)
                 }
                 kept
             }
