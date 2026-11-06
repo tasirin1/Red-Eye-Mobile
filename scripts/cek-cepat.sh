@@ -389,7 +389,13 @@ if [ -f tools/cek-token.py ]; then
   # #1737): vonis rentang CI menilainya sejak #1717,
   # gerbang lokal sebelumnya hanya membaca %B —
   # paritas dipulihkan untuk permukaan ini juga.
-  meta_token=$( (git log @{u}..HEAD --format='%an%x1f%ae%x1f%cn%x1f%ce' 2>/dev/null || git log --branches --not --remotes=origin --format='%an%x1f%ae%x1f%cn%x1f%ce' 2>/dev/null) | python3 tools/cek-token.py --teks-pesan 2>/dev/null || true)
+  # Keempat field digabung TANPA pemisah (issue
+  # #1751): pemisah %x1f sebelumnya bukan whitespace,
+  # bukan pemutus baris, dan bukan alfabet token,
+  # jadi token yang dibelah tepat di batas antar-
+  # field tak tersambung di permukaan penilaian
+  # mana pun.
+  meta_token=$( (git log @{u}..HEAD --format='%an%ae%cn%ce' 2>/dev/null || git log --branches --not --remotes=origin --format='%an%ae%cn%ce' 2>/dev/null) | python3 tools/cek-token.py --teks-pesan 2>/dev/null || true)
   if [ -n "$meta_token" ]; then
     echo "GAGAL: kemungkinan token bot asli di metadata author/committer commit yang belum ter-push (hanya via input SetupActivity)"; gagal=1;
   fi
