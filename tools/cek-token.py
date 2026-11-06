@@ -153,6 +153,17 @@ def _padatkan(teks):
     rapat = re.sub(r"(?<=:),(?=[A-Za-z0-9+/=_-])", "", rapat)
     rapat = re.sub(r"(?<=[A-Za-z0-9_-])\.(?=:)", "", rapat)
     rapat = re.sub(r"(?<=:)\.(?=[A-Za-z0-9_-])", "", rapat)
+    # Titik koma yang diapit karakter token juga pemisah
+    # belah (issue #1754): pemisah pernyataan baku
+    # Kotlin/Java — sempit seperti koma di atas, plus
+    # varian menempel titik dua seperti #1642.
+    rapat = re.sub(r"(?<=[A-Za-z0-9+/=_-]);(?=[A-Za-z0-9+/=_-])", "", rapat)
+    rapat = re.sub(r"(?<=[A-Za-z0-9+/=_-]);(?=:)", "", rapat)
+    rapat = re.sub(r"(?<=:);(?=[A-Za-z0-9+/=_-])", "", rapat)
+    # Byte kontrol non-spasi (issue #1754): tak pernah
+    # bermakna di teks sumber; di permukaan terpadatkan
+    # ia hanya bisa menjadi pemisah belah.
+    rapat = re.sub(r"[\x00-\x08\x0e-\x1f\x7f]+", "", rapat)
     return rapat
 
 
