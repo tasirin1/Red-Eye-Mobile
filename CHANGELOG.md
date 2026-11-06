@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Gerbang token kini juga membuka escape heksadesimal `\xNN` (melengkapi `\uXXXX` yang sudah ada) di permukaan berkas maupun pesan: token yang dibenamkan sebagai urutan escape di string Python/C/JS/Kotlin tak lagi lolos (issue #1801).
+
 - Gerbang token kini membuang aksara format tak kasatmata (zero-width, BOM, kontrol bidi, dan sejenisnya) sebelum menilai di kedua permukaan: satu sisipan tak terlihat di tengah token tak lagi memutus pola sekaligus lolos dari perhatian peninjau diff (issue #1800).
 
 - Gerbang token kini membuka encode web sebelum menilai: token yang titik-duanya tertulis `%3A` (persen) atau `&#58;` (entitas HTML) — bentuk lazim saat tertempel di URL, log, atau berkas HTML — tertangkap di permukaan berkas maupun pesan commit (issue #1799).

@@ -185,6 +185,16 @@ def _varian_terbuka(teks):
     pola token persis, jadi teks jinak yang kebetulan
     memuat kode tak ikut tertuduh."""
     hasil = []
+    # Escape string (issue #1801, memperluas #1765):
+    # urutan \uXXXX dan \xNN di string Kotlin/Java/
+    # JSON/Python dibuka ke aksara aslinya.
+    if "\\u" in teks or "\\x" in teks:
+        dibuka = re.sub(r"\\u([0-9A-Fa-f]{4})",
+                        lambda m: chr(int(m.group(1), 16)), teks)
+        dibuka = re.sub(r"\\x([0-9A-Fa-f]{2})",
+                        lambda m: chr(int(m.group(1), 16)), dibuka)
+        if dibuka != teks:
+            hasil.append(dibuka)
     # Encode persen URL + entitas HTML (issue #1799):
     # titik-dua token tertulis %3A atau &#58; saat token
     # tertempel di dalam URL/log/berkas HTML.
@@ -366,9 +376,10 @@ def mengandung_token_pesan(teks):
     # tetap tidak tersambung.
     if _pola_mentah_cocok(tanpa_spasi):
         return True
-    # Bentuk ter-encode web (issue #1799): dekode
-    # BUKAN pemadatan #1425 — hanya aksara yang memang
-    # ter-encode yang dibuka, prosa tetap tak tersambung.
+    # Bentuk ter-encode web (issue #1799) dan escape
+    # string (\xNN #1801): dekode BUKAN pemadatan
+    # #1425 — hanya aksara yang memang ter-encode
+    # yang dibuka, prosa tetap tak tersambung.
     for varian in _varian_terbuka(teks):
         if _pola_mentah_cocok(varian) or \
                 _pola_mentah_cocok(re.sub(r"\s+", "", varian)):
@@ -530,20 +541,8 @@ def mengandung_token(teks):
             continue
         if POLA_BYTE.search(hasil):
             return True
-    # Bentuk escape unicode (issue #1765): token yang
-    # ditulis sebagai urutan escape di string
-    # Kotlin/Java/JSON — buka escapenya, nilai
-    # permukaannya seperti teks biasa.
-    if "\\u" in teks:
-        try:
-            dibuka = re.sub(r"\\u([0-9A-Fa-f]{4})",
-                            lambda m: chr(int(m.group(1), 16)), teks)
-        except Exception:
-            dibuka = teks
-        if dibuka != teks and (_pola_mentah_cocok(dibuka)
-                               or _pola_mentah_cocok(_padatkan(dibuka))):
-            return True
-    # Bentuk ter-encode web (issue #1799): varian
+    # Bentuk ter-encode web (issue #1799) dan escape
+    # string (\uXXXX #1765, \xNN #1801): varian
     # terbukanya dinilai seperti teks biasa.
     for varian in _varian_terbuka(teks):
         if _pola_mentah_cocok(varian) \
