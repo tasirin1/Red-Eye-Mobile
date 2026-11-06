@@ -2786,8 +2786,11 @@ def cek_secret_pesan_semua(gagal):
     sudah telanjur ter-push pun harus tertandai agar token yang
     bocor bisa dirotasi. Satu panggilan git log berformat rekaman
     agar riwayat panjang (ribuan commit) tidak dibayar per commit.
+    Metadata author/committer ikut dibaca dan dinilai (issue
+    #1803): mode rentang sudah menilainya sejak #1717, mode ini
+    tertinggal hanya membaca %B.
     """
-    out = jalan("git", "log", "--format=%H%x00%B%x1e", "HEAD") or ""
+    out = jalan("git", "log", "--format=%H%x00%an%x00%ae%x00%cn%x00%ce%x00%B%x1e", "HEAD") or ""
     # Pesan commit bisa memuat byte \x1e itu sendiri (issue #814):
     # pecahan yang TIDAK diawali pola hash+\x00 adalah kelanjutan
     # pesan rekaman sebelumnya, bukan rekaman baru — gabungkan lagi
@@ -2805,19 +2808,34 @@ def cek_secret_pesan_semua(gagal):
         else:
             rekaman_list.append(inti)
     for rekaman in rekaman_list:
-        sha, _, pesan = rekaman.partition("\x00")
+        # Rekaman berformat sha NUL author NUL email-author NUL
+        # committer NUL email-committer NUL pesan (issue #1803);
+        # pesan adalah sisa sesudah pemisah kelima, utuh walau
+        # memuat NUL sendiri.
+        bagian = rekaman.split("\x00", 5)
+        sha = bagian[0]
+        meta = " ".join(bagian[1:5]) if len(bagian) > 5 else ""
+        pesan = bagian[5] if len(bagian) > 5 else ""
         if mengandung_token_pesan(pesan) or _pesan_terbelah(pesan):
             gagal.append("Kemungkinan token bot asli di PESAN commit %s — "
                          "token di pesan commit hidup permanen di riwayat; "
                          "rotasi token itu. Kredensial hanya via input "
                          "manual SetupActivity" % sha.strip()[:8])
             return
+        if meta and (mengandung_token_pesan(meta) or _pesan_terbelah(meta)):
+            gagal.append("Kemungkinan token bot asli di METADATA "
+                         "author commit %s — metadata tersimpan "
+                         "permanen di riwayat; rotasi token itu. "
+                         "Kredensial hanya via input manual "
+                         "SetupActivity" % sha.strip()[:8])
+            return
     # Gabungan pesan LINTAS commit (issue #1786):
     # belahan di batas dua pesan dinilai seperti mode
     # rentang — gabungan kedua arah urutan dari semua
     # rekaman yang sudah terkumpul di atas.
     if len(rekaman_list) > 1:
-        semua_pesan = [r.partition("\x00")[2] for r in rekaman_list]
+        semua_pesan = [(r.split("\x00", 5)[5] if len(r.split("\x00", 5)) > 5 else "")
+                       for r in rekaman_list]
         for gabungan in ("\n".join(semua_pesan),
                          "\n".join(reversed(semua_pesan))):
             if mengandung_token_pesan(gabungan) or _pesan_terbelah(gabungan):
