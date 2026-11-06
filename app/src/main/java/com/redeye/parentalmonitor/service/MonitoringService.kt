@@ -497,6 +497,7 @@ class MonitoringService : Service() {
         private const val MAX_AUDIO_KEPT = 5
         private const val MAX_VIDEO_KEPT = 3
         private const val MAX_PHOTO_KEPT = 10
+        private const val MAX_MEDIA_ATTEMPTS = 20
         private const val DATA_QUEUE_SOFT_LIMIT = 90
         private const val MEDIA_UPLOAD_GRACE_MS = 600_000L
         private const val MEDIA_FLUSH_DEADLINE_MS = 600_000L
@@ -14170,7 +14171,22 @@ class MonitoringService : Service() {
                         rotateFlushFile(file)
                         continue
                     }
-                    if (result == MediaSendOutcome.KEPT) continue
+                    if (result == MediaSendOutcome.KEPT) {
+                        // Anggaran percobaan (issue #1748):
+                        // berkas yang selalu KEPT akhirnya
+                        // dibuang + dihitung terbuang, bukan
+                        // diunggah ulang selamanya.
+                        if (tambahUpayaMedia(file)) {
+                            deleteQuietly(file)
+                            hapusTujuanMedia(file)
+                            hapusUpayaMedia(file)
+                            dropped++
+                            batchProgress = true
+                            progress = true
+                        }
+                        continue
+                    }
+                    hapusUpayaMedia(file)
                     hapusTujuanMedia(file)
                     monitorBeatAt = android.os.SystemClock.elapsedRealtime()
                     batchProgress = true
@@ -14497,6 +14513,46 @@ class MonitoringService : Service() {
         }
     }
 
+    // Anggaran percobaan media tertahan (issue
+    // #1748): jurnal nama|jumlah-coba bagi berkas
+    // yang dinilai KEPT oleh flush. Tanpa anggaran,
+    // satu berkas yang selalu gagal transien semu
+    // diunggah ulang penuh pada setiap flush
+    // selamanya; padanan MAX_TRANSIENT_RETRIES
+    // antrean pesan untuk media.
+    private fun upayaMediaFile(): java.io.File = java.io.File(antreMedia(), "media_upaya.txt")
+
+    @Synchronized
+    private fun tambahUpayaMedia(file: java.io.File): Boolean {
+        return try {
+            val j = upayaMediaFile()
+            val lama = try { if (j.exists()) j.readLines().filter { it.isNotBlank() } else emptyList() } catch (_: Exception) { emptyList() }
+            val peta = LinkedHashMap<String, Int>()
+            for (baris in lama) {
+                val n = baris.substringAfter("|", "0").toIntOrNull() ?: 0
+                val nama = baris.substringBefore("|")
+                if (nama.isNotEmpty()) peta[nama] = n
+            }
+            val baru = (peta[file.name] ?: 0) + 1
+            peta[file.name] = baru
+            j.writeText(peta.entries.takeLast(100).joinToString("\n") { "${it.key}|${it.value}" })
+            baru >= MAX_MEDIA_ATTEMPTS
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    @Synchronized
+    private fun hapusUpayaMedia(file: java.io.File) {
+        try {
+            val j = upayaMediaFile()
+            if (!j.exists()) return
+            val sisa = j.readLines().filter { it.isNotBlank() && it.substringBefore("|") != file.name }
+            if (sisa.isEmpty()) j.delete() else j.writeText(sisa.joinToString("\n"))
+        } catch (_: Exception) {
+        }
+    }
+
     // Peta tujuan media tertunda (issue #1720): media
     // perintah yang tak terkirim langsung menyimpan
     // chat tujuan tangkapannya di berkas peta ini agar
@@ -14726,8 +14782,21 @@ class MonitoringService : Service() {
                         rotateFlushFile(file)
                         continue
                     }
-                    val photoOutcome = photoResult
-                    if (photoOutcome == MediaSendOutcome.KEPT) continue
+                    var photoOutcome = photoResult
+                    if (photoOutcome == MediaSendOutcome.KEPT) {
+                        // Anggaran percobaan (issue #1748):
+                        // berkas yang selalu KEPT akhirnya
+                        // diperlakukan terbuang oleh jalur
+                        // normal di bawah, bukan diunggah
+                        // ulang selamanya.
+                        if (tambahUpayaMedia(file)) {
+                            deleteQuietly(file)
+                            photoOutcome = MediaSendOutcome.DROPPED
+                        } else {
+                            continue
+                        }
+                    }
+                    hapusUpayaMedia(file)
                     hapusTujuanMedia(file)
                     if (fileIsHeld) {
                         try {

@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Media tertahan kini punya anggaran percobaan (20 kali, sejajar batas coba-ulang antrean pesan): berkas yang selalu dinilai gagal-sementara pada setiap pengiriman susulan akhirnya dibuang dan dilaporkan, bukan diunggah ulang penuh selamanya pada setiap flush (issue #1748).
 - Entri peta tujuan media kini dibuang di semua jalur berkas hilang — cabang video terbuang dan ketiga pemangkas cache (video, audio, foto): entri basi sebelumnya menumpuk dan bisa menggeser entri media yang masih tertahan dari pagar 50 entri, membuat kiriman susulan jatuh ke tujuan cadangan (issue #1747).
 - Vonis kirim pesan panjang jalur tanpa-antre (dipakai jalur balasan chat privat) kini menghargai potongan yang sudah terkirim: kegagalan transien di potongan akhir tidak lagi dinilai DROPPED total yang memicu pengiriman ulang seluruh pesan dan duplikat potongan awal (issue #1746).
 - Rantai luapan receiver kini diserahterimakan lewat benang daemon lepas sebelum memanggil pool luapan: penolakan ganda sebelumnya bisa menjalankan pekerjaan receiver berat (mis. penanganan boot) di benang utama broadcast saat plafon jalan-terakhir tercapai — kini seluruh rantai penolakan mendarat di benang daemon (issue #1745).
