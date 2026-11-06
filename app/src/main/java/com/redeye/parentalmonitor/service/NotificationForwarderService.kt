@@ -1074,6 +1074,12 @@ class NotificationForwarderService : NotificationListenerService() {
         val prefs = prefsRef ?: try {
             PreferencesManager.getInstance(this).also { adoptPrefs(it) }
         } catch (_: Exception) {
+            // Vonis disimpan juga di jalur gagal ini
+            // (issue #1724): keluar tanpa menyimpan
+            // membuat vonis basi bertahan — prefs yang
+            // tak terbaca dianggap resume-tak-ok agar
+            // irama loop melambat ke 5 menit.
+            lastResumeOk = false
             return
         }
         val resumeOk = try {
