@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Gerbang token: escape `\UXXXXXXXX` (Python 8-digit) kini dikenali dekoder escape, dan escape dua lapis kedua arah (backslash ikut ter-escape, `\x` di atas `\u`) tertangkap — sebelumnya `\U` tak dikenali sama sekali dan escape bertingkat hanya tertangkap satu arah (issue #1811).
 - Gerbang token: encode web dua lapis kini tertangkap di kedua permukaan — pembuka varian berjalan dua lintasan, jadi titik-dua tertulis `%253A` (persen ganda) atau entitas bertingkat `&#38;#58;`/`&amp;#58;` terbuka sampai aksara aslinya (issue #1810).
 - Gerbang token: token terbelah tanda kurung per fragmen kini tersambung lagi oleh pemadatan di permukaan berkas — docstring modul sejak lama mengklaim kanal itu, tetapi penerapannya tertinggal sehingga `("paruh1") + ("paruh2")` lolos (issue #1814).
 - Sisa #1796 ditutup: cabang buang terminal di dalam flush sendiri (berkas kosong dan terlalu besar di flushMediaSkeleton, berkas kosong di flushPendingPhotos) kini membersihkan ketiga jurnal media, cabang kosong foto juga melepas entri foto tertahan, dan blok pasca-kirim skeleton kini ikut membersihkan jurnal coba seperti flush foto (issue #1809).

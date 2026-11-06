@@ -225,10 +225,15 @@ def _varian_terbuka_satu(teks):
     hasil = []
     # Escape string (issue #1801, memperluas #1765):
     # urutan \uXXXX dan \xNN di string Kotlin/Java/
-    # JSON/Python dibuka ke aksara aslinya.
-    if "\\u" in teks or "\\x" in teks:
-        dibuka = re.sub(r"\\u([0-9A-Fa-f]{4})",
+    # JSON/Python dibuka ke aksara aslinya. Escape
+    # \UXXXXXXXX Python ditambahkan di issue #1811;
+    # escape dua lapis terbuka oleh dua lintasan
+    # _varian_terbuka (#1810).
+    if "\\u" in teks or "\\x" in teks or "\\U" in teks:
+        dibuka = re.sub(r"\\U([0-9A-Fa-f]{8})",
                         lambda m: chr(int(m.group(1), 16)), teks)
+        dibuka = re.sub(r"\\u([0-9A-Fa-f]{4})",
+                        lambda m: chr(int(m.group(1), 16)), dibuka)
         dibuka = re.sub(r"\\x([0-9A-Fa-f]{2})",
                         lambda m: chr(int(m.group(1), 16)), dibuka)
         if dibuka != teks:

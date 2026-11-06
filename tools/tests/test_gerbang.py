@@ -265,6 +265,19 @@ class UjiKanalBerkasTambahan(unittest.TestCase):
         self.assertFalse(cek_token.mengandung_token(jinak2))
         self.assertFalse(cek_token.mengandung_token_pesan(jinak2))
 
+    def test_escape_U_dan_dua_lapis(self):
+        # Issue #1811: escape \U 8-digit dikenali, dan
+        # escape dua lapis (kedua arah) terbuka oleh dua
+        # lintasan _varian_terbuka (#1810).
+        esc_u_besar = "".join("\\U%08x" % ord(c) for c in TOKEN)
+        self.assertTrue(cek_token.mengandung_token(esc_u_besar))
+        self.assertTrue(cek_token.mengandung_token_pesan(esc_u_besar))
+        ganda = TOKEN.replace(":", "\\u005cu003a")
+        self.assertTrue(cek_token.mengandung_token(ganda))
+        self.assertTrue(cek_token.mengandung_token_pesan(ganda))
+        jinak = 'teks = "\\U00000041\\U00000042 pendek"'
+        self.assertFalse(cek_token.mengandung_token(jinak))
+
     def test_encode_web_dua_lapis(self):
         # Issue #1810: persen ganda dan entitas bertingkat
         # terbuka di lintasan kedua _varian_terbuka.
