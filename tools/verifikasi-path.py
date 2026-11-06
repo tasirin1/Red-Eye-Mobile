@@ -2597,9 +2597,16 @@ def _pesan_terbelah(teks):
     """
     # Sumber tunggal (issue #1742): delegasikan ke
     # penilai kanonik cek-token bila termuat; badan
-    # di bawah adalah cadangan lokal beraturan sama
-    # (blok gabungan #1736) untuk keadaan pemuatan
-    # gagal — bukan salinan yang dipelihara terpisah.
+    # di bawah adalah cadangan lokal untuk keadaan
+    # pemuatan gagal. Cadangan ini CERMINAN PERSIS
+    # aturan kanonik — sapuan gabungan #1736, baris
+    # pemisah murni #1750, dan gabungan dua blok
+    # berseberangan satu baris penyela #1749 (issue
+    # #1788: cadangan lama hanya memuat #1736, jadi
+    # dua aturan itu hilang diam-diam tepat pada
+    # keadaan darurat yang menjadi alasan cadangan
+    # ini ada). Tes paritas di tools/tests menjaga
+    # cerminan ini tak menyimpang lagi.
     if _penilai_fragmen is not None:
         return _penilai_fragmen(teks)
     if not teks:
@@ -2620,20 +2627,46 @@ def _pesan_terbelah(teks):
     # sehingga bloknya putus, dan sambungan yang
     # dinilai tetap harus lolos mengandung_token.
     def nilai(blok):
-        return (len(blok) >= 2
-                and sum(len(b) for b in blok) >= 42
-                and mengandung_token("".join(blok)))
+        if len(blok) < 2 or sum(len(b) for b in blok) < 42:
+            return False
+        if mengandung_token("".join(blok)):
+            return True
+        # Baris pemisah murni (issue #1750): baris
+        # berisi hanya '=', '/', atau ':' ikut ke
+        # blok tetapi bukan alfabet ekor token —
+        # nilai ulang gabungan tanpa baris-baris itu.
+        inti = [b for b in blok if not re.fullmatch(r"[=\/:]+", b)]
+        if inti == blok:
+            return False
+        gabung = "".join(inti)
+        return len(gabung) >= 42 and mengandung_token(gabung)
 
+    # Satu baris penyela (issue #1749): dua blok
+    # yang terpisah TEPAT satu baris non-anggota
+    # juga dinilai tersambung.
     blok = []
+    blok_lalu = []
+    celah = 0
+
+    def tutup(blok_ini):
+        if nilai(blok_ini):
+            return True
+        return (celah == 1 and bool(blok_lalu)
+                and nilai(blok_lalu + blok_ini))
+
     for baris in teks.splitlines():
         b = baris.strip()
         if b and len(b) <= 64 and re.fullmatch(r"[A-Za-z0-9_+\/=.\:-]+", b):
             blok.append(b)
-        else:
-            if nilai(blok):
+        elif blok:
+            if tutup(blok):
                 return True
+            blok_lalu = blok
             blok = []
-    return nilai(blok)
+            celah = 1
+        else:
+            celah += 1
+    return bool(blok) and tutup(blok)
 
 
 # Vonis tag hanya boleh berjalan sekali per proses

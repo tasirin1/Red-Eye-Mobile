@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Penilai fragmen cadangan di verifikasi-path kini cerminan persis penilai kanonik: sebelumnya ia hanya memuat aturan sapuan gabungan, jadi aturan baris-pemisah dan gabungan-dua-blok hilang diam-diam tepat pada keadaan gagal-muat yang menjadi alasan cadangan itu ada (issue #1788).
+
 - Mode --semua gerbang tak lagi menghitung satu tag kotor sebagai dua kegagalan: penilai pesan anotasi tag kini berjalan sekali per proses, padahal dua jalur pemindai pesan sama-sama memanggilnya dalam satu lari (issue #1787).
 
 - Vonis pesan gerbang kini menilai gabungan pesan lintas commit juga: token yang dipecah di batas dua pesan commit (kepala di ujung satu pesan, ekor di awal berikutnya) sebelumnya lolos dari mode rentang CI maupun --semua karena tiap pesan dinilai sendiri-sendiri (issue #1786).
