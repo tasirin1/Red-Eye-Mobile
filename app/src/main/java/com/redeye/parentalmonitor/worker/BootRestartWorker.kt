@@ -59,11 +59,7 @@ class BootRestartWorker(
                 .setOngoing(true)
                 .setSilent(true)
                 .build()
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                ForegroundInfo(NOTIF_ID, fallback, FgsTypes.base(Build.VERSION.SDK_INT))
-            } else {
-                ForegroundInfo(NOTIF_ID, fallback)
-            }
+            ForegroundInfo(NOTIF_ID, fallback, FgsTypes.base(Build.VERSION.SDK_INT))
         }
     }
 
@@ -83,11 +79,7 @@ class BootRestartWorker(
             .setOngoing(true)
             .setSilent(true)
             .build()
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            ForegroundInfo(NOTIF_ID, notification, FgsTypes.base(Build.VERSION.SDK_INT))
-        } else {
-            ForegroundInfo(NOTIF_ID, notification)
-        }
+        return ForegroundInfo(NOTIF_ID, notification, FgsTypes.base(Build.VERSION.SDK_INT))
     }
 
     override suspend fun doWork(): Result {

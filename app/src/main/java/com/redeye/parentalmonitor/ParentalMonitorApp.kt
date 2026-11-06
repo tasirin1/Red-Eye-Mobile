@@ -3,7 +3,6 @@ package com.redeye.parentalmonitor
 import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.os.Build
 import com.redeye.parentalmonitor.utils.CrashReporter
 
 class ParentalMonitorApp : Application() {
@@ -58,38 +57,36 @@ class ParentalMonitorApp : Application() {
     }
 
     private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val importance = NotificationManager.IMPORTANCE_MIN
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                getString(R.string.channel_name),
-                importance
-            ).apply {
-                description = getString(R.string.channel_desc)
+        val importance = NotificationManager.IMPORTANCE_MIN
+        val channel = NotificationChannel(
+            CHANNEL_ID,
+            getString(R.string.channel_name),
+            importance
+        ).apply {
+            description = getString(R.string.channel_desc)
+            setShowBadge(false)
+            setSound(null, null)
+            enableVibration(false)
+            enableLights(false)
+        }
+        val notificationManager = try {
+            getSystemService(NotificationManager::class.java)
+        } catch (_: Exception) {
+            null
+        } ?: return
+        try {
+            notificationManager.createNotificationChannel(channel)
+        } catch (_: Exception) {
+        }
+        try {
+            val resume = NotificationChannel(RESUME_CHANNEL_ID, getString(R.string.channel_name_alerts), NotificationManager.IMPORTANCE_DEFAULT).apply {
                 setShowBadge(false)
                 setSound(null, null)
                 enableVibration(false)
                 enableLights(false)
             }
-            val notificationManager = try {
-                getSystemService(NotificationManager::class.java)
-            } catch (_: Exception) {
-                null
-            } ?: return
-            try {
-                notificationManager.createNotificationChannel(channel)
-            } catch (_: Exception) {
-            }
-            try {
-                val resume = NotificationChannel(RESUME_CHANNEL_ID, getString(R.string.channel_name_alerts), NotificationManager.IMPORTANCE_DEFAULT).apply {
-                    setShowBadge(false)
-                    setSound(null, null)
-                    enableVibration(false)
-                    enableLights(false)
-                }
-                notificationManager.createNotificationChannel(resume)
-            } catch (_: Exception) {
-            }
+            notificationManager.createNotificationChannel(resume)
+        } catch (_: Exception) {
         }
     }
 }

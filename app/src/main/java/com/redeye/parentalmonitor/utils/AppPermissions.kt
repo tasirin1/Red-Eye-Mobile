@@ -29,7 +29,6 @@ object AppPermissions {
     // salinan logika yang sama sebelumnya hidup di
     // MonitoringService, MainActivity, dan SetupActivity.
     fun hasBackgroundLocation(context: Context): Boolean {
-        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.Q) return true
         return ContextCompat.checkSelfPermission(
             context,
             Manifest.permission.ACCESS_BACKGROUND_LOCATION
