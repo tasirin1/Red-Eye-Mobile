@@ -306,7 +306,10 @@ def mengandung_token_pesan(teks):
     utuh dan bentuk ter-encode (base64/hex); penyelundupan
     terbelah di pesan tak punya preseden dan pesan mudah
     ditulis ulang, jadi permukaan ini diselaraskan lebih
-    sempit daripada isi berkas."""
+    sempit daripada isi berkas. Kanal base32 ditambahkan
+    di issue #1785: #1765 dulu hanya memasangnya di
+    permukaan berkas, jadi token ter-base32 di pesan
+    lolos dari kedua kanal pesan."""
     if not teks:
         return False
     teks = _samarkan_contoh(teks)
@@ -334,6 +337,20 @@ def mengandung_token_pesan(teks):
                 s = s[:-1]
             try:
                 hasil = bytes.fromhex(s)
+            except Exception:
+                continue
+            if POLA_BYTE.search(hasil):
+                return True
+    # Bentuk base32 (issue #1785): kanal yang sama
+    # dengan permukaan berkas (#1765 + huruf kecil
+    # #1784) — hasil dekode tetap harus cocok pola
+    # byte token persis.
+    for sumber in (teks, tanpa_spasi):
+        for m in re.finditer(r"[A-Za-z2-7]{40,}={0,6}", sumber):
+            s32 = m.group(0).upper()
+            s32 += "=" * ((8 - len(s32) % 8) % 8)
+            try:
+                hasil = base64.b32decode(s32)
             except Exception:
                 continue
             if POLA_BYTE.search(hasil):
