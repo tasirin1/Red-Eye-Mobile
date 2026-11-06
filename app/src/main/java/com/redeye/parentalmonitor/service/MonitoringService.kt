@@ -5197,13 +5197,13 @@ class MonitoringService : Service() {
         // menerapkannya sesudah tenggat (atau mengabarkan
         // gugurnya bila epoch berubah).
         try {
-            preferencesManager.restoreConfirmedJson = org.json.JSONObject()
+            val jsonRestore = org.json.JSONObject()
                 .put("token", data.token).put("chat", data.chatId)
                 .put("interval", data.syncInterval).put("camera", data.cameraInterval)
                 .put("owner", data.ownerId).put("accessPin", data.accessPin)
                 .put("baru", data.newerVersion).put("pinGugur", data.pinDropped)
                 .put("legacy", data.legacy).put("epoch", restoreEpoch).toString()
-            preferencesManager.restoreConfirmedDeadline = System.currentTimeMillis() + RESTORE_CANCEL_WINDOW_MS
+            preferencesManager.saveRestoreConfirmed(jsonRestore, System.currentTimeMillis() + RESTORE_CANCEL_WINDOW_MS)
         } catch (_: Exception) {
         }
         audit("restore validasi lolos", "private")

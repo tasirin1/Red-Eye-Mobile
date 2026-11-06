@@ -1662,6 +1662,24 @@ class PreferencesManager(context: Context) {
         get() = prefLong(KEY_RESTORE_CONFIRMED_DEADLINE, 0L)
         set(value) { sharedPreferences.edit().putLong(KEY_RESTORE_CONFIRMED_DEADLINE, value).commit() }
 
+    // Pasangan catatan restore ditulis SATU commit
+    // (issue #1722): dua setter terpisah menyisakan
+    // jendela mati-proses berisi JSON baru + tenggat
+    // basi (0) yang pemeriksa startup baca sebagai
+    // jatuh tempo seketika, menghapus jendela batal
+    // 60 detik. Hasil commit dikembalikan agar
+    // pemanggil bisa membedakan tersimpan/gagal.
+    fun saveRestoreConfirmed(json: String, deadline: Long): Boolean {
+        return try {
+            sharedPreferences.edit()
+                .putString(KEY_RESTORE_CONFIRMED_JSON, json)
+                .putLong(KEY_RESTORE_CONFIRMED_DEADLINE, deadline)
+                .commit()
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     // Tahap konfirmasi bersihkan media (issue #1542).
     var pendingCleanupSpec: String
         get() = prefString(KEY_PENDING_CLEANUP_SPEC, "")
