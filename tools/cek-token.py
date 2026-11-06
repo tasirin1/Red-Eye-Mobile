@@ -4,7 +4,8 @@
 Mengenali bentuk-bentuk token:
   1. literal utuh satu baris (pola lama),
   2. terbelah antar baris / antar literal string / oleh pemisah kode
-     lain (".", "${...}", tanda kurung) — dipadatkan dulu (issue #772),
+     lain (".", "${...}", pasangan tanda kurung antar fragmen) —
+     dipadatkan dulu (issue #772, pasangan kurung #1814),
   3. ter-encode base64 (kandidat panjang didekode lalu dicocokkan),
      termasuk base64 yang terbelah lalu tersambung lagi sesudah
      pemadatan (issue #772),
@@ -181,6 +182,18 @@ def _padatkan(teks):
     rapat = re.sub(r"(?<=[A-Za-z0-9+/=_-]);(?=[A-Za-z0-9+/=_-])", "", rapat)
     rapat = re.sub(r"(?<=[A-Za-z0-9+/=_-]);(?=:)", "", rapat)
     rapat = re.sub(r"(?<=:);(?=[A-Za-z0-9+/=_-])", "", rapat)
+    # Pasangan kurung di antara fragmen (issue #1814):
+    # bentuk ("paruh1") + ("paruh2") menyisakan runtunan
+    # )( di sambungan sesudah pemisah lain dibuang.
+    # HANYA pasangan tutup-buka yang dibuang — kurung
+    # tunggal di antara aksara token TIDAK: contoh format
+    # angka di CHANGELOG ("456.123:456) yang sebelumnya
+    # tampil polos...") membuktikan kurung tunggal yang
+    # dibuang menyambung contoh angka + prosa menjadi
+    # ekor pola palsu (positif palsu nyata di repo ini).
+    rapat = re.sub(r"(?<=[A-Za-z0-9+/=_-])\)+\(+(?=[A-Za-z0-9+/=_-])", "", rapat)
+    rapat = re.sub(r"(?<=[A-Za-z0-9+/=_-])\)+\(+(?=:)", "", rapat)
+    rapat = re.sub(r"(?<=:)\)+\(+(?=[A-Za-z0-9+/=_-])", "", rapat)
     # Byte kontrol non-spasi (issue #1754): tak pernah
     # bermakna di teks sumber; di permukaan terpadatkan
     # ia hanya bisa menjadi pemisah belah.

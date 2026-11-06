@@ -265,6 +265,21 @@ class UjiKanalBerkasTambahan(unittest.TestCase):
         self.assertFalse(cek_token.mengandung_token(jinak2))
         self.assertFalse(cek_token.mengandung_token_pesan(jinak2))
 
+    def test_belah_tanda_kurung(self):
+        # Issue #1814: fragmen yang masing-masing dibungkus
+        # kurung tersambung lagi oleh pemadatan — hanya
+        # pasangan kurung antar fragmen yang dibuang.
+        belah = 'val t = ("' + TOKEN[:20] + '") + ("' + TOKEN[20:] + '")'
+        self.assertTrue(cek_token.mengandung_token(belah))
+        jinak = 'fun hitung(x: Int) = (x + 1) * (2 + 3)'
+        self.assertFalse(cek_token.mengandung_token(jinak))
+        # Kontrol positif palsu nyata: contoh format angka
+        # disusul kurung tunggal + prosa TIDAK tertuduh.
+        contoh = ("berkelompok dengan pemisah koma, garis miring, "
+                  "dan titik dua 123.456.123/456.123:456) yang "
+                  "sebelumnya tampil polos di notifikasi")
+        self.assertFalse(cek_token.mengandung_token(contoh))
+
 
 class UjiPesanVerifikasiPath(unittest.TestCase):
     # Kanal pesan milik verifikasi-path (bukan cek-token):
