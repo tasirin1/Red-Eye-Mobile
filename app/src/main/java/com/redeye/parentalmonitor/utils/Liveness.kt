@@ -322,7 +322,12 @@ object Liveness {
         if (!MonitoringService.tryClaimServiceStart()) {
             // Penghidup lain baru saja mengklaim start
             // (issue #1683): jangan catat sebagai kematian
-            // dan jangan kirim start kedua.
+            // dan jangan kirim start kedua. Jadwalkan
+            // ulang Liveness lebih dulu (issue #1705):
+            // alarm ini satu-tembak dan semua cabang
+            // keluar lain menjadwalkan — tanpa ini rantai
+            // watchdog putus bila pengklaim lain lupa.
+            schedule(context)
             return
         }
         // Bangun karena jam/zona berubah (issue #1684)
