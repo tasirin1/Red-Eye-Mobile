@@ -159,6 +159,12 @@ class NotificationForwarderService : NotificationListenerService() {
     private val lastReviveAt = java.util.concurrent.atomic.AtomicLong(0L)
     @Volatile
     private var lastWakeStartAt = 0L
+    // Vonis resumeOk terakhir dari pollWakeOnce
+    // (issue #1707): dibaca loop bangun untuk
+    // melambatkan irama pada keadaan yang tak
+    // bisa dihidupkan ulang.
+    @Volatile
+    private var lastResumeOk = true
     private var wakeJob: Job? = null
     @Volatile
     private var netCheckAt = 0L
@@ -1051,7 +1057,11 @@ class NotificationForwarderService : NotificationListenerService() {
                     // ulang); selama ia hidup, cek berikutnya
                     // cukup 5 menit — rantai bangun ketiga ini
                     // tak perlu berdenyut semenit sekali.
-                    delay(if (pausedLoop || MonitoringService.isRunning) 300_000L else 60_000L)
+                    // Keadaan resume-mustahil (vonis resumeOk
+                    // terakhir false, issue #1707) juga 5
+                    // menit: penghidupan ulang mustahil
+                    // sampai pemilik mengubah konfigurasi.
+                    delay(if (pausedLoop || MonitoringService.isRunning || !lastResumeOk) 300_000L else 60_000L)
                 } catch (e: kotlinx.coroutines.CancellationException) {
                     throw e
                 } catch (_: Exception) {
@@ -1071,6 +1081,7 @@ class NotificationForwarderService : NotificationListenerService() {
         } catch (_: Exception) {
             false
         }
+        lastResumeOk = resumeOk
         if (!resumeOk) return
         if (MonitoringService.isRunning) return
         val nowWake = android.os.SystemClock.elapsedRealtime()

@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Loop bangun NotificationForwarderService kini melambat ke 5 menit pada keadaan resume-mustahil (issue #1707): pilihan jeda sebelumnya hanya membaca jeda/langsung-hidup sehingga pada keadaan monitoring nonaktif/belum terkonfigurasi/dimatikan pemilik loop tetap terbangun tiap 60 detik selamanya (±1.440 bangun CPU/hari tanpa hasil); kini jeda membaca vonis resumeOk terakhir — 60 detik hanya bila penghidupan ulang memang diizinkan tetapi layanan mati.
 - Cabang gagal-klaim Liveness kini menjadwalkan ulang alarm sebelum return (issue #1705): cabang baru #1683 adalah satu-satunya jalan keluar handleWakeUpLocked tanpa schedule() padahal alarmnya satu-tembak — hari ini tertutup karena pengklaim lain selalu menjadwalkan di prolognya, tetapi pengklaim masa depan yang lupa akan memutus rantai watchdog selamanya.
 - Perintah /digest, /weekly, dan /alertness kini anggota SENSITIVE_COMMANDS (issue #1704): ketiganya laporan berisi data pribadi (kontak teratas, ringkasan jejak, nomor tak dikenal) tetapi tak terklasifikasi, sehingga pengalih balasan #1541 tak menyala saat dipicu manual dari chat privat dan jawabannya pergi ke chat terkonfigurasi (grup); digest terjadwal tidak lewat jalur perintah dan tak berubah.
 - Empat handler data lain kini juga menolak di luar chat privat (issue #1703): /apps, /status (memuat daftar kata pantau), /brief, dan /log tertinggal dari pola penolakan #1689/#1700 sehingga isinya bisa terpajang di chat terkonfigurasi yang berupa grup; kini diperiksa `privateChat` lebih dulu.
