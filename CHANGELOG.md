@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Gerbang token: nama branch di refs/remotes/origin kini ikut dinilai seperti branch lokal — cermin branch milik sendiri di remote tujuan push sebelumnya lolos total karena alasan pengecualian remote ("branch pihak lain") tidak berlaku untuk origin di repo ini (issue #1824).
 - Gerbang token: hasil dekode lapis pertama kini juga dinilai dalam bentuk terbukanya — token yang titik-duanya ter-persen/entitas/escape lalu dibungkus base64/hex/base32 tidak lagi lolos; arah sebaliknya sudah tertutup #1812, arah ini cerminnya dan sama-sama dua lapis (issue #1823).
 - Teks interval watchdog di /alive dan Setup kini melaporkan interval efektif yang benar-benar dijadwalkan (teregang mengikuti rentetan sehat, dengan catatan interval dasarnya bila teregang), bukan interval dasar saja: sejak peregangan #1572 angka dasar menilai kecepatan deteksi layanan mati lebih cepat dari kenyataannya (issue #1822).
 - Ketiga prune media kini berbagi satu penjaga reentransi (pruneBusy) dan korban disaring ulang terhadap berkas yang sedang aktif tepat di titik pemilihan: sebelumnya flush melepas penanda sibuknya sebelum prune berjalan di finally dan prune tak punya penanda sendiri, jadi dua prune bisa menghitung korban yang sama dan prune bisa menghapus berkas yang baru mulai diunggah flush lain (issue #1821).

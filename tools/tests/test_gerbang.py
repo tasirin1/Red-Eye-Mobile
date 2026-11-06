@@ -479,5 +479,24 @@ class UjiPesanVerifikasiPath(unittest.TestCase):
         self.assertTrue(verifikasi._cek_pesan_tag(gagal))
         self.assertTrue(any("di NAMA branch" in g for g in gagal), gagal)
 
+    def test_nama_branch_remote_origin_terencode(self):
+        # Issue #1824: refs/remotes/origin adalah cermin
+        # branch milik sendiri di remote tujuan push —
+        # namanya dinilai juga, tidak seperti remote lain.
+        nama = "uji-" + base64.urlsafe_b64encode(
+            TOKEN.encode()).decode().rstrip("=")
+
+        def palsu(*args):
+            gabung = " ".join(args)
+            if "refs/remotes/origin" in gabung:
+                return "origin/main\norigin/" + nama
+            return ""
+
+        self._pasang_jalan(palsu)
+        gagal = []
+        self.assertTrue(verifikasi._cek_pesan_tag(gagal))
+        self.assertTrue(any("branch remote origin" in g for g in gagal),
+                        gagal)
+
 if __name__ == "__main__":
     unittest.main()

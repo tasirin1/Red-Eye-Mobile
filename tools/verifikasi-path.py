@@ -2731,8 +2731,12 @@ def _cek_pesan_tag(gagal):
     # nama branch, padahal nama branch ikut terbit ke
     # remote dan tampil publik selama branch hidup.
     # Hanya refs/heads (branch lokal yang akan di-push);
-    # refs/remotes mencerminkan branch pihak lain yang
-    # tak bisa diganti nama dari sini. Seperti nama tag,
+    # refs/remotes UMUM mencerminkan branch pihak lain
+    # yang tak bisa diganti nama dari sini. Pengecualian
+    # (issue #1824): refs/remotes/origin adalah cermin
+    # branch MILIK SENDIRI di remote tujuan push repo
+    # ini — alasan pengecualian tak berlaku untuknya,
+    # jadi namanya dinilai juga. Seperti nama tag,
     # titik-dua dilarang git di nama ref — yang bisa
     # tertangkap memang bentuk ter-encode.
     daftar_cabang = jalan("git", "for-each-ref", "refs/heads",
@@ -2746,6 +2750,20 @@ def _cek_pesan_tag(gagal):
                          "ganti nama branch itu sebelum push. "
                          "Kredensial hanya via input manual "
                          "SetupActivity" % nama_cabang)
+            return True
+    daftar_cabang_remote = jalan("git", "for-each-ref",
+                                 "refs/remotes/origin",
+                                 "--format=%(refname:short)") or ""
+    for nama_cabang in daftar_cabang_remote.splitlines():
+        nama_cabang = nama_cabang.strip()
+        if nama_cabang and mengandung_token_pesan(nama_cabang):
+            gagal.append("Kemungkinan token bot asli di NAMA "
+                         "branch remote origin %s — nama itu "
+                         "cermin branch milik sendiri yang sudah "
+                         "terbit di remote; ganti nama branch "
+                         "asalnya lalu push ulang. Kredensial "
+                         "hanya via input manual SetupActivity"
+                         % nama_cabang)
             return True
     return False
 
