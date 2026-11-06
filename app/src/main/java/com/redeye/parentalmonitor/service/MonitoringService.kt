@@ -3090,7 +3090,7 @@ class MonitoringService : Service() {
             if (seen) {
                 continue
             }
-            beginUpdateTrack(update.updateId, responseGeneration)
+            beginUpdateTrack(update.updateId, responseGeneration, responseToken)
             var offsetDeferred = false
             var delivered = true
             try {
@@ -3485,9 +3485,31 @@ class MonitoringService : Service() {
     // "token sama" dan mengonfirmasi offset milik bot lama.
     private val updateTokenHashes = java.util.Collections.synchronizedMap(HashMap<Long, String>())
 
-    private fun beginUpdateTrack(updateId: Long, generation: Long) {
+    // Cache sidik token (issue #1778): beginUpdateTrack dulu
+    // mendekripsi token dari prefs + menghitung SHA-256 pada
+    // SETIAP update (s.d. 50x per batch poll), padahal token
+    // hanya berubah saat kredensial berganti. Kini loop poll
+    // meneruskan token snapshot-nya (responseToken, yang memang
+    // pasangan responseGeneration) dan hash dihitung sekali per
+    // nilai token; balapan tulis cache jinak — akibat terburuk
+    // hash yang sama dihitung ulang.
+    @Volatile
+    private var sidikTokenNilai: String? = null
+    @Volatile
+    private var sidikTokenHash: String? = null
+
+    private fun sidikToken(token: String): String {
+        val hashTersimpan = sidikTokenHash
+        if (hashTersimpan != null && sidikTokenNilai == token) return hashTersimpan
+        val hash = com.redeye.parentalmonitor.utils.Sha256Hex.hex(token)
+        sidikTokenNilai = token
+        sidikTokenHash = hash
+        return hash
+    }
+
+    private fun beginUpdateTrack(updateId: Long, generation: Long, token: String) {
         updateOffsetTracker.begin(updateId, generation)
-        try { updateTokenHashes[updateId] = com.redeye.parentalmonitor.utils.Sha256Hex.hex(preferencesManager.botToken) } catch (_: Exception) { }
+        try { updateTokenHashes[updateId] = sidikToken(token) } catch (_: Exception) { }
     }
 
     private fun finishUpdateTrack(updateId: Long, generation: Long, delivered: Boolean) {
@@ -3502,7 +3524,7 @@ class MonitoringService : Service() {
             // restart dan dieksekusi dua kali. Bila token terbukti
             // sama, tag ulang entri ke generasi kini dan selesaikan
             // seperti biasa; pergantian token tetap membuangnya.
-            val tokenSame = tokenHashAtBegin != null && try { tokenHashAtBegin == com.redeye.parentalmonitor.utils.Sha256Hex.hex(preferencesManager.botToken) } catch (_: Exception) { false }
+            val tokenSame = tokenHashAtBegin != null && try { tokenHashAtBegin == sidikToken(preferencesManager.botToken) } catch (_: Exception) { false }
             if (tokenSame) {
                 updateOffsetTracker.forget(updateId, generation)
                 updateOffsetTracker.begin(updateId, currentGeneration)
