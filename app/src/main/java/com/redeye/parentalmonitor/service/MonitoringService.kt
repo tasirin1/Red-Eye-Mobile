@@ -4588,7 +4588,7 @@ class MonitoringService : Service() {
             "/storage" -> handleStorageCommand()
             "/history" -> handleHistoryCommand(arg, privateChat)
             "/watch" -> handleWatchCommand(arg, privateChat)
-            "/appalert" -> handleAppAlertCommand(arg)
+            "/appalert" -> handleAppAlertCommand(arg, privateChat)
             "/protect" -> handleProtectCommand(arg)
             "/appwatch" -> handleAppWatchCommand(arg, privateChat)
             "/home", "/school" -> handleFenceCommand(command, arg, privateChat)
@@ -5757,9 +5757,13 @@ class MonitoringService : Service() {
         }
     }
 
-    private suspend fun handleAppAlertCommand(arg: String) {
+    private suspend fun handleAppAlertCommand(arg: String, privateChat: Boolean) {
         val sub = arg.trim().lowercase(java.util.Locale.ROOT)
         if (sub.isEmpty() || sub == "status") {
+            // Status memuat aplikasi yang sedang dibuka +
+            // total pemakaian layar (issue #1723): pola
+            // penolakan yang sama dengan /appwatch status.
+            if (!privateChat) { sendToTelegram("\uD83D\uDD12 Rincian hanya via private chat dengan bot."); return }
             val on = try { preferencesManager.a11yAppAlert } catch (_: Exception) { true }
             val rows = a11yUsageRows()
             val total = rows.sumOf { it.millis }

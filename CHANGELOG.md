@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- /appalert status kini menolak di luar private chat (issue #1723): statusnya mengirim aplikasi yang sedang dibuka dan total pemakaian layar hari ini ke chat mana pun perintah diketik; kini memakai pola penolakan yang sama dengan /appwatch status.
 - Catatan restore terkonfirmasi kini ditulis atomik satu commit (issue #1722): pasangan JSON+tenggat sebelumnya ditulis dua commit terpisah, sehingga mati proses di antaranya menyisakan tenggat basi 0 yang dibaca pemeriksa startup sebagai jatuh tempo seketika dan menghapus jendela batal 60 detik; kini satu fungsi saveRestoreConfirmed menulis keduanya sekaligus dan mengembalikan hasil commit.
 - /logout kini menghapus catatan restore persisten secara eksplisit (issue #1721): sebelumnya pembatalan restore terkonfirmasi lewat logout hanya bergantung pada commit epoch baru yang hasilnya dibuang, sehingga kegagalan commit itu bisa menghidupkan lagi kredensial cadangan yang baru dibatalkan saat layanan start berikutnya.
 - Override balasan privat kini benar-benar menjangkau muatan media (issue #1720): /record dan /recordvideo masuk SENSITIVE_COMMANDS, dan tujuan chat ditangkap saat perintah berjalan lalu dibawa rantai jepret/rekam sampai pengiriman — sebelumnya pengirim media membaca jendela override saat mengirim, sesudah jendela yang hanya hidup selama handler itu ditutup, sehingga foto/tangkapan/rekaman yang diminta dari chat privat tetap terbit ke grup; media yang gagal terkirim menyimpan tujuannya di peta media_tujuan.txt agar flush berikutnya pun mengirim ke chat yang benar.
