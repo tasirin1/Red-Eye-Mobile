@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Berkas local.properties bersufiks (mis. .bak atau .old) kini juga ditahan langkah nama gerbang lokal: alternatifnya sebelumnya berjangkar akhir nama tanpa kelompok sufiks, tidak seperti kelompok ekstensi di baris yang sama (issue #1752).
 - Langkah metadata author/committer di gerbang lokal kini menggabungkan keempat field tanpa pemisah: pemisah kontrol sebelumnya membuat token yang dibelah tepat di batas antar-field (nama ke email) tak tersambung di permukaan penilaian mana pun (issue #1751).
 - Penilai fragmen token kini juga menilai blok tanpa baris pemisah murni berisi '=', '/', atau ':': baris semacam itu sebelumnya ikut tergabung dan meracuni gabungan sehingga belahan token yang disela baris pemisah lolos (issue #1750).
 - Penilai fragmen token di pesan kini juga menilai dua blok baris yang terpisah tepat satu baris penyela (mis. baris kosong): dua paruh token yang disela satu baris sebelumnya masing-masing menjadi blok satu baris dan tak pernah dinilai tersambung (issue #1749).
