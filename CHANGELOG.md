@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Kanal nama gerbang kini mengupas ekstensi bertingkat sampai 3 tingkat (issue #1734): kupasan satu tingkat dari #1706 menyisakan nama token bersufiks ganda (mis. .txt.bak) tak terjangkau rekonstruksi; berlaku untuk nama tunggal maupun gabungan nama satu commit.
 - Lintasan pohon tip gerbang lintas-commit kini dinilai sekali per rentang (issue #1733): blok penilaian pasangan belahan #1702 sebelumnya berada di dalam loop per-commit sehingga seluruh pohon akhir dipindai ulang sekali per commit (terukur ±5,5–6 detik/commit); blok itu kini fungsi tersendiri yang dipanggil sekali sesudah loop — vonis identik, rentang bersih 12 commit turun ke ±2,7 detik/commit.
 - SendMessageWorker kini memotong pesan >4000 aksara sejak awal (issue #1732): sebelumnya pesan antre panjang selalu dicoba utuh dulu dan sendChunked hanya tercapai lewat respons 400 persis, sehingga kegagalan transien membakar anggaran 20 retry sampai pesan terbuang tanpa percobaan terpotong; kini sejajar jalur layanan yang memeriksa panjang lebih dulu.
 - sendFitted cabang transien murni kini menilai hasil antre per item (issue #1731): vonis Boolean all-or-nothing sebelumnya membaca eviksi sebagian sebagai DROPPED sehingga pemanggil berkursor mengirim ulang seluruh bagian dan menggandakan potongan yang sebenarnya terantre; jalur penyelamatan CancellationException juga kini menghitung kegagalan antre yang sebelumnya dibuang tak tercatat.

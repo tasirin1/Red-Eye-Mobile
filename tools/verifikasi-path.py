@@ -2176,10 +2176,18 @@ def cek_secret_riwayat(gagal, rentang):
             # juga bentuk sesudah ekstensi terakhir
             # dibuang.
             varian_nama = [polos_nama]
-            if "." in polos_nama:
-                tanpa_eks = polos_nama.rsplit(".", 1)[0]
-                if tanpa_eks:
-                    varian_nama.append(tanpa_eks)
+            # Kupas ekstensi BERTINGKAT (issue #1734):
+            # satu tingkat saja (#1706) menyisakan nama
+            # bersufiks ganda (.txt.bak) tak terjangkau
+            # rekonstruksi — kupas sampai 3 tingkat.
+            _sisa_nama = polos_nama
+            for _ in range(3):
+                if "." not in _sisa_nama:
+                    break
+                _sisa_nama = _sisa_nama.rsplit(".", 1)[0]
+                if not _sisa_nama:
+                    break
+                varian_nama.append(_sisa_nama)
             for varian in varian_nama:
                 if re.search(r"[0-9]{6,}:[A-Za-z0-9_-]{35,}", varian):
                     calon_nama.append(varian)
@@ -2209,10 +2217,15 @@ def cek_secret_riwayat(gagal, rentang):
             gabungan_nama = "".join(sorted(nama_gab_list))
             calon_gab = []
             varian_gab = [gabungan_nama]
-            if "." in gabungan_nama:
-                tanpa_eks_g = gabungan_nama.rsplit(".", 1)[0]
-                if tanpa_eks_g:
-                    varian_gab.append(tanpa_eks_g)
+            # Kupas bertingkat juga di sini (issue #1734).
+            _sisa_gab = gabungan_nama
+            for _ in range(3):
+                if "." not in _sisa_gab:
+                    break
+                _sisa_gab = _sisa_gab.rsplit(".", 1)[0]
+                if not _sisa_gab:
+                    break
+                varian_gab.append(_sisa_gab)
             for varian in varian_gab:
                 if re.search(r"[0-9]{6,}:[A-Za-z0-9_-]{35,}", varian):
                     calon_gab.append(varian)
