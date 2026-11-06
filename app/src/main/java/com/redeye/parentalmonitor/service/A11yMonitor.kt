@@ -128,13 +128,31 @@ object A11yMonitor {
     // penanda mulai O(1) + ukuran antrean sebelum
     // serah: antrean yang sudah penuh sebelum serah
     // adalah satu-satunya keadaan tertolak.
+    // Baca-ukuran + serah digerbang SATU kunci
+    // (issue #1791, celah sisa #1774 yang ditangkap
+    // self-review audit-135): tanpa kunci, antrean
+    // bisa bertransisi penuh tepat di antara baca
+    // ukuran dan execute — penyerah lain merebut
+    // slot terakhir saat pekerja sibuk — dan tugas
+    // terbuang DiscardPolicy tanpa jalan sebaris.
+    // Pekerja hanya MENGURANGI antrean (arah aman),
+    // jadi penuhSebelum yang false di bawah kunci
+    // menjamin execute tak tertolak; jalan sebaris
+    // tetap di luar kunci agar badan tugas yang
+    // lambat tak menahan penyerah lain.
+    private val serahA11yLock = Any()
+
     private fun serahkanTugasA11y(task: Runnable) {
         val mulai = java.util.concurrent.atomic.AtomicBoolean(false)
-        val penuhSebelum = executor.queue.size >= 64
-        executor.execute(Runnable {
+        val bungkus = Runnable {
             mulai.set(true)
             task.run()
-        })
+        }
+        val penuhSebelum: Boolean
+        synchronized(serahA11yLock) {
+            penuhSebelum = executor.queue.size >= 64
+            executor.execute(bungkus)
+        }
         if (!mulai.get() && penuhSebelum) {
             task.run()
         }
