@@ -466,6 +466,32 @@ def mengandung_token(teks):
             continue
         if POLA_BYTE.search(hasil):
             return True
+    # Bentuk escape unicode (issue #1765): token yang
+    # ditulis sebagai urutan escape di string
+    # Kotlin/Java/JSON — buka escapenya, nilai
+    # permukaannya seperti teks biasa.
+    if "\\u" in teks:
+        try:
+            dibuka = re.sub(r"\\u([0-9A-Fa-f]{4})",
+                            lambda m: chr(int(m.group(1), 16)), teks)
+        except Exception:
+            dibuka = teks
+        if dibuka != teks and (_pola_mentah_cocok(dibuka)
+                               or _pola_mentah_cocok(_padatkan(dibuka))):
+            return True
+    # Bentuk base32 (issue #1765): padanan kanal
+    # base64 untuk alfabet base32 — hasil dekode
+    # tetap harus cocok pola byte token persis.
+    for sumber in (teks, tanpa_spasi, rapat):
+        for m in re.finditer(r"[A-Z2-7]{40,}={0,6}", sumber):
+            s32 = m.group(0)
+            s32 += "=" * ((8 - len(s32) % 8) % 8)
+            try:
+                hasil = base64.b32decode(s32)
+            except Exception:
+                continue
+            if POLA_BYTE.search(hasil):
+                return True
     return False
 
 
