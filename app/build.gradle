@@ -20,7 +20,7 @@ android {
             appLabel: "@string/app_name"
         ]
         minSdk 24
-        targetSdk 35
+        targetSdk 36
         versionCode 665
         versionName "1.6.638"
 
@@ -44,7 +44,7 @@ android {
         buildConfigField "int", "SYNC_INTERVAL", "${syncIntervalProp}"
     }
 
-    compileSdk 35
+    compileSdk 36
 
 
     def keystorePwd = System.getenv("KEYSTORE_PASSWORD") ?: project.findProperty("KEYSTORE_PASSWORD")
@@ -116,12 +116,12 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
     }
 
     kotlinOptions {
-        jvmTarget = '1.8'
+        jvmTarget = '17'
     }
 
     buildFeatures {
@@ -131,16 +131,16 @@ android {
 }
 
 dependencies {
-    implementation 'androidx.core:core-ktx:1.13.1'
-    implementation 'androidx.appcompat:appcompat:1.7.0'
-    implementation 'com.google.android.material:material:1.12.0'
+    implementation 'androidx.core:core-ktx:1.18.0'
+    implementation 'androidx.appcompat:appcompat:1.8.0'
+    implementation 'com.google.android.material:material:1.14.0'
 
     // Coroutines
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1'
-    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.7.0'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0'
+    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.10.0'
 
     // WorkManager for background tasks
-    implementation 'androidx.work:work-runtime-ktx:2.9.1'
+    implementation 'androidx.work:work-runtime-ktx:2.12.0'
 
     // Retrofit for HTTP requests (Telegram API)
     implementation 'com.squareup.retrofit2:retrofit:2.11.0'
@@ -148,7 +148,7 @@ dependencies {
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
 
     // Gson for JSON serialization
-    implementation 'com.google.code.gson:gson:2.11.0'
+    implementation 'com.google.code.gson:gson:2.15.0'
 
     // SharedPreferences encryption
     implementation 'androidx.security:security-crypto:1.1.0'

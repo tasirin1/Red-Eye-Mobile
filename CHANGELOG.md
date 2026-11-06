@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Aplikasi kini dikompilasi dan menargetkan SDK 36 (issue #1674): compileSdk/targetSdk 35 -> 36, target bytecode Java/Kotlin 1.8 -> 17 (dependensi baru seperti coroutines 1.11.0 membawa bytecode target 11 sehingga target lama menolak inline-nya), dan dependensi naik ke garis terakhir yang cocok dengan toolchain ini: core-ktx 1.18.0 (garis 1.19.x menuntut compileSdk 37, terbukti dari aar-metadata artefaknya), appcompat 1.8.0, material 1.14.0, coroutines 1.11.0, lifecycle-runtime-ktx 2.10.0 (penghalang metadata Kotlin lama hilang), work-runtime-ktx 2.12.0, gson 2.15.0.
 - Toolchain build naik ke generasi kini (issue #1674): Gradle 8.9 -> 8.14.3 (checksum distribusi baru di wrapper dan CI), AGP 8.7.3 -> 8.13.2 (garis 8.x terakhir; AGP 9 sengaja tidak dilompati karena memaksa Kotlin bawaan + DSL baru + Gradle 9 sekaligus), Kotlin 1.9.20 -> 2.3.21, detekt 1.23.7 -> 1.23.8. CI kini juga memasang platform android-36 + build-tools 36.0.0. Tangga ini diuji hijau dulu di Colab (kompilasi, uji unit, assemble debug/release, detekt) sebelum diterapkan; vonis resmi tetap CI.
 
 ## [1.6.638] - 2026-11-05
