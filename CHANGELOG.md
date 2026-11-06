@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.643] - 2026-11-06
+
 ### Fixed
 
 - Mode pindai forensik penuh (--semua) kini juga menilai pesan anotasi tag: sebelumnya ia hanya membaca pesan commit, jadi token di pesan tag lama tak pernah tertandai oleh lari forensik (issue #1768).
