@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.640] - 2026-11-06
+
 ### Fixed
 - Metadata verifikasi dependensi diregenerasi dari graf bersih (issue #1712): berkas lama membawa komponen basi warisan gabungan regenerasi sebelumnya (mis. androidx.activity:activity:1.7.0 yang tak lagi dipakai); berkas baru dibuat dari nol di Colab atas himpunan tugas CI yang sama — 221.732 bita, 488 komponen, tanpa satu pun komponen basi itu, dan checksum gson-2.15.0.jar diverifikasi silang cocok persis dengan Maven Central.
 - Paritas gerbang pesan dipulihkan (issue #1719): langkah pesan cek-cepat lokal hanya memakai penilai pesan tanpa fragmen sehingga pola fragmen yang ditangkap vonis rentang CI (blok baris pendek #1698, potongan sedang #1716) lolos diam-diam di lokal; cek-token kini membawa penilai fragmen pesan yang sama dan mode --teks-pesan memakainya.
