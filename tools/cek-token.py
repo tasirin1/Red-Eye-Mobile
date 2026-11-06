@@ -355,16 +355,37 @@ def mengandung_fragmen_pesan(teks):
                 and sum(len(b) for b in blok) >= 42
                 and mengandung_token("".join(blok)))
 
+    # Satu baris penyela (issue #1749): dua blok
+    # yang terpisah TEPAT satu baris non-anggota
+    # (kosong, atau >64 aksara) juga dinilai
+    # tersambung. Sebelumnya penyela mengosongkan
+    # blok berjalan, jadi dua paruh token yang
+    # masing-masing menjadi blok satu baris tak
+    # pernah bertemu — padahal bentuk belahan per
+    # baris persis kelas yang dijaga penilai ini.
     blok = []
+    blok_lalu = []
+    celah = 0
+
+    def tutup(blok_ini):
+        if nilai(blok_ini):
+            return True
+        return (celah == 1 and bool(blok_lalu)
+                and nilai(blok_lalu + blok_ini))
+
     for baris in teks.splitlines():
         b = baris.strip()
         if b and len(b) <= 64 and re.fullmatch(r"[A-Za-z0-9_+\/=.\:-]+", b):
             blok.append(b)
-        else:
-            if nilai(blok):
+        elif blok:
+            if tutup(blok):
                 return True
+            blok_lalu = blok
             blok = []
-    return nilai(blok)
+            celah = 1
+        else:
+            celah += 1
+    return bool(blok) and tutup(blok)
 def mengandung_token(teks):
     if not teks:
         return False
