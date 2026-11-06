@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.649] - 2026-11-07
+
 ### Fixed
 
 - cek-cepat langkah 5g kini ikut menilai nama branch `refs/remotes/origin`, menyelaraskan gerbang lokal dengan CI yang menilainya sejak #1824 — sebelumnya nama branch cermin origin yang kotor lolos hijau di lokal dan baru tertuduh di CI (issue #1835).
