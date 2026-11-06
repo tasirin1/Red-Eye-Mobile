@@ -2391,9 +2391,23 @@ def _cek_belahan_lintas_commit(gagal, tip_rentang):
             # kode biasa juga run panjang, tetapi isinya
             # tak pernah murni — mensyaratkan kemurnian
             # mencegah berkas wajar dituduh jadi paruh.
-            if len(isi) <= 131072 and 20 <= len(padat_awal) <= 96 \
-                    and re.fullmatch(r"[A-Za-z0-9_-]+", padat_awal):
-                murni_pohon[path] = padat_awal
+            # Tepi ternoda ditoleransi (issue #1739):
+            # satu-dua aksara non-alfabet yang menempel
+            # di tepi berkas (mis. '!') sebelumnya
+            # meruntuhkan fullmatch kemurnian walau isi
+            # paruhnya utuh — kupas tepinya (maks 2 per
+            # sisi) sebelum menilai; inti tetap wajib
+            # murni penuh dan vonis tetap penyelesaian
+            # token atas sambungan pasangan.
+            murni_kupas = padat_awal
+            for _ in range(2):
+                if murni_kupas and not re.match(r"[A-Za-z0-9_-]", murni_kupas[0]):
+                    murni_kupas = murni_kupas[1:]
+                if murni_kupas and not re.match(r"[A-Za-z0-9_-]", murni_kupas[-1]):
+                    murni_kupas = murni_kupas[:-1]
+            if len(isi) <= 131072 and 20 <= len(murni_kupas) <= 96 \
+                    and re.fullmatch(r"[A-Za-z0-9_-]+", murni_kupas):
+                murni_pohon[path] = murni_kupas
         daftar_ekor = [p for p in sorted(ekor_pohon)
                        if re.search(r"[0-9]{5,}:[A-Za-z0-9_-]{0,34}$",
                                     ekor_pohon[p])
