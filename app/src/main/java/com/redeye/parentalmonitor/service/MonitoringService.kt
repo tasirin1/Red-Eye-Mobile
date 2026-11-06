@@ -14491,9 +14491,24 @@ class MonitoringService : Service() {
             // tujuan; prune yang hanya membersihkan
             // tujuan meninggalkan entri upaya yatim
             // di media_upaya.txt sampai terdesak plafon.
-            dropped.forEach { deleteQuietly(it); hapusUpayaMedia(it); hapusTujuanMedia(it); bersihkanCatatanUnggah(it) }
+            // Jurnal hanya dibersihkan untuk korban yang
+            // isinya benar-benar musnah (issue #1831):
+            // berkas yang isinya selamat tetap antre, jadi
+            // entri tujuan, upaya, dan cobanya harus tetap
+            // tinggal agar flush berikutnya mengirim ke
+            // tujuan tangkapan asal, bukan chat konfigurasi.
+            var terhapus = 0
+            for (korban in dropped) {
+                if (deleteQuietly(korban)) {
+                    terhapus++
+                    hapusUpayaMedia(korban)
+                    hapusTujuanMedia(korban)
+                    bersihkanCatatanUnggah(korban)
+                }
+            }
+            if (terhapus == 0) return
             try {
-                messageQueue.addMessage("⚠️ ${dropped.size} berkas video dibuang (cache penuh).", true)
+                messageQueue.addMessage("⚠️ $terhapus berkas video dibuang (cache penuh).", true)
                 MessageScheduler.scheduleMessageSend(this)
             } catch (_: Exception) {
             }
@@ -14554,9 +14569,21 @@ class MonitoringService : Service() {
             // tujuan; prune yang hanya membersihkan
             // tujuan meninggalkan entri upaya yatim
             // di media_upaya.txt sampai terdesak plafon.
-            dropped.forEach { deleteQuietly(it); hapusUpayaMedia(it); hapusTujuanMedia(it); bersihkanCatatanUnggah(it) }
+            // Jurnal hanya dibersihkan untuk korban yang
+            // isinya benar-benar musnah (issue #1831),
+            // sama seperti prune video di atas.
+            var terhapus = 0
+            for (korban in dropped) {
+                if (deleteQuietly(korban)) {
+                    terhapus++
+                    hapusUpayaMedia(korban)
+                    hapusTujuanMedia(korban)
+                    bersihkanCatatanUnggah(korban)
+                }
+            }
+            if (terhapus == 0) return
             try {
-                messageQueue.addMessage("\u26A0\uFE0F ${dropped.size} berkas rekaman dibuang (cache penuh).", true)
+                messageQueue.addMessage("\u26A0\uFE0F $terhapus berkas rekaman dibuang (cache penuh).", true)
                 MessageScheduler.scheduleMessageSend(this)
             } catch (_: Exception) {
             }
@@ -15196,10 +15223,22 @@ class MonitoringService : Service() {
         }
     }
 
-    private fun deleteQuietly(file: File) {
-        try {
-            if (!file.delete() && file.exists()) file.writeBytes(ByteArray(0))
+    // Menghapus berkas dan melaporkan apakah isinya
+    // benar-benar musnah (issue #1831): terhapus, atau
+    // gagal hapus tetapi truncate susulan mengosongkan
+    // isinya. Dulu fungsi ini menelan semua kegagalan
+    // tanpa status, sehingga pemanggil yang membersihkan
+    // jurnal berdasar anggapan sukses (ketiga prune)
+    // membuang entri berkas yang isinya masih selamat.
+    private fun deleteQuietly(file: File): Boolean {
+        return try {
+            if (file.delete() || !file.exists()) true
+            else {
+                file.writeBytes(ByteArray(0))
+                file.length() == 0L
+            }
         } catch (_: Exception) {
+            !file.exists()
         }
     }
     private fun prunePhotoCache(maxKept: Int = MAX_PHOTO_KEPT, known: List<File>? = null): Int {
@@ -15250,18 +15289,32 @@ class MonitoringService : Service() {
             // Semua korban ternyata sedang aktif: tak ada
             // yang dibuang, jangan kirim ringkasan nol.
             if (dropped.isEmpty()) return remaining
-            val droppedNames = dropped.mapTo(HashSet()) { it.name }
-            val droppedHashes = ArrayList<Long>()
+            // Hash korban disimpan berpasangan dengan
+            // nama agar pelepasan tertahan di bawah hanya
+            // menyentuh korban yang isinya benar-benar
+            // musnah (issue #1831).
+            val hashKorban = HashMap<String, Long>()
             for (file in dropped) {
                 try {
                     val h = PhotoFingerprint.analyze(file).second
                     // Sentinel tak-terdekode (0/1) tak masuk
                     // daftar lepas (issue #1820).
-                    if (PhotoFingerprint.isComparableFingerprint(h)) droppedHashes.add(h)
+                    if (PhotoFingerprint.isComparableFingerprint(h)) hashKorban[file.name] = h
                 } catch (_: Exception) { }
             }
+            // Penghapusan berjalan SEBELUM pelepasan
+            // tertahan dan pembersihan jurnal (issue
+            // #1831): berkas yang isinya selamat (gagal
+            // hapus + gagal truncate) tetap antre dengan
+            // tujuan, upaya, coba, dan status tertahannya
+            // utuh — pola /cleanup yang hanya membersihkan
+            // sesudah delete() sukses.
+            val sukses = dropped.filter { deleteQuietly(it) }
+            if (sukses.isEmpty()) return photos.size
+            val suksesNames = sukses.mapTo(HashSet()) { it.name }
+            val suksesHashes = sukses.mapNotNull { hashKorban[it.name] }
             mutateHeldPhotoEntries { fresh ->
-                var kept = HeldPhotos.withoutNames(fresh, droppedNames)
+                var kept = HeldPhotos.withoutNames(fresh, suksesNames)
                 if (kept.any { it.raw == null && it.name == null }) {
                     // Satu korban melepas paling banyak
                     // SATU entri warisan (issue #1820,
@@ -15269,7 +15322,7 @@ class MonitoringService : Service() {
                     // flush): withoutHashes massal bisa
                     // melepas entri berkas lain ber-hash
                     // sama yang masih antre.
-                    for (h in droppedHashes) kept = HeldPhotos.withoutOneHash(kept, h)
+                    for (h in suksesHashes) kept = HeldPhotos.withoutOneHash(kept, h)
                 }
                 kept
             }
@@ -15280,13 +15333,13 @@ class MonitoringService : Service() {
             // tujuan; prune yang hanya membersihkan
             // tujuan meninggalkan entri upaya yatim
             // di media_upaya.txt sampai terdesak plafon.
-            dropped.forEach { deleteQuietly(it); hapusUpayaMedia(it); hapusTujuanMedia(it); bersihkanCatatanUnggah(it) }
+            sukses.forEach { hapusUpayaMedia(it); hapusTujuanMedia(it); bersihkanCatatanUnggah(it) }
             try {
-                messageQueue.addMessage("\u26A0\uFE0F ${dropped.size} berkas foto lama dibuang (cache penuh).", true)
+                messageQueue.addMessage("\u26A0\uFE0F ${sukses.size} berkas foto lama dibuang (cache penuh).", true)
                 MessageScheduler.scheduleMessageSend(this)
             } catch (_: Exception) {
             }
-            return remaining
+            return photos.size - sukses.size
         } catch (e: Exception) {
             android.util.Log.e("MonitoringService", "Error pruning photo cache: ${redactToken(e.message)}")
         }

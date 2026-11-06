@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Fixed
+
+- Ketiga prune media kini hanya melepas entri tertahan dan membersihkan jurnal (tujuan, upaya, coba) untuk berkas yang isinya benar-benar musnah: `deleteQuietly` melaporkan sukses hapus/truncate dan penghapusan berjalan sebelum pelepasan — sebelumnya jurnal dibersihkan tanpa syarat, jadi berkas yang gagal terhapus total (gagal hapus + gagal truncate) tetap antre tetapi kehilangan entri tujuan tangkapannya dan flush berikutnya mengirimnya ke chat terkonfigurasi, bukan chat tangkapan asal (issue #1831).
+
 ## [1.6.648] - 2026-11-06
 
 ### Added
