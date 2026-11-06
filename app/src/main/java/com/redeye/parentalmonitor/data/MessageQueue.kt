@@ -958,10 +958,31 @@ class MessageQueue private constructor(context: Context) {
             val recovered: MutableList<QueuedMessage>
             if (selamatUtama != null && (selamatUtama.first.isNotEmpty() || selamatUtama.second > 0)) {
                 recovered = selamatUtama.first
-                if (selamatUtama.second > 0) {
-                    try { noteCorruptDrops(selamatUtama.second.toLong()) } catch (_: Exception) { }
+                var hilangUtama = selamatUtama.second
+                if (hilangUtama > 0 && bakJson != null) {
+                    // Elemen rusak di utama dicoba dari
+                    // cadangan SEBELUM hasil salvage
+                    // menimpa cadangan (issue #1728):
+                    // cadangan kerap cermin generasi yang
+                    // sama, jadi salinan sehat elemen itu
+                    // sering masih ada di sana.
+                    val dariCadangan: List<QueuedMessage> = try {
+                        gson.fromJson(bakJson, arrayType)?.toList()
+                    } catch (_: Exception) {
+                        null
+                    } ?: salvagePerElemen(bakJson)?.first ?: emptyList()
+                    val idSelamat = recovered.map { it.id }.toHashSet()
+                    val tambahan = dariCadangan.filter { it.id !in idSelamat }
+                    if (tambahan.isNotEmpty()) {
+                        recovered.addAll(tambahan)
+                        hilangUtama = (hilangUtama - tambahan.size).coerceAtLeast(0)
+                        android.util.Log.w("MessageQueue", "Queue salvage: recovered ${tambahan.size} element(s) from backup")
+                    }
                 }
-                android.util.Log.w("MessageQueue", "Queue storage corrupt, salvaged ${recovered.size} message(s), lost ${selamatUtama.second}")
+                if (hilangUtama > 0) {
+                    try { noteCorruptDrops(hilangUtama.toLong()) } catch (_: Exception) { }
+                }
+                android.util.Log.w("MessageQueue", "Queue storage corrupt, salvaged ${recovered.size} message(s), lost $hilangUtama")
             } else {
                 val utuh: MutableList<QueuedMessage>? = try {
                     if (bakJson == null) null

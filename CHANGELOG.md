@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Pemulihan antrean rusak kini mencoba elemen hilang dari cadangan sebelum menimpanya (issue #1728): salvage sebagian blob utama sebelumnya selalu menang dan cadangan langsung ditimpa hasil salvage, membuang salinan sehat elemen yang rusak di utama; kini elemen cadangan yang belum ada di hasil salvage digabungkan menurut id dan hanya sisa yang benar-benar hilang yang dihitung corrupt.
 - Kegagalan menyimpan catatan restore kini diberitahukan ke pemilik (issue #1727): hasil commit saveRestoreConfirmed diperiksa; bila gagal, kejadian itu diaudit dan pesan konfirmasi restore menyertakan peringatan bahwa restart proses di dalam jendela 60 detik akan membatalkan restore — sebelumnya kegagalan itu ditelan senyap di balik janji yang sama.
 - Benang jalan-terakhir luapan receiver kini berplafon 16 benang bersamaan (issue #1726): sebelumnya setiap penolakan pada saturasi ganda membuat satu benang daemon baru tanpa batas; di atas plafon tugas dijalankan di tempat dengan penjaga penuh agar jumlah benang berpagar tetapi tugas dan finish()-nya tetap berjalan.
 - Handler luapan receiver kini menangkap Throwable, bukan hanya Exception (issue #1725): kegagalan membuat benang jalan-terakhir dengan kelas Error (mis. OutOfMemoryError) sebelumnya membuat tugas hilang senyap tanpa finish() pendingResult dan Error-nya merambat ke benang utama broadcast; kini tugas dijalankan dengan penjaga penuh sebagai jalan terakhir.
