@@ -19,7 +19,7 @@ android {
             appRoundIcon: "@mipmap/ic_launcher_round",
             appLabel: "@string/app_name"
         ]
-        minSdk 24
+        minSdk 29
         targetSdk 36
         versionCode 668
         versionName "1.6.641"
