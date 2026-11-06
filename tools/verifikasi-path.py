@@ -2393,13 +2393,34 @@ def _pesan_terbelah(teks):
     blok = []
     for baris in teks.splitlines():
         b = baris.strip()
-        if b and len(b) <= 8 and re.fullmatch(r"[A-Za-z0-9_+\/=.:-]+", b):
+        if b and len(b) <= 8 and re.fullmatch(r"[A-Za-z0-9_+\/=.\:-]+", b):
             blok.append(b)
         else:
             if nilai(blok):
                 return True
             blok = []
-    return nilai(blok)
+    if nilai(blok):
+        return True
+    # Potongan SEDANG (issue #1716): blok >=3 baris
+    # murni alfabet token sepanjang 9..40 aksara per
+    # baris — pita buta di antara blok kecil di atas
+    # (<=8 aksara) dan token utuh satu baris. Prosa
+    # tak membentuk blok seperti ini: baris prosa
+    # memuat spasi atau tanda baca di luar alfabet
+    # token sehingga bloknya putus.
+    def nilai_sedang(blok_s):
+        return len(blok_s) >= 3 and mengandung_token("".join(blok_s))
+
+    blok = []
+    for baris in teks.splitlines():
+        b = baris.strip()
+        if b and 9 <= len(b) <= 40 and re.fullmatch(r"[A-Za-z0-9_+\/=.\:-]+", b):
+            blok.append(b)
+        else:
+            if nilai_sedang(blok):
+                return True
+            blok = []
+    return nilai_sedang(blok)
 
 
 def cek_secret_pesan(gagal, rentang):
