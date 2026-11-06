@@ -31,14 +31,31 @@ object Background {
     // satu kali pakai: tugas tetap jalan (pembungkusnya
     // tetap memanggil finish() pendingResult), tak pernah
     // di benang pemanggil.
+    // Plafon benang jalan-terakhir luapan (issue #1726):
+    // tanpa plafon, badai siaran saat antrean macet
+    // membuat satu benang daemon baru per penolakan
+    // tanpa batas. Di atas plafon tugas dijalankan di
+    // tempat dengan penjaga (jalan terakhir #1725) —
+    // jumlah benang tetap berpagar, tugas tetap jalan.
+    private val benangLuapanAktif = java.util.concurrent.atomic.AtomicInteger(0)
+    private const val MAX_BENANG_LUAPAN = 16
+
     private val receiverOverflow: java.util.concurrent.ExecutorService = java.util.concurrent.ThreadPoolExecutor(
         0, 1, 60L, java.util.concurrent.TimeUnit.SECONDS,
         java.util.concurrent.LinkedBlockingQueue(64),
         java.util.concurrent.ThreadFactory { r -> Thread(r, "RedEyeRecvOvf").apply { isDaemon = true } },
         java.util.concurrent.RejectedExecutionHandler { r, _ ->
-            try {
-                Thread(r, "RedEyeRecvOvfX").apply { isDaemon = true }.start()
+            val terhitung = Runnable {
+                try { r.run() } finally { benangLuapanAktif.decrementAndGet() }
+            }
+            if (benangLuapanAktif.incrementAndGet() > MAX_BENANG_LUAPAN) {
+                benangLuapanAktif.decrementAndGet()
+                try { r.run() } catch (_: Throwable) {
+                }
+            } else try {
+                Thread(terhitung, "RedEyeRecvOvfX").apply { isDaemon = true }.start()
             } catch (_: Throwable) {
+                benangLuapanAktif.decrementAndGet()
                 // Kelas Error (mis. OutOfMemoryError saat
                 // membuat benang) BUKAN Exception (issue
                 // #1725): tangkapan Exception saja membuat
