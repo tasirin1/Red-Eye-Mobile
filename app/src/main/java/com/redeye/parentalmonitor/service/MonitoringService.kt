@@ -8291,8 +8291,13 @@ class MonitoringService : Service() {
                 }
                 if (pending.isNotEmpty()) {
                     try {
-                        messageQueue.addMessages(pending, queuePriority)
-                        MessageScheduler.scheduleMessageSend(this)
+                        // Hasil per item juga dihitung di
+                        // jalur batal ini (issue #1731):
+                        // kegagalan antre di sini dulu tak
+                        // tercatat di penghitung mana pun.
+                        val perItemBatal = messageQueue.addMessagesPerItemDetailed(pending, queuePriority)
+                        repeat(perItemBatal.count { it == com.redeye.parentalmonitor.data.MessageQueue.AddItemResult.FAILED }) { noteUnqueueableMessage() }
+                        if (perItemBatal.any { it == com.redeye.parentalmonitor.data.MessageQueue.AddItemResult.QUEUED }) MessageScheduler.scheduleMessageSend(this)
                     } catch (_: Exception) {
                     }
                 }
@@ -8348,10 +8353,27 @@ class MonitoringService : Service() {
         }
         if (failed.isNotEmpty()) {
             if (queueOnFail) {
-                val queued = messageQueue.addMessages(failed, queuePriority)
+                // Vonis PER ITEM seperti cabang campuran
+                // (issue #1731, menyusul #1260): vonis
+                // Boolean all-or-nothing membaca eviksi
+                // sebagian sebagai DROPPED total sehingga
+                // pemanggil berkursor mengirim ulang
+                // seluruh bagian dan menggandakan potongan
+                // yang sebenarnya terantre.
+                val perItem = try {
+                    messageQueue.addMessagesPerItemDetailed(failed, queuePriority)
+                } catch (_: Exception) {
+                    List(failed.size) { com.redeye.parentalmonitor.data.MessageQueue.AddItemResult.FAILED }
+                }
+                val anyQueued = perItem.any { it == com.redeye.parentalmonitor.data.MessageQueue.AddItemResult.QUEUED }
+                repeat(perItem.count { it == com.redeye.parentalmonitor.data.MessageQueue.AddItemResult.FAILED }) { noteUnqueueableMessage() }
                 if (replyMarkup != null && failed.last() == chunks.last()) messageQueue.addMessage("Tap /help untuk menampilkan tombol menu.")
-                if (queued) MessageScheduler.scheduleMessageSend(this)
-                return if (queued) SendStatus.QUEUED else SendStatus.DROPPED
+                if (anyQueued) MessageScheduler.scheduleMessageSend(this)
+                return when {
+                    anyQueued -> SendStatus.QUEUED
+                    sentAny -> SendStatus.SENT
+                    else -> SendStatus.DROPPED
+                }
             }
             return SendStatus.DROPPED
         }
