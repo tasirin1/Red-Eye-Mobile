@@ -3491,19 +3491,20 @@ class MonitoringService : Service() {
     // hanya berubah saat kredensial berganti. Kini loop poll
     // meneruskan token snapshot-nya (responseToken, yang memang
     // pasangan responseGeneration) dan hash dihitung sekali per
-    // nilai token; balapan tulis cache jinak — akibat terburuk
-    // hash yang sama dihitung ulang.
+    // nilai token. Pasangan (token, hash) disimpan sebagai SATU
+    // referensi Pair atomik (issue #1792): dua field terpisah
+    // bisa tercampur di sela pergantian token — nilai baru
+    // berpasangan hash lama — sehingga finishUpdateTrack
+    // membaca pergantian token sebagai "token sama"; disiplin
+    // yang sama seperti hasNetwork (issue #1099).
     @Volatile
-    private var sidikTokenNilai: String? = null
-    @Volatile
-    private var sidikTokenHash: String? = null
+    private var sidikTokenPasangan: Pair<String, String>? = null
 
     private fun sidikToken(token: String): String {
-        val hashTersimpan = sidikTokenHash
-        if (hashTersimpan != null && sidikTokenNilai == token) return hashTersimpan
+        val pasangan = sidikTokenPasangan
+        if (pasangan != null && pasangan.first == token) return pasangan.second
         val hash = com.redeye.parentalmonitor.utils.Sha256Hex.hex(token)
-        sidikTokenNilai = token
-        sidikTokenHash = hash
+        sidikTokenPasangan = token to hash
         return hash
     }
 

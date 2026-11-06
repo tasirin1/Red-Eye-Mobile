@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Fixed
+
+- Cache sidik token kini satu referensi pasangan (token, hash) yang atomik: sebelumnya dua field terpisah bisa tercampur di sela pergantian token — nilai baru berpasangan hash lama — sehingga penilaian "token sama" di penyelesaian pelacakan update bisa salah dan konfirmasi offset aliran bot lama ikut dimajukan (issue #1792).
+
 ## [1.6.645] - 2026-11-06
 
 ### Added
