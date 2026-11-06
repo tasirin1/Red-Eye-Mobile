@@ -747,7 +747,13 @@ def mengandung_token(teks):
             hasil = bytes.fromhex("".join(pasangan))
         except Exception:
             continue
-        if POLA_BYTE.search(hasil):
+        # Byte rakitan dinilai seperti hasil dekode lain
+        # (issue #1837): pola/varian terbuka plus satu
+        # lapis bawah — sebelumnya hanya pola mentah,
+        # jadi ejaan persen/base64/hex dari token lolos
+        # sebagai literal byte padahal isi yang sama
+        # tertuduh sebagai teks.
+        if _pola_atau_terbuka(hasil) or _nilai_lapis_bawah(hasil):
             return True
     # Bentuk ter-encode web (issue #1799) dan escape
     # string (\uXXXX #1765, \xNN #1801): varian

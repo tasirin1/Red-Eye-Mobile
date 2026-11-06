@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Gerbang token: byte rakitan `byteArrayOf(0xNN, ...)` kini dinilai seperti hasil dekode lain (pola/varian terbuka + satu lapis bawah), bukan hanya pola mentah — sebelumnya ejaan persen/base64/hex dari token lolos sebagai literal byte padahal isi yang sama tertuduh sebagai teks (issue #1837).
 - Jalur flush terminal di luar prune kini menggerbang pembersihan jurnal pada keberhasilan hapus (keluarga #1831): `classifyMediaRejection` 400/413 hanya membersihkan jurnal coba dan mengembalikan DROPPED bila isi berkas benar-benar musnah — gagal hapus total mengembalikan KEPT; cabang anggaran KEPT habis di `flushMediaSkeleton` dan `flushPendingPhotos` hanya membersihkan jurnal tujuan/upaya/coba (dan menghitung terbuang, serta melepas entri tertahan lewat blok pasca-kirim) bila penghapusan berhasil — sebelumnya berkas yang selamat dari kegagalan hapus total kehilangan tujuan tangkapannya, anggaran upayanya, dan catatan coba/tertahannya (issue #1836).
 
 ## [1.6.649] - 2026-11-07

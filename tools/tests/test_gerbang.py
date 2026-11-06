@@ -345,6 +345,29 @@ class UjiKanalBerkasTambahan(unittest.TestCase):
         self.assertFalse(cek_token.mengandung_token(jinak))
         self.assertFalse(cek_token.mengandung_token_pesan(jinak))
 
+    def test_bytearrayof_berlapis(self):
+        # Issue #1837: byte rakitan byteArrayOf dinilai
+        # seperti hasil dekode lain (pola/varian terbuka
+        # + satu lapis bawah), bukan hanya pola mentah —
+        # ejaan persen/base64/hex dari token sebelumnya
+        # lolos sebagai literal byte.
+        def eja(teks):
+            return "byteArrayOf(" + ", ".join(
+                "0x%02x" % b for b in teks.encode()) + ")"
+        persen = "".join("%%%02X" % ord(c) for c in TOKEN)
+        b64 = base64.b64encode(TOKEN.encode()).decode()
+        for nama, s in [
+            ("polos", TOKEN),
+            ("persen", persen),
+            ("b64", b64),
+            ("hex", TOKEN.encode().hex()),
+            ("b64(persen)", base64.b64encode(persen.encode()).decode()),
+        ]:
+            with self.subTest(ejaan=nama):
+                self.assertTrue(cek_token.mengandung_token(eja(s)))
+        jinak = eja("teks jinak biasa saja tanpa rahasia")
+        self.assertFalse(cek_token.mengandung_token(jinak))
+
     def test_komposisi_silang_varian_dekoder(self):
         # Issue #1812: varian terbuka diteruskan ke
         # dekoder — encode di atas encode tertangkap.
