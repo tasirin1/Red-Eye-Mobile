@@ -170,6 +170,7 @@
     <string name="liveness_watchdog_fmt">%1$d mnt (%2$s)</string>
     <string name="liveness_watchdog_urgent">mode waspada</string>
     <string name="liveness_watchdog_doze">; saat tidur nyenyak (Doze) sistem bisa memanjangkannya jadi sekitar 9 mnt</string>
+    <string name="liveness_watchdog_stretched">; dasarnya %1$d mnt, teregang mengikuti rentetan sehat</string>
     <string name="liveness_watchdog_screen_on">layar nyala</string>
     <string name="liveness_watchdog_screen_off">layar mati</string>
     <string name="setup_status_auth_failed">Auth: GAGAL (%1$s) - periksa token bot</string>

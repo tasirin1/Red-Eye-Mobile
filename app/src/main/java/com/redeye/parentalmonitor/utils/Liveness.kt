@@ -79,7 +79,15 @@ object Liveness {
         // nyata lebih lama di HP tidur nyenyak — teks
         // menyebutkannya agar tak dibaca sebagai janji.
         val caveat = if (ms == URGENT_INTERVAL_MS) "; saat tidur nyenyak (Doze) sistem bisa memanjangkannya jadi sekitar 9 mnt" else ""
-        return (ms / 60_000L).toString() + " mnt (" + label + ")" + caveat
+        // Angka yang dilaporkan adalah interval EFEKTIF
+        // yang benar-benar dijadwalkan (issue #1822):
+        // penjadwalan memakai stretchedIntervalMs atas
+        // rentetan sehat (#1572), jadi melaporkan
+        // interval dasar saja menilai kecepatan deteksi
+        // lebih cepat dari kenyataannya.
+        val efektif = stretchedIntervalMs(ms, healthyStreak.get())
+        val catatanRegang = if (efektif > ms) "; dasarnya " + (ms / 60_000L) + " mnt, teregang mengikuti rentetan sehat" else ""
+        return (efektif / 60_000L).toString() + " mnt (" + label + ")" + catatanRegang + caveat
     }
 
     fun intervalTextLocalized(context: Context): String {
@@ -89,9 +97,13 @@ object Liveness {
             SCREEN_ON_INTERVAL_MS -> context.getString(R.string.liveness_watchdog_screen_on)
             else -> context.getString(R.string.liveness_watchdog_screen_off)
         }
-        val dasar = context.getString(R.string.liveness_watchdog_fmt, ms / 60_000L, label)
+        // Interval efektif yang dijadwalkan, bukan
+        // dasarnya saja (issue #1822): lihat intervalText.
+        val efektif = stretchedIntervalMs(ms, healthyStreak.get())
+        val dasar = context.getString(R.string.liveness_watchdog_fmt, efektif / 60_000L, label)
+        val catatanRegang = if (efektif > ms) context.getString(R.string.liveness_watchdog_stretched, ms / 60_000L) else ""
         // Kejujuran Doze (issue #1502): lihat intervalText.
-        return if (ms == URGENT_INTERVAL_MS) dasar + context.getString(R.string.liveness_watchdog_doze) else dasar
+        return dasar + catatanRegang + if (ms == URGENT_INTERVAL_MS) context.getString(R.string.liveness_watchdog_doze) else 
     }
 
     fun noteKillDetected() {
