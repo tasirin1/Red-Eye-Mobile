@@ -2713,16 +2713,26 @@ def _pesan_terbelah(teks):
 _cek_tag_sudah_jalan = False
 
 
-def _punya_tepi_token(teks):
-    """Teks bertepi larian alfabet token >=20 aksara
-    (issue #1825): hanya teks seperti itu yang bisa
-    membawa separuh token ter-encode — belahan yang
-    lebih pendek tak membentuk kandidat utuh saat
-    disambung. Penyaring murah agar gabungan lintas
-    permukaan tak menilai semua pasangan."""
-    t = (teks or "").strip()
-    if len(t) < 20:
-        return False
+_AMBANG_SAMBUNG = 35
+
+
+def _lari_tepi(teks):
+    """Pasangan (larian awal, larian akhir) aksara
+    alfabet token pada teks (issue #1833). Tepi
+    dibersihkan dulu dari pemisah yang memang
+    direnggut _padatkan pada sambungan (spasi, kutip,
+    +, titik tepi) agar lariannya mencerminkan teks
+    tersambung yang dinilai penilai pesan. Dipakai
+    uji jumlah-larian gabungan lintas permukaan:
+    dua teks hanya bisa membentuk kandidat yang
+    menyebrang bila larian akhir yang satu ditambah
+    larian awal yang lain mencapai _AMBANG_SAMBUNG.
+    Ambang 35 di bawah kandidat terpendek yang bisa
+    cocok (base32 40 aksara; pola polos 42; base64
+    48), jadi tak ada pasangan tersambung yang
+    terbuang oleh penyaring — pasangan yang lolos
+    tetap dinilai persis oleh penilai pesan."""
+    t = (teks or "").strip(" \t\r\n\"'`+.")
     alfabet = frozenset(
         "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
         "abcdefghijklmnopqrstuvwxyz0123456789_-:")
@@ -2734,7 +2744,7 @@ def _punya_tepi_token(teks):
                 break
             n += 1
         return n
-    return lari(t) >= 20 or lari(t[::-1]) >= 20
+    return lari(t), lari(t[::-1])
 
 
 def _cek_pesan_tag(gagal, pesan_commit=None):
@@ -2875,34 +2885,110 @@ def _cek_pesan_tag(gagal, pesan_commit=None):
                          "hanya via input manual SetupActivity"
                          % nama_cabang)
             return True
-    # Gabungan LINTAS PERMUKAAN (issue #1825): token
-    # ter-encode yang separuhnya di nama branch/tag
-    # atau anotasi tag dan separuh lainnya di pesan
-    # commit tak terlihat penilai per permukaan mana
-    # pun — yang dinilai sendiri-sendiri memang
-    # bersih. Hanya potongan bertepi token panjang
-    # yang dipasangkan (penyaring _punya_tepi_token),
-    # dan tiap pasangan dinilai tersambung dua arah.
-    kandidat_pesan = [t for t in (pesan_commit or [])
-                      if _punya_tepi_token(t)]
-    kandidat_permukaan = [t for t in permukaan
-                          if _punya_tepi_token(t)]
-    pasangan = [(a, b) for a in kandidat_permukaan
-                for b in kandidat_pesan]
-    pasangan += [(a, b) for i, a in enumerate(kandidat_permukaan)
-                 for b in kandidat_permukaan[i + 1:]]
-    for a, b in pasangan:
-        if (mengandung_token_pesan(a + b)
-                or mengandung_token_pesan(b + a)):
-            gagal.append("Kemungkinan token bot asli "
-                         "TERBELAH lintas permukaan — "
-                         "separuh di nama/anotasi ref dan "
-                         "separuh lain di pesan commit atau "
-                         "ref lain, tersambung bila digabung; "
-                         "tulis ulang kedua potong itu "
-                         "sebelum push. Kredensial hanya via "
-                         "input manual SetupActivity")
-            return True
+    # Gabungan LINTAS PERMUKAAN (issue #1825,
+    # diperluas #1833): token ter-encode yang
+    # separuhnya di nama branch/tag atau anotasi tag
+    # dan separuh lainnya di pesan commit tak
+    # terlihat penilai per permukaan mana pun — yang
+    # dinilai sendiri-sendiri memang bersih.
+    # Pasangan dinilai tersambung per arah bila uji
+    # jumlah-larian tepinya lolos. Penyaring lama
+    # (tepi >=20 di SETIAP permukaan) melewatkan
+    # belahan TAK-SEIMBANG: fragmen 18 + sisa 42
+    # membentuk kandidat utuh, tetapi permukaan
+    # pembawa fragmen pendek gugur sebelum dinilai.
+    daftar_pesan = list(pesan_commit or [])
+    tepi_p = [_lari_tepi(t) for t in permukaan]
+    tepi_m = [_lari_tepi(t) for t in daftar_pesan]
+
+    def tersambung(tepi_a, tepi_b):
+        return tepi_a[1] + tepi_b[0] >= _AMBANG_SAMBUNG
+
+    def tuduh_terbelah():
+        gagal.append("Kemungkinan token bot asli "
+                     "TERBELAH lintas permukaan — "
+                     "separuh di nama/anotasi ref dan "
+                     "separuh lain di pesan commit atau "
+                     "ref lain, tersambung bila digabung; "
+                     "tulis ulang kedua potong itu "
+                     "sebelum push. Kredensial hanya via "
+                     "input manual SetupActivity")
+
+    for i, a in enumerate(permukaan):
+        for j, b in enumerate(daftar_pesan):
+            if (tersambung(tepi_p[i], tepi_m[j])
+                    and mengandung_token_pesan(a + b)):
+                tuduh_terbelah()
+                return True
+            if (tersambung(tepi_m[j], tepi_p[i])
+                    and mengandung_token_pesan(b + a)):
+                tuduh_terbelah()
+                return True
+    # Permukaan x permukaan: pasangan yang kedua
+    # permukaan tepinya <=17 tak mungkin mencapai
+    # ambang (17+17 < 35), jadi hanya permukaan
+    # berpotensi (satu tepi >=18) yang dipasangkan.
+    berpotensi = [i for i, tp in enumerate(tepi_p)
+                  if tp[0] >= 18 or tp[1] >= 18]
+    letak = {v: k for k, v in enumerate(berpotensi)}
+    for i in berpotensi:
+        a = permukaan[i]
+        for j, b in enumerate(permukaan):
+            if j == i:
+                continue
+            if j in letak and letak[j] < letak[i]:
+                continue
+            if (tersambung(tepi_p[i], tepi_p[j])
+                    and mengandung_token_pesan(a + b)):
+                tuduh_terbelah()
+                return True
+            if (tersambung(tepi_p[j], tepi_p[i])
+                    and mengandung_token_pesan(b + a)):
+                tuduh_terbelah()
+                return True
+    # Fragmen di TENGAH teks (issue #1833): separuh
+    # token yang dibungkus prosa tak pernah tersambung
+    # oleh penggabungan permukaan utuh, jadi larian
+    # alfabet token dikumpulkan dari semua permukaan
+    # + pesan dan dipasangkan antar-larian. Lantai
+    # naik bertingkat bila jumlah pasangan meledak,
+    # agar biaya tetap terikat.
+    mentah = list(permukaan) + daftar_pesan
+    larian = []
+    for lantai in (12, 16, 20, 24, 28):
+        larian = []
+        sudah = set()
+        for t in mentah:
+            for m in re.finditer(
+                    r"[A-Za-z0-9_\-:]+", t or ""):
+                r = m.group(0)
+                if len(r) >= lantai and r not in sudah:
+                    sudah.add(r)
+                    larian.append(r)
+        jumlah = 0
+        for x, r1 in enumerate(larian):
+            for r2 in larian[x + 1:]:
+                if len(r1) + len(r2) >= 40:
+                    jumlah += 1
+        if jumlah <= 20000 or lantai == 28:
+            break
+    for x, r1 in enumerate(larian):
+        for r2 in larian[x + 1:]:
+            if len(r1) + len(r2) < 40:
+                continue
+            if (mengandung_token_pesan(r1 + r2)
+                    or mengandung_token_pesan(r2 + r1)):
+                gagal.append(
+                    "Kemungkinan token bot asli "
+                    "TERBELAH lintas permukaan — "
+                    "fragmen di satu permukaan/pesan "
+                    "dan fragmen lain di permukaan/"
+                    "pesan lain tersambung bila "
+                    "digabung; tulis ulang kedua "
+                    "fragmen itu sebelum push. "
+                    "Kredensial hanya via input "
+                    "manual SetupActivity")
+                return True
     return False
 
 

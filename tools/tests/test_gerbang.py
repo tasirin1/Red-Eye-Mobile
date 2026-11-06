@@ -555,6 +555,67 @@ class UjiPesanVerifikasiPath(unittest.TestCase):
         self.assertTrue(any("lintas permukaan" in g for g in gagal),
                         gagal)
 
+    def test_terbelah_tak_seimbang(self):
+        # Issue #1833 (a): belahan tak-seimbang —
+        # fragmen 18 di nama branch + 42 di pesan.
+        # Penyaring lama menuntut tepi >=20 di SETIAP
+        # permukaan sehingga pembawa fragmen 18 gugur
+        # sebelum dinilai; uji jumlah-larian menilai
+        # pasangan berdasar jumlah kedua tepinya.
+        enc = base64.urlsafe_b64encode(
+            TOKEN.encode()).decode().rstrip("=")
+        kepala, ekor = enc[:18], enc[18:]
+
+        def palsu(*args):
+            gabung = " ".join(args)
+            if "refs/heads" in gabung:
+                return "wip/" + kepala
+            return ""
+
+        self._pasang_jalan(palsu)
+        gagal = []
+        self.assertTrue(verifikasi._cek_pesan_tag(gagal, [ekor]))
+        self.assertTrue(any("lintas permukaan" in g for g in gagal),
+                        gagal)
+
+    def test_terbelah_fragmen_tengah_pesan(self):
+        # Issue #1833 (b): separuh lain dibungkus prosa
+        # di TENGAH pesan — penggabungan permukaan utuh
+        # tak pernah menyambungnya; pasangan
+        # antar-larian yang menangkapnya.
+        enc = base64.urlsafe_b64encode(
+            TOKEN.encode()).decode().rstrip("=")
+        kepala, ekor = enc[:30], enc[30:]
+
+        def palsu(*args):
+            gabung = " ".join(args)
+            if "refs/heads" in gabung:
+                return "uji-" + kepala
+            return ""
+
+        self._pasang_jalan(palsu)
+        gagal = []
+        pesan = "perbaikan biasa " + ekor + " selesai"
+        self.assertTrue(verifikasi._cek_pesan_tag(gagal, [pesan]))
+        self.assertTrue(any("lintas permukaan" in g for g in gagal),
+                        gagal)
+
+    def test_larian_jinak_tak_tertuduh(self):
+        # Kontrol #1833: dua larian jinak panjang dari
+        # permukaan berbeda tetap jinak sesudah
+        # disambung oleh kedua mekanisme baru.
+        def palsu(*args):
+            gabung = " ".join(args)
+            if "refs/heads" in gabung:
+                return "uji-" + "x" * 30
+            return ""
+
+        self._pasang_jalan(palsu)
+        gagal = []
+        self.assertFalse(verifikasi._cek_pesan_tag(
+            gagal, ["catatan " + "y" * 30 + " selesai"]))
+        self.assertFalse(gagal)
+
     def test_tag_bersarang(self):
         # Issue #1826: objek tag dalam tanpa ref sendiri
         # — pesan tag dalamnya kini ditelusuri lewat
