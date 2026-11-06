@@ -102,7 +102,27 @@ object Background {
         // terserial, tidak pernah di benang pemanggil, dan
         // tidak lagi mencuri jalur pool kritis.
         java.util.concurrent.RejectedExecutionHandler { r, _ ->
-            try { receiverOverflow.execute(r) } catch (_: Exception) { }
+            // Serah terima lewat benang daemon lepas
+            // (issue #1745): execute() langsung dari
+            // handler ini menjalankan handler penolakan
+            // receiverOverflow DI BENANG INI — benang
+            // utama broadcast, satu-satunya pemanggil
+            // rantai ini — dan di atas plafon jalan-
+            // terakhir (#1726) handler itu menjalankan
+            // pekerjaan receiver berat di tempat, di
+            // benang utama. Benang serah terima berumur
+            // satu panggilan execute() membuat seluruh
+            // rantai penolakan sesudahnya mendarat di
+            // benang daemon, tak pernah di pemanggil.
+            try {
+                Thread({
+                    try { receiverOverflow.execute(r) } catch (_: Exception) { }
+                }, "RedEyeRecvHandoff").apply { isDaemon = true }.start()
+            } catch (_: Throwable) {
+                // Pembuatan benang gagal (kelas Error):
+                // jalan lama adalah satu-satunya sisa.
+                try { receiverOverflow.execute(r) } catch (_: Exception) { }
+            }
         }
     )
 
