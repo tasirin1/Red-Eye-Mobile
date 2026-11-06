@@ -177,17 +177,32 @@ def _nilai_lapis_bawah(hasil):
     masing-masing pada kedalaman 1 (pola saja, tanpa
     rekursi lanjutan) — total tepat dua lapis untuk
     semua pasangan encoding, menyelaraskan hex dan
-    base32 dengan base64 #1802."""
+    base32 dengan base64 #1802. Hasil dekode juga
+    dinilai dalam bentuk TERBUKANYA (issue #1823):
+    lapisan persen/entitas/escape di sisi DALAM
+    dekoder (b64(persen(token)) dan kawan-kawan)
+    sebelumnya lolos karena penilai lapis bawah tak
+    pernah membuka varian — cermin arah #1812.
+    Pembukaan bukan lapis dekode tambahan, jadi
+    batas dua lapis tak berubah. Varian terbuka
+    hanya dihitung bila ada penanda lapisan terbuka
+    di teksnya, agar jalur panas tak melambat."""
     lapis = hasil.decode("ascii", "ignore")
-    for m in POLA_KANDIDAT_B64.finditer(lapis):
-        if _cocok_b64(m.group(0), 1):
+    sumber = [lapis]
+    if "%" in lapis or "&" in lapis or "\\" in lapis:
+        sumber += _varian_terbuka(lapis)
+    for teks in sumber:
+        if POLA_BYTE.search(teks.encode("ascii", "ignore")):
             return True
-    for m in POLA_KANDIDAT_HEX.finditer(lapis):
-        if _cocok_hex(m.group(0), 1):
-            return True
-    for m in re.finditer(r"[A-Za-z2-7]{40,}={0,6}", lapis):
-        if _cocok_b32(m.group(0), 1):
-            return True
+        for m in POLA_KANDIDAT_B64.finditer(teks):
+            if _cocok_b64(m.group(0), 1):
+                return True
+        for m in POLA_KANDIDAT_HEX.finditer(teks):
+            if _cocok_hex(m.group(0), 1):
+                return True
+        for m in re.finditer(r"[A-Za-z2-7]{40,}={0,6}", teks):
+            if _cocok_b32(m.group(0), 1):
+                return True
     return False
 
 def _padatkan(teks):

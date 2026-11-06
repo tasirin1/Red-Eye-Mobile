@@ -282,6 +282,26 @@ class UjiKanalBerkasTambahan(unittest.TestCase):
         ]:
             with self.subTest(pasangan=nama):
                 self.assertTrue(cek_token.mengandung_token(s))
+
+    def test_lapis_terbuka_di_dalam_dekoder(self):
+        # Issue #1823: lapisan persen/entitas/escape di
+        # sisi DALAM dekoder — penilai lapis bawah kini
+        # menilai hasil dekode dalam bentuk terbukanya
+        # juga, mencerminkan arah #1812.
+        import urllib.parse
+        persen = urllib.parse.quote(TOKEN, safe="")
+        entitas = TOKEN.replace(":", "&#58;")
+        escape = TOKEN.replace(":", "\\x3a")
+        for nama, s in [
+            ("b64(persen)", base64.b64encode(persen.encode()).decode()),
+            ("b64(entitas)", base64.b64encode(entitas.encode()).decode()),
+            ("b64(escape)", base64.b64encode(escape.encode()).decode()),
+            ("hex(persen)", persen.encode().hex()),
+            ("b32(persen)", base64.b32encode(persen.encode()).decode()),
+        ]:
+            with self.subTest(pasangan=nama):
+                self.assertTrue(cek_token.mengandung_token(s))
+                self.assertTrue(cek_token.mengandung_token_pesan(s))
                 self.assertTrue(cek_token.mengandung_token_pesan(s))
         jinak = base64.b64encode(
             "teks jinak biasa saja".encode().hex().encode()).decode()
