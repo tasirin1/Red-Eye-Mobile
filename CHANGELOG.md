@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Ekstensi .pkcs12 (nama panjang format keystore yang sama dengan .p12/.pfx) kini ikut dilarang di langkah nama gerbang lokal: berkas keystore hasil ekspor bernama itu sebelumnya masuk tanpa satu pun langkah menahannya (issue #1755).
 - Kelompok sufiks nama terlarang di gerbang lokal kini juga mengakui pemisah '~', spasi, dan '+' (selain titik, garis bawah, strip): salinan keystore bernama bawaan alat seperti 'release.p12 (1)' atau 'release.p12~' sebelumnya lolos kedua langkah nama (issue #1753).
 - Berkas local.properties bersufiks (mis. .bak atau .old) kini juga ditahan langkah nama gerbang lokal: alternatifnya sebelumnya berjangkar akhir nama tanpa kelompok sufiks, tidak seperti kelompok ekstensi di baris yang sama (issue #1752).
 - Langkah metadata author/committer di gerbang lokal kini menggabungkan keempat field tanpa pemisah: pemisah kontrol sebelumnya membuat token yang dibelah tepat di batas antar-field (nama ke email) tak tersambung di permukaan penilaian mana pun (issue #1751).
