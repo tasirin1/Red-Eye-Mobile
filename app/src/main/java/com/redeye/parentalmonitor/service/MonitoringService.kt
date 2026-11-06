@@ -14598,6 +14598,11 @@ class MonitoringService : Service() {
         }
     }
 
+    // @Synchronized sejajar kedua penulis peta
+    // (issue #1759): writeText bukan penulisan
+    // atomik, jadi bacaan tanpa kunci bisa robek
+    // di tengah penulisan ulang.
+    @Synchronized
     private fun bacaTujuanMedia(file: java.io.File): String {
         return try {
             val peta = tujuanMediaFile()
