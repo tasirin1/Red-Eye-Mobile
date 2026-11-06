@@ -6,6 +6,8 @@
 
 ### Fixed
 
+- CI tak lagi memasang paket SDK platform 35 + build-tools 35 yang tak dirujuk konfigurasi build mana pun (compileSdk/targetSdk 36): sisa era compileSdk 35 yang membuang menit unduh + pasang pada setiap run (issue #1790).
+
 - Penilai fragmen cadangan di verifikasi-path kini cerminan persis penilai kanonik: sebelumnya ia hanya memuat aturan sapuan gabungan, jadi aturan baris-pemisah dan gabungan-dua-blok hilang diam-diam tepat pada keadaan gagal-muat yang menjadi alasan cadangan itu ada (issue #1788).
 
 - Mode --semua gerbang tak lagi menghitung satu tag kotor sebagai dua kegagalan: penilai pesan anotasi tag kini berjalan sekali per proses, padahal dua jalur pemindai pesan sama-sama memanggilnya dalam satu lari (issue #1787).
