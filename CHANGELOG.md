@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Tujuh perintah status sensitif yang tersisa kini juga menolak di grup dan hanya menjawab lewat chat privat: /perms, /battery, /alive, /checkdead, /storage, /version, dan /uptime — inventaris izin, model HP, dan postur layanan tidak lagi terbit ke seluruh anggota grup (issue #1758).
 - Gerbang cooldown bangun-berkala pada layanan penerus notifikasi kini diklaim lewat bandingkan-dan-tukar atomik (pola yang sudah dipakai jalur kebangkitan): dua putaran bangun yang berjalan bersamaan tidak lagi bisa sama-sama lolos dan memulai layanan dua kali (issue #1757).
 - Gabungan penyelamatan antrean tidak lagi membangkitkan pesan yang sudah sah terhapus: tulis penghapusan murni (pesan terkirim) kini menjalar ke snapshot cadangan, dan saringan gabungan membuang id ganda di dalam cadangan sendiri (issue #1756).
 - Penilai isi berkas kini menyambung belahan token yang dipisah titik koma atau byte kontrol di permukaan terpadatkan: kedua pemisah itu sebelumnya di luar kelas pemadatan sehingga belahan yang dipisahnya tak tersambung (issue #1754).

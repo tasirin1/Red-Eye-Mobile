@@ -4524,8 +4524,15 @@ class MonitoringService : Service() {
             "/status" -> handleStatusCommand(privateChat)
             "/shotperm" -> requestShotGrant()
             "/perms" -> {
-                val notifOn = try { preferencesManager.notifForwardEnabled } catch (_: Exception) { false }
-                sendToTelegram(PermReport.inventoryText(permissionRawStates(), notifOn, permLabels))
+                // Penolakan grup (issue #1758), pola
+                // #1689: perintah status SENSITIVE
+                // terakhir yang belum menolak di grup.
+                if (!privateChat) {
+                    sendToTelegram("🔒 Rincian hanya via private chat dengan bot.")
+                } else {
+                    val notifOn = try { preferencesManager.notifForwardEnabled } catch (_: Exception) { false }
+                    sendToTelegram(PermReport.inventoryText(permissionRawStates(), notifOn, permLabels))
+                }
             }
             "/brief" -> handleRingkasCommand(privateChat)
             "/lastcalls" -> handleLastCallsCommand(privateChat)
@@ -4544,10 +4551,14 @@ class MonitoringService : Service() {
             "/night" -> handleNightCommand(arg)
             "/pause" -> handlePauseCommand(arg)
             "/battery" -> {
-                val level = batteryLevel()
-                val levelText = if (level in 0..100) "$level%" else "tak tahu"
-                val suhu = thermalStatusText()
-                sendToTelegram("🔋 <b>Baterai</b>\nLevel: $levelText" + if (suhu.isNotEmpty()) "\nSuhu perangkat: $suhu" else "")
+                if (!privateChat) {
+                    sendToTelegram("🔒 Rincian hanya via private chat dengan bot.")
+                } else {
+                    val level = batteryLevel()
+                    val levelText = if (level in 0..100) "$level%" else "tak tahu"
+                    val suhu = thermalStatusText()
+                    sendToTelegram("🔋 <b>Baterai</b>\nLevel: $levelText" + if (suhu.isNotEmpty()) "\nSuhu perangkat: $suhu" else "")
+                }
             }
             "/stop" -> {
                 preferencesManager.setMonitoringPausedSync(true)
@@ -4582,13 +4593,21 @@ class MonitoringService : Service() {
             "/sms" -> handleSmsCommand(arg, senderId)
             "/smsconfirm" -> handleSmsConfirmCommand(senderId)
             "/lastnotify" -> handleLastNotifCommand(privateChat)
-            "/version" -> handleVersionCommand()
-            "/uptime" -> handleUptimeCommand()
+            "/version" -> handleVersionCommand(privateChat)
+            "/uptime" -> handleUptimeCommand(privateChat)
             "/alive" -> {
-                sendToTelegram(aliveReportText(), mainMenu())
+                if (!privateChat) {
+                    sendToTelegram("🔒 Rincian hanya via private chat dengan bot.")
+                } else {
+                    sendToTelegram(aliveReportText(), mainMenu())
+                }
             }
             "/checkdead" -> {
-                runLivenessSelfTest()
+                if (!privateChat) {
+                    sendToTelegram("🔒 Rincian hanya via private chat dengan bot.")
+                } else {
+                    runLivenessSelfTest()
+                }
             }
             "/recover" -> {
                 runFullRecovery()
@@ -4612,7 +4631,7 @@ class MonitoringService : Service() {
             "/heartbeat" -> handleHeartbeatCommand(arg)
             "/contacts" -> handleContactsCommand(arg, privateChat)
             "/apps" -> handleAppsCommand(arg, privateChat)
-            "/storage" -> handleStorageCommand()
+            "/storage" -> handleStorageCommand(privateChat)
             "/history" -> handleHistoryCommand(arg, privateChat)
             "/watch" -> handleWatchCommand(arg, privateChat)
             "/appalert" -> handleAppAlertCommand(arg, privateChat)
@@ -5695,7 +5714,9 @@ class MonitoringService : Service() {
         }
     }
 
-    private suspend fun handleStorageCommand() {
+    private suspend fun handleStorageCommand(privateChat: Boolean) {
+        // Penolakan grup (issue #1758), pola #1689.
+        if (!privateChat) { sendToTelegram("\uD83D\uDD12 Rincian hanya via private chat dengan bot."); return }
         val stats = withContext(Dispatchers.IO) { cacheStats() }
         sendToTelegram(
             buildString {
@@ -6390,7 +6411,9 @@ class MonitoringService : Service() {
         }
     }
 
-    private suspend fun handleVersionCommand() {
+    private suspend fun handleVersionCommand(privateChat: Boolean) {
+        // Penolakan grup (issue #1758), pola #1689.
+        if (!privateChat) { sendToTelegram("\uD83D\uDD12 Rincian hanya via private chat dengan bot."); return }
         sendToTelegram(
             buildString {
                 appendLine("\u2139\uFE0F <b>Versi</b>")
@@ -6401,7 +6424,9 @@ class MonitoringService : Service() {
         )
     }
 
-    private suspend fun handleUptimeCommand() {
+    private suspend fun handleUptimeCommand(privateChat: Boolean) {
+        // Penolakan grup (issue #1758), pola #1689.
+        if (!privateChat) { sendToTelegram("\uD83D\uDD12 Rincian hanya via private chat dengan bot."); return }
         val started = serviceStartAt
         if (started <= 0) {
             sendToTelegram("\u23F1\uFE0F Uptime: tak tahu.")
