@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.645] - 2026-11-06
+
 ### Added
 
 - Rangkaian uji regresi ter-commit untuk gerbang Python (`tools/tests/`, 25 uji) + langkah CI yang menjalankannya di workflow Verifikasi Path: kasus kanal token, aturan fragmen, paritas penilai cadangan, dan vonis tag sekali-jalan yang dulu hanya dibuktikan baterai sandbox sekali pakai kini terkunci (issue #1789).
