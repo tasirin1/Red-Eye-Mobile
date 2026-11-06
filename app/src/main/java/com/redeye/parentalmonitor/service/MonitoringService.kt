@@ -14294,6 +14294,11 @@ class MonitoringService : Service() {
                             deleteQuietly(file)
                             hapusTujuanMedia(file)
                             hapusUpayaMedia(file)
+                            // Jurnal coba ikut dibersihkan
+                            // (issue #1796): berkas terbuang
+                            // terminal tak boleh menyisakan
+                            // entri yatim di media_coba.txt.
+                            bersihkanCatatanUnggah(file)
                             dropped++
                             batchProgress = true
                             progress = true
@@ -14393,12 +14398,13 @@ class MonitoringService : Service() {
             val dropped = files.dropLast(maxKept)
             if (dropped.isEmpty()) return
             // Entri tujuan korban ikut dibuang (issue #1747).
-            // Kedua jurnal dibersihkan (issue #1779):
+            // Ketiga jurnal dibersihkan (issue #1779,
+            // dilengkapi jurnal coba di #1796):
             // jalur flush selalu membersihkan upaya +
             // tujuan; prune yang hanya membersihkan
             // tujuan meninggalkan entri upaya yatim
             // di media_upaya.txt sampai terdesak plafon.
-            dropped.forEach { deleteQuietly(it); hapusUpayaMedia(it); hapusTujuanMedia(it) }
+            dropped.forEach { deleteQuietly(it); hapusUpayaMedia(it); hapusTujuanMedia(it); bersihkanCatatanUnggah(it) }
             try {
                 messageQueue.addMessage("⚠️ ${dropped.size} berkas video dibuang (cache penuh).", true)
                 MessageScheduler.scheduleMessageSend(this)
@@ -14445,12 +14451,13 @@ class MonitoringService : Service() {
             val dropped = files.dropLast(maxKept)
             if (dropped.isEmpty()) return
             // Entri tujuan korban ikut dibuang (issue #1747).
-            // Kedua jurnal dibersihkan (issue #1779):
+            // Ketiga jurnal dibersihkan (issue #1779,
+            // dilengkapi jurnal coba di #1796):
             // jalur flush selalu membersihkan upaya +
             // tujuan; prune yang hanya membersihkan
             // tujuan meninggalkan entri upaya yatim
             // di media_upaya.txt sampai terdesak plafon.
-            dropped.forEach { deleteQuietly(it); hapusUpayaMedia(it); hapusTujuanMedia(it) }
+            dropped.forEach { deleteQuietly(it); hapusUpayaMedia(it); hapusTujuanMedia(it); bersihkanCatatanUnggah(it) }
             try {
                 messageQueue.addMessage("\u26A0\uFE0F ${dropped.size} berkas rekaman dibuang (cache penuh).", true)
                 MessageScheduler.scheduleMessageSend(this)
@@ -15028,6 +15035,12 @@ class MonitoringService : Service() {
                     }
                     hapusUpayaMedia(file)
                     hapusTujuanMedia(file)
+                    // Jurnal coba ikut dibersihkan (issue
+                    // #1796): jalur anggaran habis di atas
+                    // menghapus berkas tanpa melewati fungsi
+                    // kirim, jadi entri cobanya yatim bila
+                    // tak dibersihkan di sini.
+                    bersihkanCatatanUnggah(file)
                     if (fileIsHeld) {
                         try {
                             if (photoOutcome == MediaSendOutcome.SENT && PhotoFingerprint.isComparableFingerprint(fileHashFlush)) preferencesManager.setLastPhotoHashSync(fileHashFlush)
@@ -15121,12 +15134,13 @@ class MonitoringService : Service() {
                 kept
             }
             // Entri tujuan korban ikut dibuang (issue #1747).
-            // Kedua jurnal dibersihkan (issue #1779):
+            // Ketiga jurnal dibersihkan (issue #1779,
+            // dilengkapi jurnal coba di #1796):
             // jalur flush selalu membersihkan upaya +
             // tujuan; prune yang hanya membersihkan
             // tujuan meninggalkan entri upaya yatim
             // di media_upaya.txt sampai terdesak plafon.
-            dropped.forEach { deleteQuietly(it); hapusUpayaMedia(it); hapusTujuanMedia(it) }
+            dropped.forEach { deleteQuietly(it); hapusUpayaMedia(it); hapusTujuanMedia(it); bersihkanCatatanUnggah(it) }
             try {
                 messageQueue.addMessage("\u26A0\uFE0F ${dropped.size} berkas foto lama dibuang (cache penuh).", true)
                 MessageScheduler.scheduleMessageSend(this)
