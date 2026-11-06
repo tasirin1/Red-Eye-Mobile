@@ -2719,10 +2719,10 @@ def _cek_pesan_tag(gagal, pesan_commit=None):
     _cek_tag_sudah_jalan = True
     permukaan = []
     daftar_tag = jalan("git", "for-each-ref", "refs/tags",
-                       "--format=%(refname:short)%09%(objecttype)%09%(*objectname)") or ""
+                       "--format=%(refname:short)%09%(objecttype)%09%(*objectname)%09%(objectname)") or ""
     for baris in daftar_tag.splitlines():
         bagian = baris.split("\t")
-        if len(bagian) != 3:
+        if len(bagian) != 4:
             continue
         nama_tag = bagian[0]
         permukaan.append(nama_tag)
@@ -2752,6 +2752,51 @@ def _cek_pesan_tag(gagal, pesan_commit=None):
                          "token. Kredensial hanya via input manual "
                          "SetupActivity" % nama_tag)
             return True
+        # Rantai tag BERSARANG (issue #1826): objek tag
+        # bisa menunjuk objek tag lain yang tak punya
+        # ref sendiri — nama dan pesan tag dalam tak
+        # terjangkau %(contents) ref mana pun. Telusuri
+        # rantai object-nya (dibatasi 8, anti-putaran)
+        # dan nilai nama + pesan tiap tag dalam.
+        objek = bagian[3]
+        dilihat = set()
+        for _ in range(8):
+            if not objek or objek in dilihat:
+                break
+            dilihat.add(objek)
+            mentah = jalan("git", "cat-file", "-p", objek) or ""
+            target = None
+            for baris_h in mentah.splitlines():
+                if baris_h.startswith("object "):
+                    target = baris_h[7:].strip()
+                elif baris_h == "":
+                    break
+            if not target:
+                break
+            if (jalan("git", "cat-file", "-t", target) or "").strip() != "tag":
+                break
+            isi_dalam = jalan("git", "cat-file", "-p", target) or ""
+            nama_dalam = ""
+            for baris_h in isi_dalam.splitlines():
+                if baris_h.startswith("tag "):
+                    nama_dalam = baris_h[4:].strip()
+                elif baris_h == "":
+                    break
+            pesan_dalam = (isi_dalam.split("\n\n", 1)[1]
+                           if "\n\n" in isi_dalam else "")
+            if (mengandung_token_pesan(nama_dalam)
+                    or mengandung_token_pesan(pesan_dalam)
+                    or _pesan_terbelah(pesan_dalam)):
+                gagal.append("Kemungkinan token bot asli di "
+                             "tag BERSARANG dalam %s — objek "
+                             "tag tanpa ref sendiri tetap "
+                             "terbit bersama rantainya; buat "
+                             "ulang rantai tag itu tanpa "
+                             "token. Kredensial hanya via "
+                             "input manual SetupActivity"
+                             % nama_tag)
+                return True
+            objek = target
     # NAMA branch ikut dinilai (issue #1815): asimetri
     # langsung dengan nama tag #1804 — string yang sama
     # dituduh sebagai nama tag tetapi lolos total sebagai

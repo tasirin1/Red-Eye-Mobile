@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Gerbang token: rantai tag bersarang (objek tag menunjuk objek tag lain tanpa ref sendiri) kini ditelusuri dan nama serta pesan tag dalamnya dinilai — sebelumnya isi tag dalam seperti itu tak terjangkau pembacaan anotasi ref mana pun (issue #1826).
 - Gerbang token: belahan token ter-encode yang separuhnya hidup di nama branch/tag atau anotasi tag dan separuh lainnya di pesan commit kini tertuduh lewat penilaian gabungan lintas permukaan — sebelumnya tiap permukaan dinilai sendiri-sendiri dan belahan seperti itu lolos semua gerbang (issue #1825).
 - Gerbang token: nama branch di refs/remotes/origin kini ikut dinilai seperti branch lokal — cermin branch milik sendiri di remote tujuan push sebelumnya lolos total karena alasan pengecualian remote ("branch pihak lain") tidak berlaku untuk origin di repo ini (issue #1824).
 - Gerbang token: hasil dekode lapis pertama kini juga dinilai dalam bentuk terbukanya — token yang titik-duanya ter-persen/entitas/escape lalu dibungkus base64/hex/base32 tidak lagi lolos; arah sebaliknya sudah tertutup #1812, arah ini cerminnya dan sama-sama dua lapis (issue #1823).
