@@ -233,19 +233,53 @@ def _utf16_tanpa_bom(data):
     return None
 
 
+def _nama_anggota_arsip(data):
+    # Cerminan persis nama_anggota_arsip di
+    # tools/cek-token.py (issue #1827).
+    if not data or len(data) > 64 * 1024 * 1024:
+        return ""
+    awal = data[:6]
+    terkompresi = (awal.startswith(b"\x1f\x8b")
+                   or awal.startswith(b"BZh")
+                   or awal.startswith(b"\xfd7zXZ\x00"))
+    polos = len(data) > 262 and data[257:262] == b"ustar"
+    if not (terkompresi or polos):
+        return ""
+    try:
+        import io
+        import tarfile
+        nama = []
+        with tarfile.open(fileobj=io.BytesIO(data),
+                          mode="r:*") as tf:
+            for anggota in tf.getmembers():
+                nama.append(anggota.name)
+                if len(nama) >= 10000:
+                    break
+        return "\n".join(nama)
+    except Exception:
+        return ""
+
+
 def _dekode(data):
     # Cermin dekode_berkas di tools/cek-token.py (issue #785): berkas
     # UTF-16 membawa BOM dan harus didekode sesuai BOM, kalau tidak
     # byte NUL antar karakter memutus pola token dan isi lain. Tanpa
     # BOM: tebak UTF-16 dari pola NUL (issue #817).
     if data.startswith(b"\xff\xfe") or data.startswith(b"\xfe\xff"):
-        return data.decode("utf-16", errors="replace")
-    if data.startswith(b"\xef\xbb\xbf"):
-        return data.decode("utf-8-sig", errors="replace")
-    enc = _utf16_tanpa_bom(data)
-    if enc:
-        return data.decode(enc, errors="replace")
-    return data.decode("utf-8", errors="replace")
+        teks = data.decode("utf-16", errors="replace")
+    elif data.startswith(b"\xef\xbb\xbf"):
+        teks = data.decode("utf-8-sig", errors="replace")
+    else:
+        enc = _utf16_tanpa_bom(data)
+        if enc:
+            teks = data.decode(enc, errors="replace")
+        else:
+            teks = data.decode("utf-8", errors="replace")
+    # Nama anggota arsip ikut dinilai (issue #1827).
+    nama_arsip = _nama_anggota_arsip(data)
+    if nama_arsip:
+        teks += "\n" + nama_arsip
+    return teks
 
 
 @lru_cache(maxsize=None)

@@ -546,5 +546,32 @@ class UjiPesanVerifikasiPath(unittest.TestCase):
         self.assertTrue(verifikasi._cek_pesan_tag(gagal))
         self.assertTrue(any("BERSARANG" in g for g in gagal), gagal)
 
+    def test_nama_anggota_tar_terkompresi(self):
+        # Issue #1827: nama anggota tar terkompresi
+        # (gz/bz2/xz) dan tar polos kini terbaca lewat
+        # dekode_berkas/_dekode dan dinilai.
+        import io
+        import tarfile
+
+        def buat(mode):
+            buf = io.BytesIO()
+            with tarfile.open(fileobj=buf, mode=mode) as tf:
+                for nama in ("biasa.txt", "kunci-" + TOKEN + ".txt"):
+                    info = tarfile.TarInfo(nama)
+                    data = b"isi"
+                    info.size = len(data)
+                    tf.addfile(info, io.BytesIO(data))
+            return buf.getvalue()
+
+        for mode in ("w:gz", "w:bz2", "w:xz", "w"):
+            with self.subTest(mode=mode):
+                mentah = buat(mode)
+                self.assertTrue(cek_token.mengandung_token(
+                    cek_token.dekode_berkas(mentah)))
+                self.assertTrue(cek_token.mengandung_token(
+                    verifikasi._dekode(mentah)))
+        self.assertFalse(cek_token.mengandung_token(
+            cek_token.dekode_berkas(b"halo dunia biasa")))
+
 if __name__ == "__main__":
     unittest.main()

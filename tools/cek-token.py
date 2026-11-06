@@ -433,19 +433,60 @@ def _utf16_tanpa_bom(data):
     return None
 
 
+def nama_anggota_arsip(data):
+    """Nama anggota arsip TAR (issue #1827): nama anggota
+    zip terbaca polos di direktori pusatnya sehingga
+    pindaian byte mentah sudah menangkapnya, tetapi
+    tar terkompresi (gz/bz2/xz) menyembunyikan nama
+    anggotanya dari semua permukaan. Nama dibaca via
+    tarfile pustaka standar (hanya header, tanpa
+    ekstrak). Arsip 7z belum tercakup: pustaka standar
+    tak punya pembacanya. Cerminan persis fungsi ini
+    ada di verifikasi-path.py (_nama_anggota_arsip)."""
+    if not data or len(data) > 64 * 1024 * 1024:
+        return ""
+    awal = data[:6]
+    terkompresi = (awal.startswith(b"\x1f\x8b")
+                   or awal.startswith(b"BZh")
+                   or awal.startswith(b"\xfd7zXZ\x00"))
+    polos = len(data) > 262 and data[257:262] == b"ustar"
+    if not (terkompresi or polos):
+        return ""
+    try:
+        import io
+        import tarfile
+        nama = []
+        with tarfile.open(fileobj=io.BytesIO(data),
+                          mode="r:*") as tf:
+            for anggota in tf.getmembers():
+                nama.append(anggota.name)
+                if len(nama) >= 10000:
+                    break
+        return "\n".join(nama)
+    except Exception:
+        return ""
+
+
 def dekode_berkas(data):
     # Berkas UTF-16 (lazim dari editor Windows / ekspor log) membawa
     # BOM; dekode sesuai BOM agar byte NUL antar karakter tidak
     # memutus pola (issue #785). Tanpa BOM: tebak UTF-16 dari pola
     # NUL (issue #817), sisanya UTF-8 seperti sebelumnya.
     if data.startswith(b"\xff\xfe") or data.startswith(b"\xfe\xff"):
-        return data.decode("utf-16", errors="replace")
-    if data.startswith(b"\xef\xbb\xbf"):
-        return data.decode("utf-8-sig", errors="replace")
-    enc = _utf16_tanpa_bom(data)
-    if enc:
-        return data.decode(enc, errors="replace")
-    return data.decode("utf-8", errors="replace")
+        teks = data.decode("utf-16", errors="replace")
+    elif data.startswith(b"\xef\xbb\xbf"):
+        teks = data.decode("utf-8-sig", errors="replace")
+    else:
+        enc = _utf16_tanpa_bom(data)
+        if enc:
+            teks = data.decode(enc, errors="replace")
+        else:
+            teks = data.decode("utf-8", errors="replace")
+    # Nama anggota arsip ikut dinilai (issue #1827).
+    nama_arsip = nama_anggota_arsip(data)
+    if nama_arsip:
+        teks += "\n" + nama_arsip
+    return teks
 
 
 def mengandung_token_pesan(teks):
