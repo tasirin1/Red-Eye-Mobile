@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Gerbang pesan commit kini juga menilai metadata author/committer (issue #1717): nama dan email author tersimpan permanen di riwayat dan tampil publik tetapi sebelumnya tak dibaca kanal mana pun; kini dinilai dengan penilai pesan yang sama.
 - Penilai fragmen pesan commit kini juga menangkap potongan sedang (issue #1716): blok >=3 baris murni alfabet token sepanjang 9..40 aksara per baris kini disambung dan dinilai — sebelumnya hanya blok >=6 baris <=8 aksara (#1698) sehingga token yang dipecah 3 baris × ±17 aksara lolos kedua permukaan pesan.
 - Gerbang riwayat kini menilai gabungan nama berkas dalam satu commit (issue #1715): kanal nama sebelumnya menilai per path sehingga token yang namanya dipecah ke dua berkas dalam commit yang sama lolos; kini gabungan nama-nama berubah dinilai dengan rekonstruksi yang sama seperti nama tunggal.
 - Gerbang nama berkas kini juga merekonstruksi pemisah '.' menjadi ':' (issue #1714): rekonstruksi #1697 hanya menangani '_' sehingga nama berpola token dengan titik dua diganti titik lolos dari kanal nama; kini kedua pemisah dinilai, termasuk gabungannya dengan varian tanpa ekstensi (#1706).

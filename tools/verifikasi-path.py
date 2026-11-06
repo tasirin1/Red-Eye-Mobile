@@ -2442,6 +2442,19 @@ def cek_secret_pesan(gagal, rentang):
                          "tulis ulang pesan itu sebelum push. Kredensial "
                          "hanya via input manual SetupActivity" % sha[:8])
             return
+        # Metadata author/committer (issue #1717):
+        # nama dan email tersimpan permanen di riwayat
+        # dan tampil publik, tetapi kanal ini hanya
+        # membaca %B. Nilai keempatnya dengan penilai
+        # pesan yang sama.
+        meta = jalan("git", "log", "-1", "--format=%an %ae %cn %ce", sha) or ""
+        if mengandung_token_pesan(meta) or _pesan_terbelah(meta):
+            gagal.append("Kemungkinan token bot asli di METADATA "
+                         "author commit %s — metadata tersimpan "
+                         "permanen di riwayat; tulis ulang commit "
+                         "itu. Kredensial hanya via input manual "
+                         "SetupActivity" % sha[:8])
+            return
 
     # Pesan ANOTASI TAG (issue #1713): tag beranotasi yang
     # menunjuk commit dalam rentang membawa pesannya
