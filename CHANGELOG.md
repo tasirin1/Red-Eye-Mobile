@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Penilai fragmen pesan disatukan ke satu aturan blok (issue #1736): dua pita lama (kecil >=6 baris <=8 aksara; sedang >=3 baris 9..40) menyisakan pita buta bersama — belahan 2 baris, campuran ukuran 8/9, campuran sedang+kecil; kini satu sapuan blok baris murni (tiap baris <=64 aksara, >=2 baris, sambungan >=42 aksara) menilai semuanya di kedua penilai (cek-token dan verifikasi-path).
 - Gabungan nama satu commit kini dinilai dalam banyak urutan sambung (issue #1735): sebelumnya hanya urutan sortir yang dinilai sehingga belahan yang paruh ekornya menyorir lebih dulu — termasuk belahan lintas direktori — lolos; kini urutan diff dan semua pasangan dua nama dalam kedua urutan ikut dinilai (berpagar 60 nama).
 - Kanal nama gerbang kini mengupas ekstensi bertingkat sampai 3 tingkat (issue #1734): kupasan satu tingkat dari #1706 menyisakan nama token bersufiks ganda (mis. .txt.bak) tak terjangkau rekonstruksi; berlaku untuk nama tunggal maupun gabungan nama satu commit.
 - Lintasan pohon tip gerbang lintas-commit kini dinilai sekali per rentang (issue #1733): blok penilaian pasangan belahan #1702 sebelumnya berada di dalam loop per-commit sehingga seluruh pohon akhir dipindai ulang sekali per commit (terukur ±5,5–6 detik/commit); blok itu kini fungsi tersendiri yang dipanggil sekali sesudah loop — vonis identik, rentang bersih 12 commit turun ke ±2,7 detik/commit.

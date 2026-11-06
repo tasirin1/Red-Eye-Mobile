@@ -2421,53 +2421,43 @@ def _pesan_terbelah(teks):
     Varian pesan memang TANPA pemadatan (#1425 —
     pemadatan atas prosa yang mengutip id run/galat
     pernah menuduh pesan sah), jadi token yang dipecah
-    beberapa aksara per baris lolos. Blok baris PENDEK
-    berurutan adalah bentuk mekanis yang tak mirip
-    prosa: sambung tiap blok >=6 baris yang masing-
-    masing <=8 aksara alfabet token, lalu nilai hasil
-    sambungannya dengan pemindai bersama. Prosa biasa
-    (baris panjang, atau baris pendek kurang dari 6
-    berurutan) tak pernah dinilai tersambung.
+    beberapa aksara per baris lolos. Blok baris murni
+    alfabet token adalah bentuk mekanis yang tak
+    mirip prosa: sambung bloknya lalu nilai dengan
+    pemindai bersama.
     """
     if not teks:
         return False
 
+    # Aturan gabungan (issue #1736): SATU sapuan blok
+    # baris murni alfabet token (tiap baris <=64
+    # aksara); blok >=2 baris yang sambungannya >=42
+    # aksara (panjang token minimum) dinilai
+    # tersambung. Menggantikan dua pita lama — kecil
+    # >=6 baris <=8 aksara (#1698) dan sedang >=3
+    # baris 9..40 aksara (#1716) — yang menyisakan
+    # pita buta bersama: belahan 2 baris, campuran
+    # ukuran 8/9, dan campuran sedang+kecil; semuanya
+    # kini membentuk satu blok yang sama. Prosa tak
+    # membentuk blok seperti ini: baris prosa memuat
+    # spasi atau tanda baca di luar alfabet token
+    # sehingga bloknya putus, dan sambungan yang
+    # dinilai tetap harus lolos mengandung_token.
     def nilai(blok):
-        return len(blok) >= 6 and mengandung_token("".join(blok))
+        return (len(blok) >= 2
+                and sum(len(b) for b in blok) >= 42
+                and mengandung_token("".join(blok)))
 
     blok = []
     for baris in teks.splitlines():
         b = baris.strip()
-        if b and len(b) <= 8 and re.fullmatch(r"[A-Za-z0-9_+\/=.\:-]+", b):
+        if b and len(b) <= 64 and re.fullmatch(r"[A-Za-z0-9_+\/=.\:-]+", b):
             blok.append(b)
         else:
             if nilai(blok):
                 return True
             blok = []
-    if nilai(blok):
-        return True
-    # Potongan SEDANG (issue #1716): blok >=3 baris
-    # murni alfabet token sepanjang 9..40 aksara per
-    # baris — pita buta di antara blok kecil di atas
-    # (<=8 aksara) dan token utuh satu baris. Prosa
-    # tak membentuk blok seperti ini: baris prosa
-    # memuat spasi atau tanda baca di luar alfabet
-    # token sehingga bloknya putus.
-    def nilai_sedang(blok_s):
-        return len(blok_s) >= 3 and mengandung_token("".join(blok_s))
-
-    blok = []
-    for baris in teks.splitlines():
-        b = baris.strip()
-        if b and 9 <= len(b) <= 40 and re.fullmatch(r"[A-Za-z0-9_+\/=.\:-]+", b):
-            blok.append(b)
-        else:
-            if nilai_sedang(blok):
-                return True
-            blok = []
-    return nilai_sedang(blok)
-
-
+    return nilai(blok)
 def cek_secret_pesan(gagal, rentang):
     """Pindai token di PESAN commit dalam rentang (issue #769).
 

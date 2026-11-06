@@ -330,44 +330,41 @@ def mengandung_fragmen_pesan(teks):
     cek-cepat hanya memakai penilai itu, jadi pola
     yang ditangkap vonis rentang CI lolos diam-diam
     di lokal. Blok baris murni alfabet token tak
-    mirip prosa: blok >=6 baris yang masing-masing
-    <=8 aksara (issue #1698) dan blok >=3 baris
-    sepanjang 9..40 aksara (potongan sedang, issue
-    #1716) disambung lalu dinilai mengandung_token.
+    mirip prosa: sambung bloknya lalu nilai dengan
+    mengandung_token yang sama.
     """
     if not teks:
         return False
 
+    # Aturan gabungan (issue #1736): SATU sapuan blok
+    # baris murni alfabet token (tiap baris <=64
+    # aksara); blok >=2 baris yang sambungannya >=42
+    # aksara (panjang token minimum) dinilai
+    # tersambung. Menggantikan dua pita lama — kecil
+    # >=6 baris <=8 aksara (#1698) dan sedang >=3
+    # baris 9..40 aksara (#1716) — yang menyisakan
+    # pita buta bersama: belahan 2 baris, campuran
+    # ukuran 8/9, dan campuran sedang+kecil; semuanya
+    # kini membentuk satu blok yang sama. Prosa tak
+    # membentuk blok seperti ini: baris prosa memuat
+    # spasi atau tanda baca di luar alfabet token
+    # sehingga bloknya putus, dan sambungan yang
+    # dinilai tetap harus lolos mengandung_token.
     def nilai(blok):
-        return len(blok) >= 6 and mengandung_token("".join(blok))
+        return (len(blok) >= 2
+                and sum(len(b) for b in blok) >= 42
+                and mengandung_token("".join(blok)))
 
     blok = []
     for baris in teks.splitlines():
         b = baris.strip()
-        if b and len(b) <= 8 and re.fullmatch(r"[A-Za-z0-9_+\/=.\:-]+", b):
+        if b and len(b) <= 64 and re.fullmatch(r"[A-Za-z0-9_+\/=.\:-]+", b):
             blok.append(b)
         else:
             if nilai(blok):
                 return True
             blok = []
-    if nilai(blok):
-        return True
-
-    def nilai_sedang(blok_s):
-        return len(blok_s) >= 3 and mengandung_token("".join(blok_s))
-
-    blok = []
-    for baris in teks.splitlines():
-        b = baris.strip()
-        if b and 9 <= len(b) <= 40 and re.fullmatch(r"[A-Za-z0-9_+\/=.\:-]+", b):
-            blok.append(b)
-        else:
-            if nilai_sedang(blok):
-                return True
-            blok = []
-    return nilai_sedang(blok)
-
-
+    return nilai(blok)
 def mengandung_token(teks):
     if not teks:
         return False
