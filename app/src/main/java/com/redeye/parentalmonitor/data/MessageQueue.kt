@@ -972,7 +972,12 @@ class MessageQueue private constructor(context: Context) {
                         null
                     } ?: salvagePerElemen(bakJson)?.first ?: emptyList()
                     val idSelamat = recovered.map { it.id }.toHashSet()
-                    val tambahan = dariCadangan.filter { it.id !in idSelamat }
+                    // Saringan bertumbuh (issue #1756):
+                    // id yang sudah digabungkan ikut
+                    // masuk himpunan, jadi id ganda di
+                    // dalam cadangan sendiri tidak lolos
+                    // dua-duanya.
+                    val tambahan = dariCadangan.filter { idSelamat.add(it.id) }
                     if (tambahan.isNotEmpty()) {
                         recovered.addAll(tambahan)
                         hilangUtama = (hilangUtama - tambahan.size).coerceAtLeast(0)
@@ -1175,7 +1180,24 @@ class MessageQueue private constructor(context: Context) {
                 if (editor != null && replaceBackup) {
                     editor.putString(KEY_QUEUE_BAK, json)
                 } else if (editor != null && old != null && old != json) {
-                    editor.putString(KEY_QUEUE_BAK, old)
+                    // Penghapusan murni menjalar ke
+                    // cadangan (issue #1756): tulis yang
+                    // id-nya subhimpunan dari isi lama
+                    // (jalur terkirim/terhapus) menulis
+                    // cadangan = isi baru juga. Rotasi
+                    // satu generasi untuk tulis lain
+                    // membuat pesan yang sudah sah
+                    // terhapus tetap hidup di cadangan
+                    // dan bangkit lewat gabungan salvage
+                    // #1728 sebagai duplikat.
+                    val idLama = try {
+                        gson.fromJson(old, arrayType)?.map { it.id }?.toHashSet()
+                    } catch (_: Exception) {
+                        null
+                    }
+                    val hapusMurni = idLama != null &&
+                        snapshot.all { it.id in idLama }
+                    editor.putString(KEY_QUEUE_BAK, if (hapusMurni) json else old)
                 }
                 // Snapshot sah yang berhasil tertulis
                 // menggantikan wipe yang tertunda (issue

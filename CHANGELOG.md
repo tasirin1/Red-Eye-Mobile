@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Gabungan penyelamatan antrean tidak lagi membangkitkan pesan yang sudah sah terhapus: tulis penghapusan murni (pesan terkirim) kini menjalar ke snapshot cadangan, dan saringan gabungan membuang id ganda di dalam cadangan sendiri (issue #1756).
 - Penilai isi berkas kini menyambung belahan token yang dipisah titik koma atau byte kontrol di permukaan terpadatkan: kedua pemisah itu sebelumnya di luar kelas pemadatan sehingga belahan yang dipisahnya tak tersambung (issue #1754).
 - Ekstensi .pkcs12 (nama panjang format keystore yang sama dengan .p12/.pfx) kini ikut dilarang di langkah nama gerbang lokal: berkas keystore hasil ekspor bernama itu sebelumnya masuk tanpa satu pun langkah menahannya (issue #1755).
 - Kelompok sufiks nama terlarang di gerbang lokal kini juga mengakui pemisah '~', spasi, dan '+' (selain titik, garis bawah, strip): salinan keystore bernama bawaan alat seperti 'release.p12 (1)' atau 'release.p12~' sebelumnya lolos kedua langkah nama (issue #1753).
