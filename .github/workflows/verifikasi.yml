@@ -76,3 +76,10 @@ jobs:
           fi
       - name: Cek cepat (vektor 0.x, secret, binary)
         run: bash scripts/cek-cepat.sh
+      - name: Uji regresi gerbang Python
+        # Issue #1789: kasus-kasus kanal penilai gerbang
+        # yang dulu hanya dibuktikan baterai sandbox
+        # sekali pakai kini ter-commit dan berjalan di
+        # CI — regresi kanal yang sama tertangkap di
+        # sini, bukan oleh audit berikutnya.
+        run: python3 -m unittest discover -s tools/tests

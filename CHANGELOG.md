@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Added
+
+- Rangkaian uji regresi ter-commit untuk gerbang Python (`tools/tests/`, 25 uji) + langkah CI yang menjalankannya di workflow Verifikasi Path: kasus kanal token, aturan fragmen, paritas penilai cadangan, dan vonis tag sekali-jalan yang dulu hanya dibuktikan baterai sandbox sekali pakai kini terkunci (issue #1789).
+
 ### Fixed
 
 - Penilai fragmen cadangan di verifikasi-path kini cerminan persis penilai kanonik: sebelumnya ia hanya memuat aturan sapuan gabungan, jadi aturan baris-pemisah dan gabungan-dua-blok hilang diam-diam tepat pada keadaan gagal-muat yang menjadi alasan cadangan itu ada (issue #1788).
