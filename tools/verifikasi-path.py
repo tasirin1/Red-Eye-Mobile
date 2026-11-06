@@ -2384,6 +2384,32 @@ def cek_secret_pesan(gagal, rentang):
                          "hanya via input manual SetupActivity" % sha[:8])
             return
 
+    # Pesan ANOTASI TAG (issue #1713): tag beranotasi yang
+    # menunjuk commit dalam rentang membawa pesannya
+    # sendiri yang ikut terbit bersama rilis, tetapi tak
+    # ada kanal yang membacanya — kanal ini hanya membaca
+    # %B commit. Nilai pesan tag beranotasi yang targetnya
+    # di dalam rentang dengan penilai pesan yang sama.
+    himpunan = set(x.strip() for x in daftar_commit.splitlines() if x.strip())
+    daftar_tag = jalan("git", "for-each-ref", "refs/tags",
+                       "--format=%(refname:short)%09%(objecttype)%09%(*objectname)") or ""
+    for baris in daftar_tag.splitlines():
+        bagian = baris.split("\t")
+        if len(bagian) != 3 or bagian[1] != "tag":
+            continue
+        nama_tag, _, target = bagian
+        if target not in himpunan:
+            continue
+        pesan_tag = jalan("git", "for-each-ref", "refs/tags/" + nama_tag,
+                          "--format=%(contents)") or ""
+        if mengandung_token_pesan(pesan_tag) or _pesan_terbelah(pesan_tag):
+            gagal.append("Kemungkinan token bot asli di PESAN anotasi "
+                         "tag %s — pesan anotasi tag ikut terbit dan "
+                         "hidup permanen; buat ulang tag itu tanpa "
+                         "token. Kredensial hanya via input manual "
+                         "SetupActivity" % nama_tag)
+            return
+
 
 def cek_secret_pesan_semua(gagal):
     """Pindai pesan SELURUH commit terjangkau HEAD (issue #800).

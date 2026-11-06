@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Gerbang rentang kini juga memindai pesan anotasi tag (issue #1713): tag beranotasi yang menunjuk commit dalam rentang membawa pesan yang ikut terbit bersama rilis, tetapi sebelumnya tak ada kanal yang membacanya; kini dinilai dengan penilai pesan commit yang sama.
 - Gerbang riwayat kini juga menilai nama berkas sesudah ekstensi terakhir dibuang (issue #1706): rekonstruksi nama token #1697 berjangkar akhir nama sehingga nama berpola token yang diberi ekstensi (.txt/.bak/dll.) lolos; kini bentuk tanpa ekstensi ikut dinilai dengan rekonstruksi yang sama.
 - Sumber peringatan 'Deprecated Gradle features' milik proyek dihapus (issue #1711): blok kotlinOptions yang usang diganti blok compilerOptions (JvmTarget.JVM_17, nilai sama) dan baris android.enableJetifier=false dibuang dari gradle.properties (bawaan AGP 8 memang false; properti itu dihapus di AGP 9). Bila peringatan masih muncul di log CI berikutnya, sumbernya plugin detekt — di luar kendali konfigurasi proyek.
 - README disamakan dengan toolchain kini (issue #1710): kalimat build masih menulis CI memakai Gradle 8.9 padahal sejak sesi toolchain #1674 CI dan wrapper memakai Gradle 8.14.3.
