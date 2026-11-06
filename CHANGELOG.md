@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Gerbang token: encode web dua lapis kini tertangkap di kedua permukaan — pembuka varian berjalan dua lintasan, jadi titik-dua tertulis `%253A` (persen ganda) atau entitas bertingkat `&#38;#58;`/`&amp;#58;` terbuka sampai aksara aslinya (issue #1810).
 - Gerbang token: token terbelah tanda kurung per fragmen kini tersambung lagi oleh pemadatan di permukaan berkas — docstring modul sejak lama mengklaim kanal itu, tetapi penerapannya tertinggal sehingga `("paruh1") + ("paruh2")` lolos (issue #1814).
 - Sisa #1796 ditutup: cabang buang terminal di dalam flush sendiri (berkas kosong dan terlalu besar di flushMediaSkeleton, berkas kosong di flushPendingPhotos) kini membersihkan ketiga jurnal media, cabang kosong foto juga melepas entri foto tertahan, dan blok pasca-kirim skeleton kini ikut membersihkan jurnal coba seperti flush foto (issue #1809).
 - `/cleanup` kini membersihkan ketiga jurnal media (upaya, tujuan, coba) dan melepas entri foto tertahan untuk setiap berkas yang terhapus, sama seperti jalur prune — sebelumnya penghapus massal ini meninggalkan entri yatim persis pada berkas antrean tertunda yang paling mungkin ber-entri jurnal (issue #1808).

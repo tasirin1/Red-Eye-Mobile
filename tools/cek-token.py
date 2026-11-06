@@ -202,11 +202,26 @@ def _padatkan(teks):
 
 
 def _varian_terbuka(teks):
-    """Varian teks sesudah pengkodean lazim dibuka.
-    Hanya varian yang BERBEDA dari teks asal yang
-    dikembalikan; penilaian atas varian tetap menuntut
-    pola token persis, jadi teks jinak yang kebetulan
-    memuat kode tak ikut tertuduh."""
+    """Varian teks sesudah pengkodean lazim dibuka,
+    sampai DUA lintasan (issue #1810): teks yang
+    ter-encode dua kali (persen ganda %253A, entitas
+    bertingkat &#38;#58;) baru terbuka di lintasan
+    kedua. Hanya varian yang BERBEDA dari teks asal
+    yang dikembalikan; penilaian atas varian tetap
+    menuntut pola token persis, jadi teks jinak yang
+    kebetulan memuat kode tak ikut tertuduh."""
+    lapis1 = _varian_terbuka_satu(teks)
+    hasil = list(lapis1)
+    for varian in lapis1:
+        for varian2 in _varian_terbuka_satu(varian):
+            if varian2 != teks and varian2 not in hasil:
+                hasil.append(varian2)
+    return hasil
+
+
+def _varian_terbuka_satu(teks):
+    """Satu lintasan pembuka encode persen/entitas/
+    escape atas teks."""
     hasil = []
     # Escape string (issue #1801, memperluas #1765):
     # urutan \uXXXX dan \xNN di string Kotlin/Java/

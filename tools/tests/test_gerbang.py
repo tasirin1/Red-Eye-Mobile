@@ -265,6 +265,19 @@ class UjiKanalBerkasTambahan(unittest.TestCase):
         self.assertFalse(cek_token.mengandung_token(jinak2))
         self.assertFalse(cek_token.mengandung_token_pesan(jinak2))
 
+    def test_encode_web_dua_lapis(self):
+        # Issue #1810: persen ganda dan entitas bertingkat
+        # terbuka di lintasan kedua _varian_terbuka.
+        ganda = TOKEN.replace(":", "%253A")
+        self.assertTrue(cek_token.mengandung_token(ganda))
+        self.assertTrue(cek_token.mengandung_token_pesan(ganda))
+        entitas = TOKEN.replace(":", "&#38;#58;")
+        self.assertTrue(cek_token.mengandung_token(entitas))
+        self.assertTrue(cek_token.mengandung_token_pesan(entitas))
+        jinak = "diskon 50%25 dan 25%3A bukan token"
+        self.assertFalse(cek_token.mengandung_token(jinak))
+        self.assertFalse(cek_token.mengandung_token_pesan(jinak))
+
     def test_belah_tanda_kurung(self):
         # Issue #1814: fragmen yang masing-masing dibungkus
         # kurung tersambung lagi oleh pemadatan — hanya
