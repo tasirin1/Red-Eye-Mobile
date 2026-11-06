@@ -498,5 +498,25 @@ class UjiPesanVerifikasiPath(unittest.TestCase):
         self.assertTrue(any("branch remote origin" in g for g in gagal),
                         gagal)
 
+    def test_terbelah_lintas_perpukaan(self):
+        # Issue #1825: separuh token ter-encode di nama
+        # branch, separuh lain di pesan commit — sendiri-
+        # sendiri bersih, tersambung tertuduh.
+        enc = base64.urlsafe_b64encode(
+            TOKEN.encode()).decode().rstrip("=")
+        kepala, ekor = enc[:30], enc[30:]
+
+        def palsu(*args):
+            gabung = " ".join(args)
+            if "refs/heads" in gabung:
+                return kepala
+            return ""
+
+        self._pasang_jalan(palsu)
+        gagal = []
+        self.assertTrue(verifikasi._cek_pesan_tag(gagal, [ekor]))
+        self.assertTrue(any("lintas permukaan" in g for g in gagal),
+                        gagal)
+
 if __name__ == "__main__":
     unittest.main()

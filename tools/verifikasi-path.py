@@ -2679,7 +2679,31 @@ def _pesan_terbelah(teks):
 _cek_tag_sudah_jalan = False
 
 
-def _cek_pesan_tag(gagal):
+def _punya_tepi_token(teks):
+    """Teks bertepi larian alfabet token >=20 aksara
+    (issue #1825): hanya teks seperti itu yang bisa
+    membawa separuh token ter-encode — belahan yang
+    lebih pendek tak membentuk kandidat utuh saat
+    disambung. Penyaring murah agar gabungan lintas
+    permukaan tak menilai semua pasangan."""
+    t = (teks or "").strip()
+    if len(t) < 20:
+        return False
+    alfabet = frozenset(
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        "abcdefghijklmnopqrstuvwxyz0123456789_-:")
+
+    def lari(sx):
+        n = 0
+        for ch in sx:
+            if ch not in alfabet:
+                break
+            n += 1
+        return n
+    return lari(t) >= 20 or lari(t[::-1]) >= 20
+
+
+def _cek_pesan_tag(gagal, pesan_commit=None):
     """Pesan ANOTASI TAG (issue #1713): tag beranotasi
     membawa pesannya sendiri yang ikut terbit bersama
     rilis, tetapi tak ada kanal yang membacanya — kanal
@@ -2693,6 +2717,7 @@ def _cek_pesan_tag(gagal):
     if _cek_tag_sudah_jalan:
         return False
     _cek_tag_sudah_jalan = True
+    permukaan = []
     daftar_tag = jalan("git", "for-each-ref", "refs/tags",
                        "--format=%(refname:short)%09%(objecttype)%09%(*objectname)") or ""
     for baris in daftar_tag.splitlines():
@@ -2700,6 +2725,7 @@ def _cek_pesan_tag(gagal):
         if len(bagian) != 3:
             continue
         nama_tag = bagian[0]
+        permukaan.append(nama_tag)
         # NAMA tag ikut dinilai (issue #1804): nama adalah
         # satu-satunya bagian tag yang selalu terbit —
         # token ter-encode (base64url sah sebagai nama
@@ -2718,6 +2744,7 @@ def _cek_pesan_tag(gagal):
             continue
         pesan_tag = jalan("git", "for-each-ref", "refs/tags/" + nama_tag,
                           "--format=%(contents)") or ""
+        permukaan.append(pesan_tag)
         if mengandung_token_pesan(pesan_tag) or _pesan_terbelah(pesan_tag):
             gagal.append("Kemungkinan token bot asli di PESAN anotasi "
                          "tag %s — pesan anotasi tag ikut terbit dan "
@@ -2743,6 +2770,8 @@ def _cek_pesan_tag(gagal):
                           "--format=%(refname:short)") or ""
     for nama_cabang in daftar_cabang.splitlines():
         nama_cabang = nama_cabang.strip()
+        if nama_cabang:
+            permukaan.append(nama_cabang)
         if nama_cabang and mengandung_token_pesan(nama_cabang):
             gagal.append("Kemungkinan token bot asli di NAMA "
                          "branch %s — nama branch ikut terbit dan "
@@ -2756,6 +2785,8 @@ def _cek_pesan_tag(gagal):
                                  "--format=%(refname:short)") or ""
     for nama_cabang in daftar_cabang_remote.splitlines():
         nama_cabang = nama_cabang.strip()
+        if nama_cabang:
+            permukaan.append(nama_cabang)
         if nama_cabang and mengandung_token_pesan(nama_cabang):
             gagal.append("Kemungkinan token bot asli di NAMA "
                          "branch remote origin %s — nama itu "
@@ -2764,6 +2795,34 @@ def _cek_pesan_tag(gagal):
                          "asalnya lalu push ulang. Kredensial "
                          "hanya via input manual SetupActivity"
                          % nama_cabang)
+            return True
+    # Gabungan LINTAS PERMUKAAN (issue #1825): token
+    # ter-encode yang separuhnya di nama branch/tag
+    # atau anotasi tag dan separuh lainnya di pesan
+    # commit tak terlihat penilai per permukaan mana
+    # pun — yang dinilai sendiri-sendiri memang
+    # bersih. Hanya potongan bertepi token panjang
+    # yang dipasangkan (penyaring _punya_tepi_token),
+    # dan tiap pasangan dinilai tersambung dua arah.
+    kandidat_pesan = [t for t in (pesan_commit or [])
+                      if _punya_tepi_token(t)]
+    kandidat_permukaan = [t for t in permukaan
+                          if _punya_tepi_token(t)]
+    pasangan = [(a, b) for a in kandidat_permukaan
+                for b in kandidat_pesan]
+    pasangan += [(a, b) for i, a in enumerate(kandidat_permukaan)
+                 for b in kandidat_permukaan[i + 1:]]
+    for a, b in pasangan:
+        if (mengandung_token_pesan(a + b)
+                or mengandung_token_pesan(b + a)):
+            gagal.append("Kemungkinan token bot asli "
+                         "TERBELAH lintas permukaan — "
+                         "separuh di nama/anotasi ref dan "
+                         "separuh lain di pesan commit atau "
+                         "ref lain, tersambung bila digabung; "
+                         "tulis ulang kedua potong itu "
+                         "sebelum push. Kredensial hanya via "
+                         "input manual SetupActivity")
             return True
     return False
 
@@ -2831,7 +2890,7 @@ def cek_secret_pesan(gagal, rentang):
     # Pesan ANOTASI TAG: dinilai pembantu bersama
     # _cek_pesan_tag (issue #1713, #1741; dipakai
     # juga mode --semua sejak issue #1768).
-    if _cek_pesan_tag(gagal):
+    if _cek_pesan_tag(gagal, daftar_pesan):
         return
 
 
