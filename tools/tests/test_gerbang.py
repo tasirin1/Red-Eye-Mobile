@@ -573,5 +573,22 @@ class UjiPesanVerifikasiPath(unittest.TestCase):
         self.assertFalse(cek_token.mengandung_token(
             cek_token.dekode_berkas(b"halo dunia biasa")))
 
+    def test_memoisasi_dekoder_stabil(self):
+        # Issue #1830: cache penilai dekoder tak boleh
+        # mengubah vonis — panggilan berulang atas
+        # kandidat yang sama (panas) wajib sama dengan
+        # panggilan pertama (dingin), untuk yang
+        # tertuduh maupun yang bersih.
+        import urllib.parse
+        kotor = base64.b64encode(
+            urllib.parse.quote(TOKEN, safe="").encode()).decode()
+        for _ in range(3):
+            self.assertTrue(cek_token.mengandung_token(kotor))
+            self.assertTrue(cek_token.mengandung_token_pesan(kotor))
+            self.assertFalse(
+                cek_token.mengandung_token("teks jinak pengulangan"))
+            self.assertFalse(
+                cek_token.mengandung_token_pesan("teks jinak pengulangan"))
+
 if __name__ == "__main__":
     unittest.main()

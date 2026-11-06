@@ -113,7 +113,49 @@ POLA_KANDIDAT_B64 = re.compile(r"[A-Za-z0-9+/=_-]{48,}")
 POLA_KANDIDAT_HEX = re.compile(r"[0-9a-fA-F]{80,}")
 
 
+# Memoisasi penilai dekoder (issue #1830): ketiga
+# penilai murni adalah fungsi murni dari (kandidat,
+# kedalaman), tetapi kandidat yang sama dinilai
+# berulang kali — berkas besar menghasilkan ribuan
+# kandidat dengan >80% duplikat (kandidat yang sama
+# muncul di teks mentah, varian tanpa-spasi, varian
+# terpadatkan, dan varian terbuka). Cache proses
+# berbatas 100rb entri meruntuhkan kerja duplikat
+# itu tanpa mengubah satu pun vonis.
+_cache_cocok = {}
+
+
 def _cocok_b64(kandidat, kedalaman=0):
+    kunci = ("b", kandidat, kedalaman)
+    if kunci in _cache_cocok:
+        return _cache_cocok[kunci]
+    hasil = _cocok_b64_murni(kandidat, kedalaman)
+    if len(_cache_cocok) < 100000:
+        _cache_cocok[kunci] = hasil
+    return hasil
+
+
+def _cocok_hex(kandidat, kedalaman=0):
+    kunci = ("h", kandidat, kedalaman)
+    if kunci in _cache_cocok:
+        return _cache_cocok[kunci]
+    hasil = _cocok_hex_murni(kandidat, kedalaman)
+    if len(_cache_cocok) < 100000:
+        _cache_cocok[kunci] = hasil
+    return hasil
+
+
+def _cocok_b32(kandidat, kedalaman=0):
+    kunci = ("3", kandidat, kedalaman)
+    if kunci in _cache_cocok:
+        return _cache_cocok[kunci]
+    hasil = _cocok_b32_murni(kandidat, kedalaman)
+    if len(_cache_cocok) < 100000:
+        _cache_cocok[kunci] = hasil
+    return hasil
+
+
+def _cocok_b64_murni(kandidat, kedalaman=0):
     teks = kandidat.replace("-", "+").replace("_", "/")
     for awal in range(0, min(4, len(teks))):
         inti = teks[awal:].rstrip("=")
@@ -141,7 +183,7 @@ def _cocok_b64(kandidat, kedalaman=0):
     return False
 
 
-def _cocok_hex(kandidat, kedalaman=0):
+def _cocok_hex_murni(kandidat, kedalaman=0):
     s = kandidat
     if len(s) % 2 == 1:
         s = s[:-1]
@@ -156,7 +198,7 @@ def _cocok_hex(kandidat, kedalaman=0):
     return False
 
 
-def _cocok_b32(kandidat, kedalaman=0):
+def _cocok_b32_murni(kandidat, kedalaman=0):
     s32 = kandidat.upper()
     s32 += "=" * ((8 - len(s32) % 8) % 8)
     try:
