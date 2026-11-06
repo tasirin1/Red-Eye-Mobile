@@ -448,6 +448,35 @@ fi
 if [ -n "$nama_token" ]; then
   echo "GAGAL: kemungkinan token bot asli pada NAMA berkas $nama_token (hanya via input SetupActivity)"; gagal=1;
 fi
+# 5g. Token pada NAMA tag dan branch (issue #1816): vonis
+# CI menilai nama tag sejak #1804 dan nama branch sejak
+# #1815, tetapi gerbang lokal ini tak punya langkah ref
+# sama sekali — menjalankannya sendirian memberi rasa
+# aman palsu untuk tag/branch kotor. Penilai yang sama
+# (mengandung_token_pesan) atas semua nama refs/tags +
+# refs/heads, satu proses python agar 600+ tag tetap
+# cepat.
+if [ -f tools/cek-token.py ]; then
+  ref_token=$(python3 - <<'PYREF' 2>/dev/null || true
+import importlib.util, subprocess
+spec = importlib.util.spec_from_file_location("ct", "tools/cek-token.py")
+ct = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(ct)
+keluar = subprocess.run(
+    ["git", "for-each-ref", "refs/tags", "refs/heads",
+     "--format=%(refname:short)"],
+    capture_output=True, text=True).stdout
+for nama in keluar.splitlines():
+    nama = nama.strip()
+    if nama and ct.mengandung_token_pesan(nama):
+        print(nama)
+        break
+PYREF
+)
+  if [ -n "$ref_token" ]; then
+    echo "GAGAL: kemungkinan token bot asli pada NAMA tag/branch $ref_token (hanya via input SetupActivity)"; gagal=1;
+  fi
+fi
 # 6. Anotasi ganda dalam satu blok (mis. dua @Volatile) = galat kompilasi Kotlin.
 #    Literal karakter ('(', ')') dikupas seperti literal string
 #    agar kurungnya tak mengacaukan pelacak kedalaman (issue #1072).

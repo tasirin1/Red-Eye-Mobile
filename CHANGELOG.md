@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- cek-cepat.sh kini menilai nama tag dan branch (langkah 5g) dengan penilai yang sama seperti vonis CI — sebelumnya gerbang lokal tak punya langkah ref sama sekali, jadi menjalankannya sendirian memberi rasa aman palsu untuk tag/branch bernama token ter-encode (issue #1816).
 - Gerbang verifikasi-path kini menilai nama branch lokal (refs/heads) dengan penilai yang sama seperti nama tag: string yang sama persis dulu dituduh sebagai nama tag tetapi lolos total sebagai nama branch, padahal nama branch ikut terbit dan tampil publik selama branch hidup (issue #1815).
 - Gerbang token: dekoder hex dan base32 kini dua lapis seperti base64, termasuk silang antar-dekoder (hex dari hex, base32 dari base32, b64(hex), hex(b64), b64(b32), b32(b64)) — sebelumnya perlakuan dua lapis #1802 hanya berlaku untuk base64 sehingga keenam komposisi itu lolos di kedua permukaan (issue #1813).
 - Gerbang token: komposisi silang satu lapis kini tertangkap — varian terbuka (persen/entitas/escape yang sudah dibuka) diteruskan juga ke dekoder base64/hex/base32, jadi token yang di-base64 lalu hasil base64-nya di-persen/`\x`/entitas-kan (atau di-hex lalu di-persen/di-`\u`-kan) tidak lagi lolos padahal tiap lapisnya sendirian sudah tertutup (issue #1812).
