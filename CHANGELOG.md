@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- `/cleanup` kini membersihkan ketiga jurnal media (upaya, tujuan, coba) dan melepas entri foto tertahan untuk setiap berkas yang terhapus, sama seperti jalur prune — sebelumnya penghapus massal ini meninggalkan entri yatim persis pada berkas antrean tertunda yang paling mungkin ber-entri jurnal (issue #1808).
 - Pelajar username getMe kini digerbang penanda in-flight atomik: selama satu getMe belum selesai, putaran poll berikutnya tidak meluncurkan getMe duplikat untuk token yang sama (sebelumnya pada jaringan lambat bisa 2–4 getMe berjalan bersamaan sampai satu menulis username) (issue #1807).
 - Penilaian dispatch poll kini memakai kredensial yang menghasilkan respons (responseChat/responseToken), bukan snapshot awal putaran: sesudah retry 401/403, batch dari chat baru tidak lagi diadili terhadap chat lama — perintah anggota chat baru tidak hilang permanen (gugur senyap tetapi offset terkonfirmasi), pemasangan /start di batch yang sama berfungsi, dan pembersih webhook 409 membersihkan bot yang sedang konflik (issue #1806).
 

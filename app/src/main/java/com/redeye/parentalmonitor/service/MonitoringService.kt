@@ -4914,6 +4914,8 @@ class MonitoringService : Service() {
         val cutoff = System.currentTimeMillis() - days.toLong() * 86_400_000L
         var count = 0
         var bytes = 0L
+        val namaFotoHapus = HashSet<String>()
+        val hashFotoHapus = HashSet<Long>()
         try {
             antreMedia().listFiles()?.forEach { file ->
                 if (!file.isFile || isMediaActive(file)) return@forEach
@@ -4949,13 +4951,41 @@ class MonitoringService : Service() {
                 }
                 if (media && melewatiBatas) {
                     val len = file.length()
+                    // Hash foto dihitung SEBELUM hapus untuk
+                    // pelepasan entri tertahan di bawah.
+                    val hashFoto = if (photo) {
+                        try { PhotoFingerprint.analyze(file).second } catch (_: Exception) { null }
+                    } else null
                     if (file.delete()) {
                         count++
                         bytes += len
+                        // Hapus terminal membersihkan ketiga
+                        // jurnal juga di jalur ini (issue #1808):
+                        // berkas antrean tertunda justru yang
+                        // paling mungkin ber-entri jurnal.
+                        hapusUpayaMedia(file)
+                        hapusTujuanMedia(file)
+                        bersihkanCatatanUnggah(file)
+                        if (photo) {
+                            namaFotoHapus.add(name)
+                            if (hashFoto != null) hashFotoHapus.add(hashFoto)
+                        }
                     }
                 }
             }
         } catch (_: Exception) {
+        }
+        if (namaFotoHapus.isNotEmpty()) {
+            try {
+                mutateHeldPhotoEntries { fresh ->
+                    var kept = HeldPhotos.withoutNames(fresh, namaFotoHapus)
+                    if (kept.any { it.raw == null && it.name == null }) {
+                        kept = HeldPhotos.withoutHashes(kept, hashFotoHapus)
+                    }
+                    kept
+                }
+            } catch (_: Exception) {
+            }
         }
         val mb = String.format(java.util.Locale.ROOT, "%.1f", bytes / 1_048_576.0)
         sendToTelegram("🧹 Bersihkan media: $count berkas dihapus (±$mb MB), lebih lama dari $days hari.")
