@@ -120,13 +120,20 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = '17'
-    }
 
     buildFeatures {
         viewBinding false
         buildConfig true
+    }
+}
+
+// Target bytecode Kotlin lewat compilerOptions (issue
+// #1711): blok kotlinOptions di dalam android{} sudah
+// usang (peringatan deprecated Gradle di log CI) dan
+// hilang di AGP 9.
+kotlin {
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
     }
 }
 
