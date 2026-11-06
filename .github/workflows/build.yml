@@ -70,6 +70,23 @@ jobs:
           else
             python3 tools/verifikasi-path.py
           fi
+      - name: Nilai judul & isi PR (gerbang token)
+        if: github.event_name == 'pull_request'
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          # Judul & isi PR dinilai penilai pesan yang sama
+          # (issue #1829): keduanya teks publik yang hidup
+          # selama PR ada, tetapi tak terjangkau kanal
+          # pesan commit/tag/branch mana pun karena
+          # workflow hanya membaca base.sha. Nilai lewat
+          # env, BUKAN interpolasi langsung di run, agar
+          # judul PR tak bisa menyuntik skrip.
+          if printf '%s\n%s' "$PR_TITLE" "$PR_BODY" | python3 tools/cek-token.py --teks-pesan | grep -q DITEMUKAN; then
+            echo "Kemungkinan token bot asli di JUDUL/ISI PR - hapus token itu dari judul/isi PR. Kredensial hanya via input manual SetupActivity"
+            exit 1
+          fi
       - name: Cek cepat (vektor 0.x, secret, binary)
         run: bash scripts/cek-cepat.sh
       - name: Uji regresi gerbang Python

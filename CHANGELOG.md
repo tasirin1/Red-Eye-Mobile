@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Added
+
+- Job verifikasi di kedua workflow kini menilai judul dan isi pull request dengan penilai token yang sama (diteruskan lewat env, bukan interpolasi skrip): teks publik PR sebelumnya tak terjangkau kanal pesan commit/tag/branch mana pun (issue #1829).
+
 ### Fixed
 
 - cek-cepat langkah 5g (nama tag/branch) kini fail-closed: penilai token yang tidak sehat menghasilkan GAGAL eksplisit, bukan lolos diam-diam — sebelumnya galat penilai ditelan dan langkah itu tidak menilai apa pun sambil tetap tampak hijau (issue #1828).
