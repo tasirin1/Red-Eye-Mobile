@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Metadata verifikasi dependensi diregenerasi dari graf bersih (issue #1712): berkas lama membawa komponen basi warisan gabungan regenerasi sebelumnya (mis. androidx.activity:activity:1.7.0 yang tak lagi dipakai); berkas baru dibuat dari nol di Colab atas himpunan tugas CI yang sama — 221.732 bita, 488 komponen, tanpa satu pun komponen basi itu, dan checksum gson-2.15.0.jar diverifikasi silang cocok persis dengan Maven Central.
 - Paritas gerbang pesan dipulihkan (issue #1719): langkah pesan cek-cepat lokal hanya memakai penilai pesan tanpa fragmen sehingga pola fragmen yang ditangkap vonis rentang CI (blok baris pendek #1698, potongan sedang #1716) lolos diam-diam di lokal; cek-token kini membawa penilai fragmen pesan yang sama dan mode --teks-pesan memakainya.
 - Langkah ekstensi terlarang cek-cepat kini menangkap sufiks tambahan (issue #1718): pola berjangkar akhir nama membuat berkas seperti release.p12.bak lolos dari larangan keystore; kini ekstensi terlarang boleh diikuti sufiks titik apa pun di langkah staged maupun pohon terlacak.
 - Gerbang pesan commit kini juga menilai metadata author/committer (issue #1717): nama dan email author tersimpan permanen di riwayat dan tampil publik tetapi sebelumnya tak dibaca kanal mana pun; kini dinilai dengan penilai pesan yang sama.
