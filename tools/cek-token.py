@@ -19,8 +19,10 @@ Dipakai tools/verifikasi-path.py (diimpor) dan scripts/cek-cepat.sh:
 Kode keluar selalu 0; keputusan dibaca dari keluaran stdout.
 """
 import base64
+import html
 import re
 import sys
+import urllib.parse
 
 POLA = re.compile(r"[0-9]{6,}:[A-Za-z0-9_-]{35,}")
 _POLA_HEX = re.compile(r"[0-9a-fA-F]+\Z")
@@ -165,6 +167,30 @@ def _padatkan(teks):
     # ia hanya bisa menjadi pemisah belah.
     rapat = re.sub(r"[\x00-\x08\x0e-\x1f\x7f]+", "", rapat)
     return rapat
+
+
+def _varian_terbuka(teks):
+    """Varian teks sesudah pengkodean lazim dibuka.
+    Hanya varian yang BERBEDA dari teks asal yang
+    dikembalikan; penilaian atas varian tetap menuntut
+    pola token persis, jadi teks jinak yang kebetulan
+    memuat kode tak ikut tertuduh."""
+    hasil = []
+    # Encode persen URL + entitas HTML (issue #1799):
+    # titik-dua token tertulis %3A atau &#58; saat token
+    # tertempel di dalam URL/log/berkas HTML.
+    if "%" in teks:
+        try:
+            dibuka = urllib.parse.unquote(teks)
+        except Exception:
+            dibuka = teks
+        if dibuka != teks:
+            hasil.append(dibuka)
+    if "&" in teks:
+        dibuka = html.unescape(teks)
+        if dibuka != teks:
+            hasil.append(dibuka)
+    return hasil
 
 
 def _utf16_tanpa_bom(data):
@@ -326,6 +352,13 @@ def mengandung_token_pesan(teks):
     # tetap tidak tersambung.
     if _pola_mentah_cocok(tanpa_spasi):
         return True
+    # Bentuk ter-encode web (issue #1799): dekode
+    # BUKAN pemadatan #1425 — hanya aksara yang memang
+    # ter-encode yang dibuka, prosa tetap tak tersambung.
+    for varian in _varian_terbuka(teks):
+        if _pola_mentah_cocok(varian) or \
+                _pola_mentah_cocok(re.sub(r"\s+", "", varian)):
+            return True
     for sumber in (teks, tanpa_spasi):
         for m in POLA_KANDIDAT_B64.finditer(sumber):
             if _cocok_b64(m.group(0)):
@@ -495,6 +528,12 @@ def mengandung_token(teks):
             dibuka = teks
         if dibuka != teks and (_pola_mentah_cocok(dibuka)
                                or _pola_mentah_cocok(_padatkan(dibuka))):
+            return True
+    # Bentuk ter-encode web (issue #1799): varian
+    # terbukanya dinilai seperti teks biasa.
+    for varian in _varian_terbuka(teks):
+        if _pola_mentah_cocok(varian) \
+                or _pola_mentah_cocok(_padatkan(varian)):
             return True
     # Bentuk base32 (issue #1765): padanan kanal
     # base64 untuk alfabet base32 — hasil dekode
