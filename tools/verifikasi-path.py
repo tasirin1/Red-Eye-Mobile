@@ -2155,11 +2155,13 @@ def cek_secret_riwayat(gagal, rentang):
         # ini: bentuk tanpa '/', plus rekonstruksi
         # '_'->':' pada batas digitnya; vonis tetap
         # mengandung_token.
+        nama_gab_list = []
         for path in dict.fromkeys(pecah_nama(berubah_kandidat)):
             nama = path.strip()
             if not nama:
                 continue
             polos_nama = nama.replace("/", "")
+            nama_gab_list.append(polos_nama)
             # Pra-saring murah dulu (pola cek-cepat): nama
             # tanpa deret digit panjang tak mungkin berpola
             # token — memanggil pemindai untuk tiap path
@@ -2196,6 +2198,36 @@ def cek_secret_riwayat(gagal, rentang):
                              "hidup di riwayat walau sudah dihapus di pohon "
                              "akhir. Kredensial hanya via input manual "
                              "SetupActivity" % (nama, sha[:8]))
+                return
+        # Nama terbelah antar DUA path dalam satu commit
+        # (issue #1715): kanal nama menilai per path, jadi
+        # dua berkas yang namanya bila disambung membentuk
+        # token lolos. Nilai gabungan nama-nama yang
+        # berubah pada commit ini dengan kandidat yang
+        # sama seperti nama tunggal.
+        if len(nama_gab_list) >= 2:
+            gabungan_nama = "".join(sorted(nama_gab_list))
+            calon_gab = []
+            varian_gab = [gabungan_nama]
+            if "." in gabungan_nama:
+                tanpa_eks_g = gabungan_nama.rsplit(".", 1)[0]
+                if tanpa_eks_g:
+                    varian_gab.append(tanpa_eks_g)
+            for varian in varian_gab:
+                if re.search(r"[0-9]{6,}:[A-Za-z0-9_-]{35,}", varian):
+                    calon_gab.append(varian)
+                cocok_g = re.match(r"^(.*?)([0-9]{6,})_([A-Za-z0-9_-]{35,})$", varian)
+                if cocok_g:
+                    calon_gab.append("%s%s:%s" % (cocok_g.group(1), cocok_g.group(2), cocok_g.group(3)))
+                cocok_gt = re.match(r"^(.*?)([0-9]{6,})\.([A-Za-z0-9_-]{35,})$", varian)
+                if cocok_gt:
+                    calon_gab.append("%s%s:%s" % (cocok_gt.group(1), cocok_gt.group(2), cocok_gt.group(3)))
+            if any(mengandung_token(c) for c in calon_gab):
+                gagal.append("Kemungkinan token bot asli pada GABUNGAN "
+                             "nama berkas satu commit %s (riwayat "
+                             "rentang) — nama terbelah antar path tetap "
+                             "hidup di riwayat. Kredensial hanya via "
+                             "input manual SetupActivity" % sha[:8])
                 return
         # Belahan lintas berkas (issue #1676): semua saluran
         # di atas menilai per blob, jadi token yang separuh

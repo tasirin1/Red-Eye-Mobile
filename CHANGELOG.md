@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Gerbang riwayat kini menilai gabungan nama berkas dalam satu commit (issue #1715): kanal nama sebelumnya menilai per path sehingga token yang namanya dipecah ke dua berkas dalam commit yang sama lolos; kini gabungan nama-nama berubah dinilai dengan rekonstruksi yang sama seperti nama tunggal.
 - Gerbang nama berkas kini juga merekonstruksi pemisah '.' menjadi ':' (issue #1714): rekonstruksi #1697 hanya menangani '_' sehingga nama berpola token dengan titik dua diganti titik lolos dari kanal nama; kini kedua pemisah dinilai, termasuk gabungannya dengan varian tanpa ekstensi (#1706).
 - Gerbang rentang kini juga memindai pesan anotasi tag (issue #1713): tag beranotasi yang menunjuk commit dalam rentang membawa pesan yang ikut terbit bersama rilis, tetapi sebelumnya tak ada kanal yang membacanya; kini dinilai dengan penilai pesan commit yang sama.
 - Gerbang riwayat kini juga menilai nama berkas sesudah ekstensi terakhir dibuang (issue #1706): rekonstruksi nama token #1697 berjangkar akhir nama sehingga nama berpola token yang diberi ekstensi (.txt/.bak/dll.) lolos; kini bentuk tanpa ekstensi ikut dinilai dengan rekonstruksi yang sama.
