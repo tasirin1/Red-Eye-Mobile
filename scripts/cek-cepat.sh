@@ -457,6 +457,17 @@ fi
 # refs/heads, satu proses python agar 600+ tag tetap
 # cepat.
 if [ -f tools/cek-token.py ]; then
+# Gerbang kesehatan penilai (issue #1828): langkah-
+# langkah saudara menolak menilai saat cek-token.py
+# tak sehat, tetapi 5g dulu langsung menjalankan
+# pythonnya dengan galat ditelan — penilai yang rusak
+# sintaks membuat ref_token kosong dan langkah ini
+# LOLOS tanpa menilai apa pun (fail-open). Kini
+# penilai tak sehat = GAGAL eksplisit (fail-closed).
+if ! cek_token_sehat; then
+  echo "GAGAL: penilai token tools/cek-token.py tidak sehat - nama tag/branch tidak bisa dinilai langkah 5g; perbaiki penilainya dulu (hanya via input SetupActivity)"
+  gagal=1
+else
   ref_token=$(python3 - <<'PYREF' 2>/dev/null || true
 import importlib.util, subprocess
 spec = importlib.util.spec_from_file_location("ct", "tools/cek-token.py")
@@ -476,6 +487,7 @@ PYREF
   if [ -n "$ref_token" ]; then
     echo "GAGAL: kemungkinan token bot asli pada NAMA tag/branch $ref_token (hanya via input SetupActivity)"; gagal=1;
   fi
+fi
 fi
 # 6. Anotasi ganda dalam satu blok (mis. dua @Volatile) = galat kompilasi Kotlin.
 #    Literal karakter ('(', ')') dikupas seperti literal string

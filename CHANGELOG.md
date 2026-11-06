@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- cek-cepat langkah 5g (nama tag/branch) kini fail-closed: penilai token yang tidak sehat menghasilkan GAGAL eksplisit, bukan lolos diam-diam — sebelumnya galat penilai ditelan dan langkah itu tidak menilai apa pun sambil tetap tampak hijau (issue #1828).
 - Gerbang token: nama anggota arsip tar terkompresi (tar.gz/tgz/bz2/xz) dan tar polos kini dibaca dan dinilai — sebelumnya nama di dalam arsip terkompresi buram bagi semua permukaan (nama zip sudah tertangkap dari direktori pusat polosnya); arsip 7z masih belum tercakup karena pustaka standar tak punya pembacanya (issue #1827).
 - Gerbang token: rantai tag bersarang (objek tag menunjuk objek tag lain tanpa ref sendiri) kini ditelusuri dan nama serta pesan tag dalamnya dinilai — sebelumnya isi tag dalam seperti itu tak terjangkau pembacaan anotasi ref mana pun (issue #1826).
 - Gerbang token: belahan token ter-encode yang separuhnya hidup di nama branch/tag atau anotasi tag dan separuh lainnya di pesan commit kini tertuduh lewat penilaian gabungan lintas permukaan — sebelumnya tiap permukaan dinilai sendiri-sendiri dan belahan seperti itu lolos semua gerbang (issue #1825).
