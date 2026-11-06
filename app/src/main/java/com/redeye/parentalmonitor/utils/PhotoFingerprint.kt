@@ -8,6 +8,9 @@ object PhotoFingerprint {
     // mendekode berkas yang sama dan membangun grid luma
     // yang identik — aliran foto memanggil dua di antaranya
     // untuk foto yang sama (4 lintasan dekode per foto).
+    // gridSpread sendiri sudah dihapus (issue #1783):
+    // pekerjaannya terserap penuh oleh analyzeFull dan
+    // tak ada pemanggil yang tersisa.
     // Mengembalikan (luma, sel 8x8) atau null bila berkas
     // tak terdekode; tiap pemanggil memetakan null ke
     // sentinelnya sendiri seperti sebelumnya.
@@ -103,11 +106,6 @@ object PhotoFingerprint {
     }
 
     const val FEATURELESS_SPREAD = 12
-
-    fun gridSpread(photoFile: File): Int {
-        val d = decodeCells(photoFile) ?: return -1
-        return spreadOfCells(d.second)
-    }
 
     fun isComparableFingerprint(hash: Long): Boolean = hash != 0L && hash != 1L
 
