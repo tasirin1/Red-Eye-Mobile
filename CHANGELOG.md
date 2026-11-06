@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Gerbang token kini menilai base64 sampai dua lapis: hasil dekode lapis pertama yang masih berupa base64 dinilai ulang satu tingkat, sehingga token ter-encode ganda (lazim pada log/konfig bersarang) tertangkap di kedua permukaan (issue #1802).
+
 - Gerbang token kini juga membuka escape heksadesimal `\xNN` (melengkapi `\uXXXX` yang sudah ada) di permukaan berkas maupun pesan: token yang dibenamkan sebagai urutan escape di string Python/C/JS/Kotlin tak lagi lolos (issue #1801).
 
 - Gerbang token kini membuang aksara format tak kasatmata (zero-width, BOM, kontrol bidi, dan sejenisnya) sebelum menilai di kedua permukaan: satu sisipan tak terlihat di tengah token tak lagi memutus pola sekaligus lolos dari perhatian peninjau diff (issue #1800).

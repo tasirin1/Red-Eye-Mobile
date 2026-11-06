@@ -112,7 +112,7 @@ POLA_KANDIDAT_B64 = re.compile(r"[A-Za-z0-9+/=_-]{48,}")
 POLA_KANDIDAT_HEX = re.compile(r"[0-9a-fA-F]{80,}")
 
 
-def _cocok_b64(kandidat):
+def _cocok_b64(kandidat, kedalaman=0):
     teks = kandidat.replace("-", "+").replace("_", "/")
     for awal in range(0, min(4, len(teks))):
         inti = teks[awal:].rstrip("=")
@@ -127,6 +127,16 @@ def _cocok_b64(kandidat):
                 continue
             if POLA_BYTE.search(hasil):
                 return True
+            if kedalaman < 1:
+                # Base64 dua lapis (issue #1802): hasil
+                # lapis pertama yang masih berupa base64
+                # dinilai ulang satu tingkat — log/konfig
+                # bersarang lazim meng-encode dua kali.
+                # Kedalaman dibatasi tepat dua lapis.
+                lapis = hasil.decode("ascii", "ignore")
+                for m2 in POLA_KANDIDAT_B64.finditer(lapis):
+                    if _cocok_b64(m2.group(0), kedalaman + 1):
+                        return True
     return False
 
 
