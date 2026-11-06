@@ -2634,6 +2634,18 @@ def _pesan_terbelah(teks):
                 return True
             blok = []
     return nilai(blok)
+
+
+# Vonis tag hanya boleh berjalan sekali per proses
+# (issue #1787): _cek_pesan_tag dipanggil dari
+# cek_secret_pesan DAN cek_secret_pesan_semua, dan
+# pada mode --semua keduanya berjalan dalam satu lari
+# — tag kotor yang sama dulu terhitung dua kegagalan
+# identik. Vonisnya fungsi murni keadaan repo, jadi
+# panggilan sesudah yang pertama tak menilai ulang.
+_cek_tag_sudah_jalan = False
+
+
 def _cek_pesan_tag(gagal):
     """Pesan ANOTASI TAG (issue #1713): tag beranotasi
     membawa pesannya sendiri yang ikut terbit bersama
@@ -2644,6 +2656,10 @@ def _cek_pesan_tag(gagal):
     lama tak pernah dinilai rentang mana pun, padahal
     pesan tag itu permanen dan publik. Mengembalikan
     True bila satu kegagalan ditambahkan."""
+    global _cek_tag_sudah_jalan
+    if _cek_tag_sudah_jalan:
+        return False
+    _cek_tag_sudah_jalan = True
     daftar_tag = jalan("git", "for-each-ref", "refs/tags",
                        "--format=%(refname:short)%09%(objecttype)%09%(*objectname)") or ""
     for baris in daftar_tag.splitlines():
