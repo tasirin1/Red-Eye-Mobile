@@ -878,10 +878,10 @@ class MonitoringService : Service() {
         // daftar pengecualian resmi), sehingga entri manifest
         // saja mati total di perangkat modern — notifikasi
         // pasang/copot, forgetA11yApp (#854), dan invalidasi
-        // cache tak pernah jalan. Di bawah API 26 entri
-        // manifest masih bekerja, jadi pendaftaran dinamis
-        // dibatasi >= 26 agar tidak terkirim ganda.
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O && packageReceiver == null) {
+        // cache tak pernah jalan. Pendaftaran dinamis kini
+        // tanpa gerbang versi (minSdk 29); batas >= 26 dulu
+        // hanya menghindari kiriman ganda di perangkat lama.
+        if (packageReceiver == null) {
             try {
                 val receiver = com.redeye.parentalmonitor.receiver.PackageChangeReceiver()
                 val filter = android.content.IntentFilter().apply {
@@ -8863,10 +8863,9 @@ class MonitoringService : Service() {
     // Status panas perangkat (issue #1499): dulu tak
     // pernah dibaca di mana pun — kegagalan kamera/rekam
     // akibat proteksi panas tampil generik. Kini /battery
-    // menyebutkannya (API 29+; di bawah itu kosong).
+    // menyebutkannya (API 29+, kini versi minimum).
     private fun thermalStatusText(): String {
         return try {
-            if (android.os.Build.VERSION.SDK_INT < 29) return ""
             val pm = getSystemService(android.os.PowerManager::class.java) ?: return ""
             when (pm.currentThermalStatus) {
                 0 -> "normal"
@@ -11886,7 +11885,6 @@ class MonitoringService : Service() {
     }
 
     private fun screenshotTypeActive(): Boolean {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return true
         return (appliedFgsTypes and ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION) != 0
     }
 
@@ -11903,7 +11901,7 @@ class MonitoringService : Service() {
             return "Sesi tangkap layar tercatat masih aktif, tetapi sistem tidak mengirim bingkai apa pun (layar mungkin statis atau mati). Bangunkan/buka layar lalu coba /screenshot lagi; bila tetap gagal, berikan izinnya sekali lagi: Setup → Capture Screen."
         }
         val types = FgsTypes.describe(appliedFgsTypes)
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && !screenshotTypeActive()) {
+        return if (!screenshotTypeActive()) {
             "Tipe latar 'screen' belum aktif (kini: $types). Buka aplikasi sekali agar layanan memulihkan tipe latar di depan, lalu kirim /screenshot lagi. Bila tetap gagal, berikan izinnya sekali lagi: Setup → Capture Screen."
         } else {
             "Tipe latar 'screen' aktif ($types), jadi izinnya kemungkinan sudah tak berlaku (Android mengizinkan satu sesi per izin). Berikan sekali lagi: buka Setup → Capture Screen."
@@ -12659,14 +12657,6 @@ class MonitoringService : Service() {
     }
 
     private fun applyForegroundTypes(notification: android.app.Notification): Boolean {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-            return try {
-                startForeground(NOTIFICATION_ID, notification)
-                true
-            } catch (_: Exception) {
-                false
-            }
-        }
         var lastError: Exception? = null
         val fullTypes = try {
             FgsTypes.compute(Build.VERSION.SDK_INT, hasCameraPermission(), hasMicPermission(), hasLocationPermission(), hasScreenshotConsent())
@@ -12687,7 +12677,6 @@ class MonitoringService : Service() {
     }
 
     private fun ensureForegroundTypes() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return
         val types = FgsTypes.compute(Build.VERSION.SDK_INT, hasCameraPermission(), hasMicPermission(), hasLocationPermission(), hasScreenshotConsent())
         if (types == appliedFgsTypes) return
         if (types == rejectedFgsTypes && android.os.SystemClock.elapsedRealtime() - rejectedFgsAt < 5 * 60_000L) return
