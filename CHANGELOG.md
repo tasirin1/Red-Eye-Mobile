@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Kelompok sufiks nama terlarang di gerbang lokal kini juga mengakui pemisah '~', spasi, dan '+' (selain titik, garis bawah, strip): salinan keystore bernama bawaan alat seperti 'release.p12 (1)' atau 'release.p12~' sebelumnya lolos kedua langkah nama (issue #1753).
 - Berkas local.properties bersufiks (mis. .bak atau .old) kini juga ditahan langkah nama gerbang lokal: alternatifnya sebelumnya berjangkar akhir nama tanpa kelompok sufiks, tidak seperti kelompok ekstensi di baris yang sama (issue #1752).
 - Langkah metadata author/committer di gerbang lokal kini menggabungkan keempat field tanpa pemisah: pemisah kontrol sebelumnya membuat token yang dibelah tepat di batas antar-field (nama ke email) tak tersambung di permukaan penilaian mana pun (issue #1751).
 - Penilai fragmen token kini juga menilai blok tanpa baris pemisah murni berisi '=', '/', atau ':': baris semacam itu sebelumnya ikut tergabung dan meracuni gabungan sehingga belahan token yang disela baris pemisah lolos (issue #1750).
