@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- SendMessageWorker kini memotong pesan >4000 aksara sejak awal (issue #1732): sebelumnya pesan antre panjang selalu dicoba utuh dulu dan sendChunked hanya tercapai lewat respons 400 persis, sehingga kegagalan transien membakar anggaran 20 retry sampai pesan terbuang tanpa percobaan terpotong; kini sejajar jalur layanan yang memeriksa panjang lebih dulu.
 - sendFitted cabang transien murni kini menilai hasil antre per item (issue #1731): vonis Boolean all-or-nothing sebelumnya membaca eviksi sebagian sebagai DROPPED sehingga pemanggil berkursor mengirim ulang seluruh bagian dan menggandakan potongan yang sebenarnya terantre; jalur penyelamatan CancellationException juga kini menghitung kegagalan antre yang sebelumnya dibuang tak tercatat.
 - Perintah media /photo, /screenshot, /record, /recordvideo kini menolak dipanggil dari dalam grup (issue #1730): sebelumnya keempatnya tanpa lapis penolakan sama sekali; kini posturnya sejajar perintah sensitif lain — dari private chat medianya menuju chat privat (perbaikan #1720), dari grup perintahnya ditolak.
 - Penarikan manual /digest, /weekly, dan /alertness kini menolak di grup (issue #1729): ketiganya anggota SENSITIVE_COMMANDS sejak #1704 tetapi tanpa lapis penolakan, sehingga penarikan dari dalam grup menerbitkan kontak teratas dan pola aktivitas ke grup; pengiriman terjadwal ke chat terkonfigurasi tidak berubah.

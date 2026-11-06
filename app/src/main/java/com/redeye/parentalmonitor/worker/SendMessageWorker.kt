@@ -1011,6 +1011,16 @@ class SendMessageWorker(
     }
 
     private suspend fun sendMessage(message: String, botToken: String, chatId: String, retryCount: Int = 0, origId: String? = null, deadlineAt: Long = Long.MAX_VALUE, priority: Boolean = false, runGen: Long = -1L, chunksSent: Int = 0): SendOutcome {
+        // Pesan panjang langsung terpotong (issue #1732):
+        // sejajar jalur layanan yang memeriksa panjang
+        // lebih dulu. Sebelumnya worker mencoba utuh dan
+        // hanya mencapai sendChunked lewat respons 400
+        // persis — kegagalan transien pada percobaan utuh
+        // membakar anggaran retry tanpa satu pun percobaan
+        // terpotong. Klasifikasi per potongan tetap sama
+        // (sendSingleChunk memakai classify400/403 yang
+        // sama), dan kelanjutan chunksSent diteruskan.
+        if (message.length > 4000) return sendChunked(message, botToken, chatId, retryCount, origId, deadlineAt, priority, runGen, chunksSent)
         return try {
             val url = sendMessageUrl(botToken)
             val response = TelegramClient.api.sendMessage(
