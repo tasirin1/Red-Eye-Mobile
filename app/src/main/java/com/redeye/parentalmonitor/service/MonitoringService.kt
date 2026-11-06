@@ -3242,7 +3242,11 @@ class MonitoringService : Service() {
                         finishUpdateTrack(update.updateId, responseGeneration, true)
                         continue
                     }
-                    if (senderId.isNotEmpty() && msgChatId == senderId && senderId != chatId && command == "/start" && arg.isNotEmpty()) {
+                    // Gerbang blok pairing juga menilai chat
+                    // respons (issue #1818, sisa #1806): snapshot
+                    // awal putaran di sini menelan pairing sah
+                    // pada batch pasca-retry.
+                    if (senderId.isNotEmpty() && msgChatId == senderId && senderId != responseChat && command == "/start" && arg.isNotEmpty()) {
                         if (cachedOwnerId == 0L && android.os.SystemClock.elapsedRealtime() >= pairGlobalLockoutUntil.get()) {
                             val nowPair = android.os.SystemClock.elapsedRealtime()
                             val lastPair = try { pairAttemptAt[senderId] ?: 0L } catch (_: Exception) { 0L }

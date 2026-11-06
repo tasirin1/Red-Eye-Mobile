@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Fixed
+
+- Gerbang blok pairing /start kini menilai chat yang menghasilkan respons (responseChat), bukan snapshot awal putaran: satu-satunya pemakaian snapshot basi yang tersisa dari perbaikan #1806, yang bisa menelan upaya pairing sah pada batch pasca-retry 401/403 (issue #1818).
+
 ## [1.6.647] - 2026-11-06
 
 ### Fixed
