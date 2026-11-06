@@ -1903,6 +1903,21 @@ def _muat_mengandung_token_pesan():
 mengandung_token_pesan = _muat_mengandung_token_pesan()
 
 
+def _muat_padatkan():
+    try:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "cek_token", os.path.join(AKAR, "tools", "cek-token.py"))
+        modul = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(modul)
+        return modul._padatkan
+    except Exception:
+        return lambda teks: re.sub(r"[\s\"'\\]+", "", teks or "")
+
+
+_padatkan = _muat_padatkan()
+
+
 def _konfirmasi_diff_berdiri(diff):
     """Konfirmasi konteks untuk tuduhan fragmen diff (issue #1626).
 
@@ -2027,6 +2042,7 @@ def cek_secret_riwayat(gagal, rentang):
     commit dalam rentang agar pola "sudah kuhapus kok" tetap tertangkap.
     """
     daftar_commit = jalan("git", "rev-list", rentang) or ""
+    tip_rentang = daftar_commit.splitlines()[0].strip() if daftar_commit.strip() else ""
     for sha in daftar_commit.splitlines():
         sha = sha.strip()
         if not sha:
@@ -2233,6 +2249,75 @@ def cek_secret_riwayat(gagal, rentang):
                              "Kredensial hanya via input manual "
                              "SetupActivity" % (path, sha[:8]))
                 return
+        # Belahan LINTAS commit (issue #1702): gabungan
+        # #1676 menilai berkas yang berubah pada commit
+        # yang sama, jadi token yang separuh masuk pada
+        # commit A di berkas X dan separuhnya pada commit
+        # B di berkas Y tak pernah dinilai bersama walau
+        # kedua paruh hidup berdampingan di pohon akhir.
+        # Nilai JENDELA BATAS pohon akhir rentang: untuk
+        # tiap berkas ambil 64 aksara terpadatkan pertama
+        # dan terakhirnya; pasangan (ekor berkas P, isi
+        # berkas Q) dinilai bila ekor P memuat kepala pola
+        # (deret digit + titik dua + ekor kurang dari
+        # utuh, atau deret digit saja untuk belahan di
+        # dalam digit) dan Q berkas kecil berisi satu run
+        # alfabet token murni — di luar syarat itu token
+        # tak mungkin terbentuk tepat di batas pasangan.
+        # Vonisnya tetap mengandung_token atas sambungan
+        # jendela itu.
+        if tip_rentang:
+            daftar_path = jalan("git", "ls-tree", "-r", "-z",
+                                "--name-only", tip_rentang) or ""
+            kepala_pohon = {}
+            ekor_pohon = {}
+            murni_pohon = {}
+            for path in dict.fromkeys(pecah_nama(daftar_path)):
+                path = path.strip()
+                if not path:
+                    continue
+                mentah = jalan_biner("git", "show",
+                                     "%s:%s" % (tip_rentang, path))
+                if mentah is None:
+                    continue
+                isi = _dekode(mentah)
+                if isi is None:
+                    continue
+                if len(isi) > 131072:
+                    padat_awal = _padatkan(isi[:65536])
+                    padat_akhir = _padatkan(isi[-65536:])
+                else:
+                    padat_awal = padat_akhir = _padatkan(isi)
+                kepala_pohon[path] = padat_awal[:64]
+                ekor_pohon[path] = padat_akhir[-64:]
+                # Berkas pasangan harus berkas KECIL yang
+                # seluruh isinya satu run alfabet token
+                # murni (bentuk paruh tertanam): awal berkas
+                # kode biasa juga run panjang, tetapi isinya
+                # tak pernah murni — mensyaratkan kemurnian
+                # mencegah berkas wajar dituduh jadi paruh.
+                if len(isi) <= 131072 and 20 <= len(padat_awal) <= 96 \
+                        and re.fullmatch(r"[A-Za-z0-9_-]+", padat_awal):
+                    murni_pohon[path] = padat_awal
+            daftar_ekor = [p for p in sorted(ekor_pohon)
+                           if re.search(r"[0-9]{5,}:[A-Za-z0-9_-]{0,34}$",
+                                        ekor_pohon[p])
+                           or re.search(r"[0-9]{6,}$", ekor_pohon[p])]
+            for p in daftar_ekor[:50]:
+                for q in sorted(murni_pohon):
+                    if p == q:
+                        continue
+                    if mengandung_token(ekor_pohon[p] + murni_pohon[q]):
+                        gagal.append("Kemungkinan token bot asli "
+                                     "(base64/terbelah LINTAS commit) "
+                                     "antara ujung %s dan awal %s pada "
+                                     "pohon akhir rentang (commit %s) — "
+                                     "kedua paruh hidup berdampingan di "
+                                     "pohon walau masuk lewat commit "
+                                     "berbeda. Kredensial hanya via "
+                                     "input manual SetupActivity"
+                                     % (p, q, tip_rentang[:8]))
+                        return
 
 
 def _pesan_terbelah(teks):
