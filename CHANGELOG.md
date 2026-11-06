@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Plafon cakupan vonis rentang kini bersuara: enumerasi pasangan nama yang dilewati pada commit borongan (>60 nama) dan pemotongan kandidat kepala belahan lintas-commit (>50) mencetak peringatan, tidak lagi menyempitkan cakupan diam-diam (issue #1767).
 - Vonis rentang kini juga menyambung nama berkas yang terbelah lintas commit di pohon akhir: kanal nama sebelumnya per commit dan kanal lintas-commit hanya menilai isi, jadi dua paruh token sebagai nama berkas dari commit berbeda tak pernah dinilai bersama (issue #1766).
 - Penilai isi berkas kini juga membuka bentuk encode escape unicode (\uXXXX) dan base32 sebelum menilai: keduanya saudara sekelas base64/hex yang sudah lebih dulu dipolisikan, tetapi sebelumnya tak didekode kanal mana pun (issue #1765).
 - Penilai pesan kini juga menilai varian tanpa-spasi dengan pola mentah: satu spasi sesudah titik dua token atau di tengah ekornya sebelumnya memutus token dari permukaan pesan, padahal teks yang sama tertangkap di permukaan berkas (issue #1764).

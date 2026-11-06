@@ -2277,6 +2277,18 @@ def cek_secret_riwayat(gagal, rentang):
                     for _j_gab in range(len(nama_inti_list)):
                         if _i_gab != _j_gab:
                             _tambah_gabungan(nama_inti_list[_i_gab] + nama_inti_list[_j_gab])
+            else:
+                # Plafon terikat (issue #1767): cakupan
+                # yang menyempit harus TERDENGAR —
+                # sebelumnya enumerasi pasangan dilewati
+                # diam-diam dan tak ada yang tahu vonis
+                # commit ini lebih sempit.
+                print("PERINGATAN: enumerasi pasangan "
+                      "nama dilewati untuk commit %s "
+                      "(%d nama berubah > plafon 60) — "
+                      "cakupan gabungan nama menyempit "
+                      "pada commit ini."
+                      % (sha[:8], len(nama_gab_list)))
             calon_gab = []
             for gabungan_nama in daftar_gabungan:
                 varian_gab = [gabungan_nama]
@@ -2494,6 +2506,14 @@ def _cek_belahan_lintas_commit(gagal, tip_rentang):
                        if re.search(r"[0-9]{5,}:[A-Za-z0-9_-]{0,34}$",
                                     ekor_pohon[p])
                        or re.search(r"[0-9]{6,}$", ekor_pohon[p])]
+        if len(daftar_ekor) > 50:
+            # Plafon terikat (issue #1767): pemotongan
+            # kandidat harus terdengar, tidak diam.
+            print("PERINGATAN: kandidat kepala belahan "
+                  "lintas-commit dipotong ke 50 pertama "
+                  "(%d kandidat) — cakupan pasangan "
+                  "menyempit pada pohon ini."
+                  % len(daftar_ekor))
         for p in daftar_ekor[:50]:
             for q in sorted(murni_pohon):
                 if p == q:
