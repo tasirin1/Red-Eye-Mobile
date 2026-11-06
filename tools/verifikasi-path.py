@@ -2184,6 +2184,12 @@ def cek_secret_riwayat(gagal, rentang):
                 cocok_nama = re.match(r"^(.*?)([0-9]{6,})_([A-Za-z0-9_-]{35,})$", varian)
                 if cocok_nama:
                     calon_nama.append("%s%s:%s" % (cocok_nama.group(1), cocok_nama.group(2), cocok_nama.group(3)))
+                # Pemisah '.' sama lazimnya di nama berkas
+                # (issue #1714): rekonstruksi '_' saja
+                # membuat bentuk titik lolos.
+                cocok_titik = re.match(r"^(.*?)([0-9]{6,})\.([A-Za-z0-9_-]{35,})$", varian)
+                if cocok_titik:
+                    calon_nama.append("%s%s:%s" % (cocok_titik.group(1), cocok_titik.group(2), cocok_titik.group(3)))
             if any(mengandung_token(c) for c in calon_nama):
                 gagal.append("Kemungkinan token bot asli pada NAMA berkas %s "
                              "pada commit %s (riwayat rentang) — token tetap "
