@@ -2214,27 +2214,49 @@ def cek_secret_riwayat(gagal, rentang):
         # berubah pada commit ini dengan kandidat yang
         # sama seperti nama tunggal.
         if len(nama_gab_list) >= 2:
-            gabungan_nama = "".join(sorted(nama_gab_list))
+            # Urutan sambung yang dinilai (issue #1735):
+            # urutan sortir saja membuat belahan yang
+            # urutan sambungnya BUKAN urutan sortir —
+            # termasuk belahan lintas direktori — lolos.
+            # Nilai juga urutan diff dan semua pasangan
+            # dua nama dalam kedua urutannya (belahan
+            # token adalah dua paruh; kandidat tetap
+            # disaring regex yang sama). Pasangan dibatasi
+            # <=60 nama berubah agar biaya berpagar.
+            daftar_gabungan = []
+            _terlihat_gab = set()
+            def _tambah_gabungan(teks_gab):
+                if teks_gab and teks_gab not in _terlihat_gab:
+                    _terlihat_gab.add(teks_gab)
+                    daftar_gabungan.append(teks_gab)
+            _tambah_gabungan("".join(sorted(nama_gab_list)))
+            _tambah_gabungan("".join(nama_gab_list))
+            if len(nama_gab_list) <= 60:
+                for _i_gab in range(len(nama_gab_list)):
+                    for _j_gab in range(len(nama_gab_list)):
+                        if _i_gab != _j_gab:
+                            _tambah_gabungan(nama_gab_list[_i_gab] + nama_gab_list[_j_gab])
             calon_gab = []
-            varian_gab = [gabungan_nama]
-            # Kupas bertingkat juga di sini (issue #1734).
-            _sisa_gab = gabungan_nama
-            for _ in range(3):
-                if "." not in _sisa_gab:
-                    break
-                _sisa_gab = _sisa_gab.rsplit(".", 1)[0]
-                if not _sisa_gab:
-                    break
-                varian_gab.append(_sisa_gab)
-            for varian in varian_gab:
-                if re.search(r"[0-9]{6,}:[A-Za-z0-9_-]{35,}", varian):
-                    calon_gab.append(varian)
-                cocok_g = re.match(r"^(.*?)([0-9]{6,})_([A-Za-z0-9_-]{35,})$", varian)
-                if cocok_g:
-                    calon_gab.append("%s%s:%s" % (cocok_g.group(1), cocok_g.group(2), cocok_g.group(3)))
-                cocok_gt = re.match(r"^(.*?)([0-9]{6,})\.([A-Za-z0-9_-]{35,})$", varian)
-                if cocok_gt:
-                    calon_gab.append("%s%s:%s" % (cocok_gt.group(1), cocok_gt.group(2), cocok_gt.group(3)))
+            for gabungan_nama in daftar_gabungan:
+                varian_gab = [gabungan_nama]
+                # Kupas bertingkat juga di sini (issue #1734).
+                _sisa_gab = gabungan_nama
+                for _ in range(3):
+                    if "." not in _sisa_gab:
+                        break
+                    _sisa_gab = _sisa_gab.rsplit(".", 1)[0]
+                    if not _sisa_gab:
+                        break
+                    varian_gab.append(_sisa_gab)
+                for varian in varian_gab:
+                    if re.search(r"[0-9]{6,}:[A-Za-z0-9_-]{35,}", varian):
+                        calon_gab.append(varian)
+                    cocok_g = re.match(r"^(.*?)([0-9]{6,})_([A-Za-z0-9_-]{35,})$", varian)
+                    if cocok_g:
+                        calon_gab.append("%s%s:%s" % (cocok_g.group(1), cocok_g.group(2), cocok_g.group(3)))
+                    cocok_gt = re.match(r"^(.*?)([0-9]{6,})\.([A-Za-z0-9_-]{35,})$", varian)
+                    if cocok_gt:
+                        calon_gab.append("%s%s:%s" % (cocok_gt.group(1), cocok_gt.group(2), cocok_gt.group(3)))
             if any(mengandung_token(c) for c in calon_gab):
                 gagal.append("Kemungkinan token bot asli pada GABUNGAN "
                              "nama berkas satu commit %s (riwayat "
