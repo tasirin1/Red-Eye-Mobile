@@ -97,7 +97,7 @@ jobs:
         run: |
           SDKMGR="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
           yes | "$SDKMGR" --licenses > /dev/null
-          "$SDKMGR" "platforms;android-35" "platforms;android-36" "build-tools;35.0.0" "build-tools;36.0.0"
+          "$SDKMGR" "platforms;android-36" "build-tools;36.0.0"
 
       - name: Cache Gradle 8.14.3
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
