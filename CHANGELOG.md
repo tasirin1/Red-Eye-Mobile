@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Langkah uji regresi gerbang Python kini juga ada di job verifikasi build.yml yang menggerbang build dan rilis — sebelumnya langkah itu hanya ada di workflow Verifikasi yang berjalan independen, jadi regresi gerbang yang hanya tertangkap suite tidak menghalangi rilis terbit dari tag yang sama (issue #1817).
 - cek-cepat.sh kini menilai nama tag dan branch (langkah 5g) dengan penilai yang sama seperti vonis CI — sebelumnya gerbang lokal tak punya langkah ref sama sekali, jadi menjalankannya sendirian memberi rasa aman palsu untuk tag/branch bernama token ter-encode (issue #1816).
 - Gerbang verifikasi-path kini menilai nama branch lokal (refs/heads) dengan penilai yang sama seperti nama tag: string yang sama persis dulu dituduh sebagai nama tag tetapi lolos total sebagai nama branch, padahal nama branch ikut terbit dan tampil publik selama branch hidup (issue #1815).
 - Gerbang token: dekoder hex dan base32 kini dua lapis seperti base64, termasuk silang antar-dekoder (hex dari hex, base32 dari base32, b64(hex), hex(b64), b64(b32), b32(b64)) — sebelumnya perlakuan dua lapis #1802 hanya berlaku untuk base64 sehingga keenam komposisi itu lolos di kedua permukaan (issue #1813).

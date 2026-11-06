@@ -72,6 +72,14 @@ jobs:
           fi
       - name: Cek cepat (vektor 0.x, secret, binary)
         run: bash scripts/cek-cepat.sh
+      - name: Uji regresi gerbang Python
+        # Issue #1817: langkah yang sama seperti workflow
+        # Verifikasi (#1789), kini ikut menggerbang rantai
+        # build/rilis (job ini digerbang build, dan rilis
+        # needs build) — regresi gerbang yang hanya
+        # tertangkap suite tak lagi bisa lolos menerbitkan
+        # rilis dari tag yang sama.
+        run: python3 -m unittest discover -s tools/tests
 
   build:
     needs: [verifikasi]
