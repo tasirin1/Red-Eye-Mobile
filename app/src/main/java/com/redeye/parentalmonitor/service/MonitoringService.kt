@@ -3068,13 +3068,21 @@ class MonitoringService : Service() {
         // dibandingkan lagi pada putaran berikutnya. Sesudah token
         // berganti listener kredensial mengosongkannya (issue #875)
         // sehingga blok ini mengisinya ulang dari token yang aktif.
+        // getMe memakai responseToken (issue #1793): token snapshot
+        // awal bisa sudah ditolak dan diganti segar oleh jalur
+        // retry 401/403 putaran ini. Tulisnya digerbang token yang
+        // sama masih tersimpan — getMe token lama yang selesai
+        // sesudah listener mengosongkan username tak boleh menulis
+        // ulang username bot lama di atas token baru.
         try {
-            if (preferencesManager.botUsername.isEmpty() && botToken.isNotEmpty()) {
+            if (preferencesManager.botUsername.isEmpty() && responseToken.isNotEmpty()) {
+                val tokenUntukMe = responseToken
                 serviceScope.launch {
                     try {
-                        val meResp = TelegramClient.api.getMe("https://api.telegram.org/bot$botToken/getMe")
+                        val meResp = TelegramClient.api.getMe("https://api.telegram.org/bot$tokenUntukMe/getMe")
                         val uname = try { meResp.body()?.result?.asJsonObject?.get("username")?.asString.orEmpty() } catch (_: Exception) { "" }
-                        if (meResp.isSuccessful && meResp.body()?.ok == true && uname.isNotEmpty()) {
+                        if (meResp.isSuccessful && meResp.body()?.ok == true && uname.isNotEmpty() &&
+                            preferencesManager.botToken == tokenUntukMe) {
                             preferencesManager.botUsername = uname
                         }
                         if (!meResp.isSuccessful) NetworkUtils.tutupBadanError(meResp)
