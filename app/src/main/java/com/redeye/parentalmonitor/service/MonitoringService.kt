@@ -14564,7 +14564,7 @@ class MonitoringService : Service() {
             }
             val baru = (peta[file.name] ?: 0) + 1
             peta[file.name] = baru
-            j.writeText(peta.entries.takeLast(100).joinToString("\n") { "${it.key}|${it.value}" })
+            j.writeText(peta.entries.toList().takeLast(100).joinToString("\n") { "${it.key}|${it.value}" })
             baru >= MAX_MEDIA_ATTEMPTS
         } catch (_: Exception) {
             false
