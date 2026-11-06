@@ -2449,12 +2449,14 @@ def _cek_belahan_lintas_commit(gagal, tip_rentang):
             if len(isi) <= 131072 and 20 <= len(murni_kupas) <= 96 \
                     and re.fullmatch(r"[A-Za-z0-9_-]+", murni_kupas):
                 murni_pohon[path] = murni_kupas
-            elif len(isi) > 131072:
-                # Pasangan di berkas BESAR (issue #1740):
-                # syarat berkas-kecil di atas membuat
-                # paruh yang hidup sebagai SATU baris
-                # murni di dalam berkas >128 KiB tak
-                # pernah jadi kandidat. Pindai barisnya:
+            if path not in murni_pohon:
+                # Pasangan satu baris murni (issue #1740
+                # untuk berkas besar; issue #1763: berkas
+                # KECIL juga): syarat kemurnian seluruh
+                # isi di atas membuat satu baris sampah
+                # saja (mis. komentar) membatalkan paruh
+                # yang hidup sebagai SATU baris murni di
+                # berkas kecil. Pindai barisnya:
                 # baris terpampat yang murni 20..96
                 # aksara (tepi ternoda dikupas seperti
                 # di atas) jadi kandidat pasangan berkas
