@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Himpunan aplikasi dikenal A11y di prefs kini berplafon keras 1000 entri: sebelumnya himpunan hanya menyusut lewat rekonsiliasi berkala, jadi selama layanan Aksesibilitas lama tidak aktif entri basi menumpuk tanpa batas (issue #1771).
+
 - Peta cap-waktu login/pair kini menyapu entri basi pada setiap panggilan pemangkas: sebelumnya pemangkas kembali dini bila ukuran peta belum melewati 200 sehingga entri basi di bawah ambang menetap di memori seumur proses (issue #1770).
 
 - Ukuran pratinjau metering kamera kini berplafon pada cabang fallback juga: bila perangkat tak punya ukuran di bawah plafon, yang dipilih ukuran paling kecil, bukan yang terdekat ke ukuran foto — buffer pratinjau raksasa di perangkat eksotik terhindari (issue #1769).

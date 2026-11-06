@@ -341,6 +341,7 @@ class PreferencesManager(context: Context) {
 
         private const val OPEN_ATTEMPTS = 3
         private const val UPGRADE_ATTEMPTS = 4
+        const val MAX_A11Y_KNOWN_APPS = 1000
 
         fun getMasterKey(context: Context): MasterKey {
             return sharedMasterKey ?: synchronized(this) {
@@ -2576,6 +2577,24 @@ class PreferencesManager(context: Context) {
     @Volatile
     private var knownAppsMirror: HashSet<String>? = null
 
+    // Plafon keras himpunan aplikasi dikenal (issue
+    // #1771): tanpa ini himpunan hanya menyusut lewat
+    // rekonsiliasi berkala, jadi selama A11y lama tak
+    // aktif entri basi menumpuk tanpa batas di prefs.
+    // Kelebihan dipangkas dengan membuang entri
+    // sebarang dari himpunan (akibat terburuknya satu
+    // alert "aplikasi baru" berulang untuk aplikasi
+    // yang terbuang) — rekonsiliasi tetap penyeimbang
+    // utamanya.
+    private fun pangkasKnownAppsLocked(current: HashSet<String>) {
+        while (current.size > MAX_A11Y_KNOWN_APPS) {
+            val it = current.iterator()
+            if (!it.hasNext()) break
+            it.next()
+            it.remove()
+        }
+    }
+
     // Hanya dipanggil sambil memegang a11yKnownAppsLock.
     private fun knownAppsLocked(): HashSet<String> {
         knownAppsMirror?.let { return it }
@@ -2621,6 +2640,7 @@ class PreferencesManager(context: Context) {
                 val current = knownAppsLocked()
                 if (packageName in current) return false
                 current.add(packageName)
+                pangkasKnownAppsLocked(current)
                 sharedPreferences.edit().putStringSet(KEY_A11Y_KNOWN_APPS, HashSet(current)).commit()
                 true
             }
@@ -2662,6 +2682,7 @@ class PreferencesManager(context: Context) {
             synchronized(a11yKnownAppsLock) {
                 val current = knownAppsLocked()
                 current.addAll(packages)
+                pangkasKnownAppsLocked(current)
                 sharedPreferences.edit()
                     .putStringSet(KEY_A11Y_KNOWN_APPS, HashSet(current))
                     .putBoolean(KEY_A11Y_KNOWN_SEEDED, true)
