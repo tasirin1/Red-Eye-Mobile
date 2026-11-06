@@ -2577,6 +2577,15 @@ class MonitoringService : Service() {
         synchronized(restoreLock) {
             ownerEpoch++
             try { preferencesManager.restoreEpochPersisted = ownerEpoch.toLong() } catch (_: Exception) { }
+            // Catatan restore persisten ikut dihapus
+            // (issue #1721): pembatalan restore lewat
+            // logout tak boleh bergantung pada satu
+            // commit epoch yang hasilnya dibuang setter
+            // — jalur saudara (/restore batal dan
+            // clearCredentialCoreSync) menghapus catatan
+            // ini secara eksplisit; logout kini sama.
+            try { preferencesManager.restoreConfirmedJson = "" } catch (_: Exception) { }
+            try { preferencesManager.restoreConfirmedDeadline = 0L } catch (_: Exception) { }
         }
         val queueCleared = try { messageQueue.clearQueue() } catch (_: Exception) { false }
         try { NotificationForwarderService.clearHistory() } catch (_: Exception) {

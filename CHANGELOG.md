@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- /logout kini menghapus catatan restore persisten secara eksplisit (issue #1721): sebelumnya pembatalan restore terkonfirmasi lewat logout hanya bergantung pada commit epoch baru yang hasilnya dibuang, sehingga kegagalan commit itu bisa menghidupkan lagi kredensial cadangan yang baru dibatalkan saat layanan start berikutnya.
 - Override balasan privat kini benar-benar menjangkau muatan media (issue #1720): /record dan /recordvideo masuk SENSITIVE_COMMANDS, dan tujuan chat ditangkap saat perintah berjalan lalu dibawa rantai jepret/rekam sampai pengiriman — sebelumnya pengirim media membaca jendela override saat mengirim, sesudah jendela yang hanya hidup selama handler itu ditutup, sehingga foto/tangkapan/rekaman yang diminta dari chat privat tetap terbit ke grup; media yang gagal terkirim menyimpan tujuannya di peta media_tujuan.txt agar flush berikutnya pun mengirim ke chat yang benar.
 
 ## [1.6.640] - 2026-11-06
