@@ -14375,7 +14375,12 @@ class MonitoringService : Service() {
             // lastModified ditulis ulang rotasi flush,
             // sehingga berkas tua yang gagal terus tampak
             // baru dan lolos buangan.
-            val files = (known ?: antreMedia().listFiles { file ->
+            // Daftar known disaring keberadaannya (issue
+            // #1795): potret awal flush memuat berkas yang
+            // sudah TERKIRIM dan terhapus selama flush —
+            // tanpa saringan ini mereka ikut terhitung isi
+            // cache dan divonis "dibuang (cache penuh)".
+            val files = (known?.filter { it.exists() } ?: antreMedia().listFiles { file ->
                 file.isFile && file.name.startsWith("video_") && file.name.endsWith(".mp4")
             }?.toList())
                 ?.map { file ->
@@ -14425,7 +14430,9 @@ class MonitoringService : Service() {
             antreMedia().listFiles { file ->
                 file.isFile && file.name.startsWith("audio_") && file.name.endsWith(".tmp") && file.lastModified() < staleTmpCutoff
             }?.forEach { deleteQuietly(it) }
-            val files = (known ?: antreMedia().listFiles { file ->
+            // Daftar known disaring keberadaannya (issue
+            // #1795), sama seperti prune video di atas.
+            val files = (known?.filter { it.exists() } ?: antreMedia().listFiles { file ->
                 file.isFile && file.name.startsWith("audio_") && file.name.endsWith(".m4a")
             }?.toList())
                 ?.map { file ->
@@ -15082,7 +15089,9 @@ class MonitoringService : Service() {
             // dulu. mediaNameTimeMs memang dibuat #855 untuk menilai
             // umur dari nama; nama tanpa cap terbaca jatuh ke
             // lastModified. Urutan flush sendiri tidak diubah.
-            val photos = (known ?: antreMedia().listFiles { file ->
+            // Daftar known disaring keberadaannya (issue
+            // #1795), sama seperti prune video/audio.
+            val photos = (known?.filter { it.exists() } ?: antreMedia().listFiles { file ->
                 file.isFile && (file.name.startsWith("camera_") || file.name.startsWith("screenshot_")) && file.name.endsWith(".jpg")
             }?.toList())
                 ?.map { file ->

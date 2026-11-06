@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Prune cache media sesudah flush tak lagi menilai berkas hantu: daftar potret awal flush kini disaring keberadaannya, sehingga berkas yang terkirim sukses selama flush tidak ikut terhitung isi cache dan tidak dilaporkan palsu sebagai "dibuang (cache penuh)" (issue #1795).
+
 - Penghitung berkas dibuang pada flush media tak lagi menghitung berkas yang sama sampai 3 kali: cabang pembuangan terminal (berkas kosong dan video terlalu besar) kini mencatat berkas sebagai sudah dicoba, sehingga potret daftar menetap tidak menawarkannya lagi pada batch berikutnya (issue #1794).
 
 - Pembelajaran username bot kini digerbang token yang masih aktif dan memakai token hasil retry: getMe token lama yang selesai sesudah token diganti tak lagi menulis ulang username bot lama di atas token baru (yang membuat perintah beralamat bot baru dibuang senyap), dan getMe tak lagi menembak token yang baru saja ditolak Telegram sesudah retry 401/403 berhasil (issue #1793).
