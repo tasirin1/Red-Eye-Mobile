@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.644] - 2026-11-06
+
 ### Fixed
 
 - getQueueSize() kini menjawab dari ukuran cache yang sudah termuat: sebelumnya setiap panggilan membayar pemindaian kesegaran atas seluruh antrean, termasuk dari dalam loop potongan sinkron yang memanggilnya berulang kali per siklus (issue #1775).
