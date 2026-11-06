@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Added
+
+- Uji regresi gerbang diperluas dari 25 menjadi 38 uji: kanal byteArrayOf, dekode UTF-16, encode web, aksara format, escape `\xNN`, dan base64 dua lapis kini terkunci, begitu juga gabungan pesan lintas commit, penilaian metadata author/committer (rentang dan `--semua`), dan penilaian nama tag di verifikasi-path (issue #1805).
+
 ### Fixed
 
 - Nama tag kini ikut dinilai gerbang verifikasi-path (semua tag, ringan maupun beranotasi), bukan hanya isi anotasinya: tag bernama token ter-encode dengan anotasi bersih tak lagi lolos, padahal nama tag ikut terbit dan tampil publik (issue #1804).

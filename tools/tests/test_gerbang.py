@@ -12,6 +12,12 @@
 #     (#1788) terhadap penilai kanonik
 #   - penjaga vonis tag sekali-jalan verifikasi-path
 #     (#1787)
+#   - byteArrayOf (#802), dekode UTF-16 (#785/#817),
+#     encode web (#1799), aksara format (#1800),
+#     escape \xNN (#1801), base64 dua lapis (#1802)
+#   - gabungan pesan lintas commit (#1786), metadata
+#     author/committer (#1717/#1803), nama tag (#1804)
+#     — ditambahkan di issue #1805
 # Jalankan: python3 -m unittest discover -s tools/tests
 # (juga berjalan sebagai langkah CI di workflow
 # Verifikasi Path).
@@ -206,6 +212,155 @@ class UjiVonisTagSekali(unittest.TestCase):
             verifikasi.jalan = jalan_asli
             verifikasi._cek_tag_sudah_jalan = False
 
+
+class UjiKanalBerkasTambahan(unittest.TestCase):
+    # Kanal permukaan berkas/pesan yang lahir sesudah
+    # angkatan pertama suite ini; sebelum #1805 mereka
+    # hanya dibuktikan baterai sekali pakai.
+
+    def test_byte_array_of(self):
+        literal = "byteArrayOf(" + ", ".join(
+            "0x%02x" % b for b in TOKEN.encode()) + ")"
+        self.assertTrue(cek_token.mengandung_token(literal))
+
+    def test_byte_array_of_jinak(self):
+        jinak = b"\x89PNG\r\n\x1a\n" + bytes(range(40))
+        literal = "byteArrayOf(" + ", ".join(
+            "0x%02x" % b for b in jinak) + ")"
+        self.assertFalse(cek_token.mengandung_token(literal))
+
+    def test_utf16_bom_dan_tanpa_bom(self):
+        for enc in ("utf-16", "utf-16-le", "utf-16-be"):
+            with self.subTest(enc=enc):
+                self.assertTrue(cek_token.mengandung_token(
+                    cek_token.dekode_berkas(("kunci=" + TOKEN).encode(enc))))
+
+    def test_utf16_jinak(self):
+        self.assertFalse(cek_token.mengandung_token(
+            cek_token.dekode_berkas("teks biasa saja".encode("utf-16"))))
+
+    def test_encode_persen_dan_entitas(self):
+        self.assertTrue(cek_token.mengandung_token(TOKEN.replace(":", "%3A")))
+        self.assertTrue(cek_token.mengandung_token_pesan(TOKEN.replace(":", "%3A")))
+        self.assertTrue(cek_token.mengandung_token(TOKEN.replace(":", "&#58;")))
+        self.assertFalse(cek_token.mengandung_token("persen %3A biasa saja"))
+
+    def test_aksara_format_tak_kasatmata(self):
+        self.assertTrue(cek_token.mengandung_token(TOKEN.replace(":", ":\u200b")))
+        self.assertTrue(cek_token.mengandung_token_pesan(TOKEN[:20] + "\u200d" + TOKEN[20:]))
+        self.assertTrue(cek_token.mengandung_token("\ufeff" + TOKEN))
+
+    def test_escape_x(self):
+        esc = "".join("\\x%02x" % ord(c) for c in TOKEN)
+        self.assertTrue(cek_token.mengandung_token(esc))
+        self.assertTrue(cek_token.mengandung_token_pesan(esc))
+        self.assertFalse(cek_token.mengandung_token("path C:\\x41\\x42 pendek"))
+
+    def test_base64_dua_lapis(self):
+        lapis1 = base64.b64encode(TOKEN.encode()).decode()
+        lapis2 = base64.b64encode(lapis1.encode()).decode()
+        self.assertTrue(cek_token.mengandung_token(lapis2))
+        self.assertTrue(cek_token.mengandung_token_pesan(lapis2))
+        jinak2 = base64.b64encode(base64.b64encode(b"teks jinak biasa")).decode()
+        self.assertFalse(cek_token.mengandung_token(jinak2))
+        self.assertFalse(cek_token.mengandung_token_pesan(jinak2))
+
+
+class UjiPesanVerifikasiPath(unittest.TestCase):
+    # Kanal pesan milik verifikasi-path (bukan cek-token):
+    # gabungan lintas commit, metadata, dan nama tag.
+    # git disimulasikan lewat monkeypatch jalan, pola
+    # yang sama dengan UjiVonisTagSekali.
+
+    def _pasang_jalan(self, palsu):
+        asli = verifikasi.jalan
+        verifikasi.jalan = palsu
+        verifikasi._cek_tag_sudah_jalan = False
+        self.addCleanup(setattr, verifikasi, "jalan", asli)
+        self.addCleanup(setattr, verifikasi, "_cek_tag_sudah_jalan", False)
+
+    def test_gabungan_lintas_commit(self):
+        pesan = {"a" * 40: "perbaiki parser " + KEPALA,
+                 "b" * 40: EKOR + " sesudahnya"}
+
+        def palsu(*args):
+            gabung = " ".join(args)
+            if "rev-list" in gabung:
+                return "\n".join(pesan)
+            if "%an" in gabung:
+                return "Penguji uji@uji.id Penguji uji@uji.id"
+            if "%B" in gabung:
+                return pesan[args[-1]]
+            return ""
+
+        self._pasang_jalan(palsu)
+        gagal = []
+        verifikasi.cek_secret_pesan(gagal, "rentang-uji")
+        self.assertEqual(len(gagal), 1, gagal)
+        self.assertIn("TERBELAH lintas pesan", gagal[0])
+
+    def test_metadata_rentang(self):
+        def palsu(*args):
+            gabung = " ".join(args)
+            if "rev-list" in gabung:
+                return "c" * 40
+            if "%an" in gabung:
+                return TOKEN + " uji@uji.id Penguji uji@uji.id"
+            if "%B" in gabung:
+                return "pesan bersih"
+            return ""
+
+        self._pasang_jalan(palsu)
+        gagal = []
+        verifikasi.cek_secret_pesan(gagal, "rentang-uji")
+        self.assertTrue(any("METADATA" in g for g in gagal), gagal)
+
+    def test_metadata_semua(self):
+        rekaman = (("d" * 40) + "\x00" + TOKEN
+                   + "\x00uji@uji.id\x00Penguji\x00uji@uji.id"
+                   + "\x00pesan bersih\x1e")
+
+        def palsu(*args):
+            if "--format=%H" in " ".join(args):
+                return rekaman
+            return ""
+
+        self._pasang_jalan(palsu)
+        gagal = []
+        verifikasi.cek_secret_pesan_semua(gagal)
+        self.assertTrue(any("METADATA" in g for g in gagal), gagal)
+
+    def test_pesan_semua_badan(self):
+        rekaman = (("e" * 40)
+                   + "\x00Penguji\x00uji@uji.id\x00Penguji\x00uji@uji.id"
+                   + "\x00memuat " + TOKEN + "\x1e")
+
+        def palsu(*args):
+            if "--format=%H" in " ".join(args):
+                return rekaman
+            return ""
+
+        self._pasang_jalan(palsu)
+        gagal = []
+        verifikasi.cek_secret_pesan_semua(gagal)
+        self.assertTrue(any("di PESAN commit" in g for g in gagal), gagal)
+
+    def test_nama_tag_terencode(self):
+        nama = "uji-" + base64.urlsafe_b64encode(
+            TOKEN.encode()).decode().rstrip("=")
+
+        def palsu(*args):
+            gabung = " ".join(args)
+            if "%(contents)" in gabung:
+                return "anotasi bersih"
+            if "%(refname:short)" in gabung:
+                return nama + "\ttag\t1234567890abcdef"
+            return ""
+
+        self._pasang_jalan(palsu)
+        gagal = []
+        self.assertTrue(verifikasi._cek_pesan_tag(gagal))
+        self.assertTrue(any("di NAMA tag" in g for g in gagal), gagal)
 
 if __name__ == "__main__":
     unittest.main()
