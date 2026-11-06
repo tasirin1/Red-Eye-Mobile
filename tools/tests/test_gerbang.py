@@ -308,6 +308,43 @@ class UjiKanalBerkasTambahan(unittest.TestCase):
         self.assertFalse(cek_token.mengandung_token(jinak))
         self.assertFalse(cek_token.mengandung_token_pesan(jinak))
 
+    def test_dua_lapis_dekoder_berakhir_terbuka(self):
+        # Issue #1832: komposisi dua dekoder yang hasil
+        # akhirnya ter-persen/entitas/escape. Vonis
+        # varian terbuka #1823 dulu hanya diterapkan
+        # _nilai_lapis_bawah (kedalaman 0); hasil dekode
+        # kedalaman 1 hanya dinilai pola mentahnya.
+        persen = "".join("%%%02X" % ord(c) for c in TOKEN)
+        entitas = "".join("&#%d;" % ord(c) for c in TOKEN)
+        escape = "".join("\\u%04x" % ord(c) for c in TOKEN)
+        b64p = base64.b64encode(persen.encode()).decode()
+        for nama, s in [
+            ("b64(b64(persen))",
+             base64.b64encode(b64p.encode()).decode()),
+            ("hex(b64(persen))", b64p.encode().hex()),
+            ("b64(b64(entitas))",
+             base64.b64encode(
+                 base64.b64encode(entitas.encode()).decode().encode()
+             ).decode()),
+            ("b32(b64(persen))",
+             base64.b32encode(b64p.encode()).decode()),
+            ("b64(hex(persen))",
+             base64.b64encode(persen.encode().hex().encode()).decode()),
+            ("b64(b64(escape))",
+             base64.b64encode(
+                 base64.b64encode(escape.encode()).decode().encode()
+             ).decode()),
+        ]:
+            with self.subTest(pasangan=nama):
+                self.assertTrue(cek_token.mengandung_token(s))
+                self.assertTrue(cek_token.mengandung_token_pesan(s))
+        jinak = base64.b64encode(base64.b64encode(
+            "".join("%%%02X" % ord(c)
+                    for c in "teks jinak biasa saja").encode()
+        ).decode().encode()).decode()
+        self.assertFalse(cek_token.mengandung_token(jinak))
+        self.assertFalse(cek_token.mengandung_token_pesan(jinak))
+
     def test_komposisi_silang_varian_dekoder(self):
         # Issue #1812: varian terbuka diteruskan ke
         # dekoder — encode di atas encode tertangkap.

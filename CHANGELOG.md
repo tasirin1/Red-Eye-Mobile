@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Gerbang token: komposisi dua lapis dekoder yang hasil akhirnya ter-persen/entitas/escape (mis. base64 dari base64 dari token ter-persen) kini tertuduh — vonis varian terbuka sebelumnya hanya diterapkan pada hasil dekode lapis pertama, sedangkan hasil dekode lapis kedua hanya dinilai pola mentahnya sehingga komposisi itu lolos total (issue #1832).
 - Ketiga prune media kini hanya melepas entri tertahan dan membersihkan jurnal (tujuan, upaya, coba) untuk berkas yang isinya benar-benar musnah: `deleteQuietly` melaporkan sukses hapus/truncate dan penghapusan berjalan sebelum pelepasan — sebelumnya jurnal dibersihkan tanpa syarat, jadi berkas yang gagal terhapus total (gagal hapus + gagal truncate) tetap antre tetapi kehilangan entri tujuan tangkapannya dan flush berikutnya mengirimnya ke chat terkonfigurasi, bukan chat tangkapan asal (issue #1831).
 
 ## [1.6.648] - 2026-11-06

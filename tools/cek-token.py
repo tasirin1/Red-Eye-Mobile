@@ -168,7 +168,7 @@ def _cocok_b64_murni(kandidat, kedalaman=0):
                 hasil = base64.b64decode(s, validate=True)
             except Exception:
                 continue
-            if POLA_BYTE.search(hasil):
+            if _pola_atau_terbuka(hasil):
                 return True
             if kedalaman < 1:
                 # Base64 dua lapis (issue #1802): hasil
@@ -191,7 +191,7 @@ def _cocok_hex_murni(kandidat, kedalaman=0):
         hasil = bytes.fromhex(s)
     except Exception:
         return False
-    if POLA_BYTE.search(hasil):
+    if _pola_atau_terbuka(hasil):
         return True
     if kedalaman < 1:
         return _nilai_lapis_bawah(hasil)
@@ -205,7 +205,7 @@ def _cocok_b32_murni(kandidat, kedalaman=0):
         hasil = base64.b32decode(s32)
     except Exception:
         return False
-    if POLA_BYTE.search(hasil):
+    if _pola_atau_terbuka(hasil):
         return True
     if kedalaman < 1:
         return _nilai_lapis_bawah(hasil)
@@ -244,6 +244,30 @@ def _nilai_lapis_bawah(hasil):
                 return True
         for m in re.finditer(r"[A-Za-z2-7]{40,}={0,6}", teks):
             if _cocok_b32(m.group(0), 1):
+                return True
+    return False
+
+
+def _pola_atau_terbuka(hasil):
+    """Vonis terminal atas satu hasil dekode (issue
+    #1832): pola byte langsung, atau pola pada varian
+    TERBUKA teksnya. Dipakai ketiga penilai dekoder
+    agar hasil dekode lapis KEDUA yang masih ter-persen/
+    entitas/escape ikut tertuduh: sebelumnya hanya
+    _nilai_lapis_bawah yang membuka varian, dan ia tak
+    dipanggil lagi dari kedalaman 1, jadi komposisi
+    dua dekoder berakhir varian terbuka (mis.
+    b64(b64(persen(token)))) lolos total. Pembukaan
+    bukan lapis dekode tambahan; batas dua lapis tak
+    berubah. Gerbang penanda sama seperti #1823 agar
+    jalur panas tak melambat."""
+    if POLA_BYTE.search(hasil):
+        return True
+    lapis = hasil.decode("ascii", "ignore")
+    if "%" in lapis or "&" in lapis or "\\" in lapis:
+        for teks in _varian_terbuka(lapis):
+            if POLA_BYTE.search(
+                    teks.encode("ascii", "ignore")):
                 return True
     return False
 
