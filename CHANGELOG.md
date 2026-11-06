@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Penyerahan tugas A11y tak lagi memindai antrean berkunci pada setiap peristiwa aksesibilitas: pola anti-buang (tugas tertolak antrean penuh jalan sebaris, klaim atomik memastikan tepat satu kali jalan) kini memakai penanda mulai O(1) + ukuran antrean, menggantikan queue.contains yang memindai linear sampai 64 entri per peristiwa (issue #1774).
+
 - Listing direktori media kini dibangun sekali per flush dan dipakai semua batch-nya: sebelumnya tiap batch (maksimum 3 per jenis media) mengulang pemindaian + sortir direktori hanya untuk membuang berkas yang sudah dicoba (issue #1773).
 
 - Jurnal media (tujuan, anggaran upaya, unggah tak pasti) kini didukung cermin memori yang dimuat sekali: sebelumnya setiap akses membaca berkas utuh dari cakram per berkas per siklus flush — penulis tetap mempersist utuh dari cermin, format dan daya tahan berkas tak berubah (issue #1772).

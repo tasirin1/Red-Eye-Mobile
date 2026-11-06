@@ -115,6 +115,31 @@ object A11yMonitor {
         java.util.concurrent.ThreadPoolExecutor.DiscardPolicy()
     )
 
+    // Serah tugas anti-buang (pola issue #949/#1324/
+    // #1341, diganti mekaniknya di issue #1774):
+    // tugas yang tertolak DiscardPolicy saat antrean
+    // penuh tak boleh hilang — ia jalan sebaris di
+    // utas pemanggil; klaim atomik di badan tiap
+    // tugas memastikan badan jalan tepat satu kali
+    // walau pekerja ternyata ikut menjalankannya.
+    // Mekanik lama memeriksa `queue.contains(task)`
+    // (pindai linear <=64 entri di bawah kunci
+    // antrean) pada SETIAP peristiwa; kini cukup
+    // penanda mulai O(1) + ukuran antrean sebelum
+    // serah: antrean yang sudah penuh sebelum serah
+    // adalah satu-satunya keadaan tertolak.
+    private fun serahkanTugasA11y(task: Runnable) {
+        val mulai = java.util.concurrent.atomic.AtomicBoolean(false)
+        val penuhSebelum = executor.queue.size >= 64
+        executor.execute(Runnable {
+            mulai.set(true)
+            task.run()
+        })
+        if (!mulai.get() && penuhSebelum) {
+            task.run()
+        }
+    }
+
     private val labels = object : LinkedHashMap<String, String>(64, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, String>): Boolean = size > MAX_LABEL_CACHE
     }
@@ -186,10 +211,7 @@ object A11yMonitor {
             ensureLoaded(app)
             synchronized(gate) { restoreOpenSessionLocked(app) }
         }
-        executor.execute(task)
-        if (!executor.queue.contains(task)) {
-            task.run()
-        }
+        serahkanTugasA11y(task)
     }
 
     private fun refreshOpenSessionMarkerLocked(manager: PreferencesManager) {
@@ -334,10 +356,7 @@ object A11yMonitor {
             if (!claimed.compareAndSet(false, true)) return@Runnable
             handleWindow(app, pkg, cls, emptyList())
         }
-        executor.execute(task)
-        if (!executor.queue.contains(task)) {
-            task.run()
-        }
+        serahkanTugasA11y(task)
     }
 
     fun noteEnabled(context: Context) {
@@ -382,10 +401,7 @@ object A11yMonitor {
                     val texts = if (sensitive) collectSnapshot(service, pkg).first.texts else emptyList()
                     handleWindow(app, pkg, cls, texts)
                 }
-                executor.execute(task)
-                if (!executor.queue.contains(task)) {
-                    task.run()
-                }
+                serahkanTugasA11y(task)
                 scanWatchedContent(service, pkg)
                 requestPeriodicPersist(app)
                 refreshEventTypes(service)
@@ -439,10 +455,7 @@ object A11yMonitor {
                                 // bertambah semu.
                                 handleWindow(app, pkg, cls, texts, nilaiSaja = true)
                             }
-                            executor.execute(task)
-                            if (!executor.queue.contains(task)) {
-                                task.run()
-                            }
+                            serahkanTugasA11y(task)
                         }
                     }
                     scanWatchedContent(service, pkg)
@@ -577,10 +590,7 @@ object A11yMonitor {
                 handleContent(app, pkg, snapshot.texts, keywords, fullHit)
             }
         }
-        executor.execute(task)
-        if (!executor.queue.contains(task)) {
-            task.run()
-        }
+        serahkanTugasA11y(task)
     }
 
     private fun handleContent(context: Context, pkg: String, texts: List<String>, keywords: List<String>, fullTextHit: String? = null) {
@@ -705,19 +715,14 @@ object A11yMonitor {
                 persistLocked(app, true)
             }
         }
-        executor.execute(task)
-        // Flush akhir tak boleh ikut nasib DiscardPolicy (issue
-        // #949): antrean penuh tepat saat layanan dibongkar
-        // membuang flush diam-diam dan sesi pemakaian terakhir
-        // hilang tanpa pernah terpersisten. Bila tugas tak ada
-        // di antrean, pemanggil mencobanya langsung — klaim
-        // atomik di badan (issue #1341) memastikan badan tetap
-        // jalan tepat satu kali walau pekerja ternyata sudah
-        // melepasnya dari antrean atau menerimanya sebagai
-        // firstTask: yang kalah klaim langsung kembali.
-        if (!executor.queue.contains(task)) {
-            task.run()
-        }
+        // Flush akhir tak boleh ikut nasib DiscardPolicy
+        // (issue #949): antrean penuh tepat saat layanan
+        // dibongkar membuang flush diam-diam dan sesi
+        // pemakaian terakhir hilang tanpa pernah
+        // terpersisten — serahkanTugasA11y menjalankannya
+        // sebaris bila tertolak, dan klaim atomik di
+        // badan (issue #1341) memastikan tepat satu kali.
+        serahkanTugasA11y(task)
     }
 
     fun screenOff(context: Context) {
@@ -742,13 +747,9 @@ object A11yMonitor {
                 persistLocked(app, true)
             }
         }
-        executor.execute(task)
-        // Pola anti-buang yang sama dengan flush (issue
-        // #1324), kini digerbang klaim atomik (issue #1341):
-        // tepat satu pihak menjalankan badan.
-        if (!executor.queue.contains(task)) {
-            task.run()
-        }
+        // Anti-buang seperti flush (issue #1324 +
+        // #1341): lihat serahkanTugasA11y.
+        serahkanTugasA11y(task)
     }
 
     fun screenOn(context: Context) {
@@ -811,10 +812,7 @@ object A11yMonitor {
                 }
             }
         }
-        executor.execute(task)
-        if (!executor.queue.contains(task)) {
-            task.run()
-        }
+        serahkanTugasA11y(task)
     }
 
     fun currentAppLabel(): String {
@@ -1584,10 +1582,7 @@ object A11yMonitor {
                 }
             }
         }
-        executor.execute(task)
-        if (!executor.queue.contains(task)) {
-            task.run()
-        }
+        serahkanTugasA11y(task)
     }
 
     private fun saveUsageFor(context: Context, day: String) {
