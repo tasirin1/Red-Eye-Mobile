@@ -2044,7 +2044,13 @@ class MonitoringService : Service() {
     // entri kedaluwarsa; bila tetap penuh, buang yang
     // paling tua secukupnya.
     private fun pruneStampMap(map: java.util.concurrent.ConcurrentHashMap<String, Long>, now: Long, staleMs: Long) {
-        if (map.size <= 200) return
+        // Sapu entri basi pada SETIAP panggilan (issue
+        // #1770): sebelumnya fungsi kembali dini bila
+        // ukuran <= 200 sehingga entri basi di bawah
+        // ambang menetap seumur proses walau fiturnya
+        // diam. Peta kecil membuat sapuan ini murah;
+        // pemangkasan tertua di bawah tetap bergerbang
+        // ukuran seperti semula.
         val iter = map.entries.iterator()
         while (iter.hasNext()) {
             val e = iter.next()

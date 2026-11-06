@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Peta cap-waktu login/pair kini menyapu entri basi pada setiap panggilan pemangkas: sebelumnya pemangkas kembali dini bila ukuran peta belum melewati 200 sehingga entri basi di bawah ambang menetap di memori seumur proses (issue #1770).
+
 - Ukuran pratinjau metering kamera kini berplafon pada cabang fallback juga: bila perangkat tak punya ukuran di bawah plafon, yang dipilih ukuran paling kecil, bukan yang terdekat ke ukuran foto — buffer pratinjau raksasa di perangkat eksotik terhindari (issue #1769).
 
 ## [1.6.643] - 2026-11-06
