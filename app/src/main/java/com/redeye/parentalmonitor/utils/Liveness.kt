@@ -103,7 +103,7 @@ object Liveness {
         val dasar = context.getString(R.string.liveness_watchdog_fmt, efektif / 60_000L, label)
         val catatanRegang = if (efektif > ms) context.getString(R.string.liveness_watchdog_stretched, ms / 60_000L) else ""
         // Kejujuran Doze (issue #1502): lihat intervalText.
-        return dasar + catatanRegang + if (ms == URGENT_INTERVAL_MS) context.getString(R.string.liveness_watchdog_doze) else 
+        return dasar + catatanRegang + if (ms == URGENT_INTERVAL_MS) context.getString(R.string.liveness_watchdog_doze) else ""
     }
 
     fun noteKillDetected() {
