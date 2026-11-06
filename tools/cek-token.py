@@ -320,6 +320,54 @@ def mengandung_token_pesan(teks):
     return False
 
 
+def mengandung_fragmen_pesan(teks):
+    """Fragmen token di pesan commit (issue #1719:
+    paritas dengan penilai fragmen verifikasi-path).
+
+    Permukaan pesan TANPA pemadatan (#1425) membuat
+    token yang dipecah beberapa aksara per baris lolos
+    dari mengandung_token_pesan — dan langkah pesan
+    cek-cepat hanya memakai penilai itu, jadi pola
+    yang ditangkap vonis rentang CI lolos diam-diam
+    di lokal. Blok baris murni alfabet token tak
+    mirip prosa: blok >=6 baris yang masing-masing
+    <=8 aksara (issue #1698) dan blok >=3 baris
+    sepanjang 9..40 aksara (potongan sedang, issue
+    #1716) disambung lalu dinilai mengandung_token.
+    """
+    if not teks:
+        return False
+
+    def nilai(blok):
+        return len(blok) >= 6 and mengandung_token("".join(blok))
+
+    blok = []
+    for baris in teks.splitlines():
+        b = baris.strip()
+        if b and len(b) <= 8 and re.fullmatch(r"[A-Za-z0-9_+\/=.\:-]+", b):
+            blok.append(b)
+        else:
+            if nilai(blok):
+                return True
+            blok = []
+    if nilai(blok):
+        return True
+
+    def nilai_sedang(blok_s):
+        return len(blok_s) >= 3 and mengandung_token("".join(blok_s))
+
+    blok = []
+    for baris in teks.splitlines():
+        b = baris.strip()
+        if b and 9 <= len(b) <= 40 and re.fullmatch(r"[A-Za-z0-9_+\/=.\:-]+", b):
+            blok.append(b)
+        else:
+            if nilai_sedang(blok):
+                return True
+            blok = []
+    return nilai_sedang(blok)
+
+
 def mengandung_token(teks):
     if not teks:
         return False
@@ -373,7 +421,8 @@ def main():
             print("DITEMUKAN")
         return 0
     if mode == "--teks-pesan":
-        if mengandung_token_pesan(sys.stdin.read()):
+        data = sys.stdin.read()
+        if mengandung_token_pesan(data) or mengandung_fragmen_pesan(data):
             print("DITEMUKAN")
         return 0
     if mode == "--padatkan":
