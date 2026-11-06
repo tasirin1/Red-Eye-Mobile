@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.648] - 2026-11-06
+
 ### Added
 
 - Job verifikasi di kedua workflow kini menilai judul dan isi pull request dengan penilai token yang sama (diteruskan lewat env, bukan interpolasi skrip): teks publik PR sebelumnya tak terjangkau kanal pesan commit/tag/branch mana pun (issue #1829).
