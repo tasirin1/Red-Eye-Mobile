@@ -454,8 +454,11 @@ fi
 # sama sekali — menjalankannya sendirian memberi rasa
 # aman palsu untuk tag/branch kotor. Penilai yang sama
 # (mengandung_token_pesan) atas semua nama refs/tags +
-# refs/heads, satu proses python agar 600+ tag tetap
-# cepat.
+# refs/heads + refs/remotes/origin, satu proses python
+# agar 600+ tag tetap cepat. Cermin origin disertakan
+# sejak issue #1835: CI menilainya sejak #1824, dan
+# gerbang lokal yang tak menilainya memberi rasa aman
+# palsu untuk branch yang sudah ter-push.
 if [ -f tools/cek-token.py ]; then
 # Gerbang kesehatan penilai (issue #1828): langkah-
 # langkah saudara menolak menilai saat cek-token.py
@@ -475,6 +478,7 @@ ct = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(ct)
 keluar = subprocess.run(
     ["git", "for-each-ref", "refs/tags", "refs/heads",
+     "refs/remotes/origin",
      "--format=%(refname:short)"],
     capture_output=True, text=True).stdout
 for nama in keluar.splitlines():

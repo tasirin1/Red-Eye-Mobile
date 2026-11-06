@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- cek-cepat langkah 5g kini ikut menilai nama branch `refs/remotes/origin`, menyelaraskan gerbang lokal dengan CI yang menilainya sejak #1824 — sebelumnya nama branch cermin origin yang kotor lolos hijau di lokal dan baru tertuduh di CI (issue #1835).
 - Gerbang token: nama dan pesan tag bersarang kini ikut masuk korpus gabungan lintas permukaan — sebelumnya isi tag dalam hanya dinilai sendiri-sendiri, jadi belahan yang separuhnya di pesan tag dalam dan separuh lain di pesan commit tak pernah tersambung (issue #1834).
 - Gerbang token: gabungan lintas permukaan kini menilai belahan token tak-seimbang (fragmen pendek + sisa panjang) dan fragmen yang dibungkus prosa di tengah pesan — penyaring lama menuntut larian tepi ≥20 aksara di setiap permukaan sehingga belahan 18+42 lolos, dan penggabungan permukaan utuh tak pernah menyambung fragmen di tengah teks; kini pasangan dinilai berdasar jumlah larian tepi kedua permukaan (ambang di bawah kandidat terpendek) ditambah pasangan antar-larian fragmen (issue #1833).
 - Gerbang token: komposisi dua lapis dekoder yang hasil akhirnya ter-persen/entitas/escape (mis. base64 dari base64 dari token ter-persen) kini tertuduh — vonis varian terbuka sebelumnya hanya diterapkan pada hasil dekode lapis pertama, sedangkan hasil dekode lapis kedua hanya dinilai pola mentahnya sehingga komposisi itu lolos total (issue #1832).
