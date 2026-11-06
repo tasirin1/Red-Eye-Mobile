@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Langkah ekstensi terlarang cek-cepat kini menangkap sufiks tambahan (issue #1718): pola berjangkar akhir nama membuat berkas seperti release.p12.bak lolos dari larangan keystore; kini ekstensi terlarang boleh diikuti sufiks titik apa pun di langkah staged maupun pohon terlacak.
 - Gerbang pesan commit kini juga menilai metadata author/committer (issue #1717): nama dan email author tersimpan permanen di riwayat dan tampil publik tetapi sebelumnya tak dibaca kanal mana pun; kini dinilai dengan penilai pesan yang sama.
 - Penilai fragmen pesan commit kini juga menangkap potongan sedang (issue #1716): blok >=3 baris murni alfabet token sepanjang 9..40 aksara per baris kini disambung dan dinilai — sebelumnya hanya blok >=6 baris <=8 aksara (#1698) sehingga token yang dipecah 3 baris × ±17 aksara lolos kedua permukaan pesan.
 - Gerbang riwayat kini menilai gabungan nama berkas dalam satu commit (issue #1715): kanal nama sebelumnya menilai per path sehingga token yang namanya dipecah ke dua berkas dalam commit yang sama lolos; kini gabungan nama-nama berubah dinilai dengan rekonstruksi yang sama seperti nama tunggal.
