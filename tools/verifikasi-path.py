@@ -2509,6 +2509,59 @@ def _cek_belahan_lintas_commit(gagal, tip_rentang):
                                  "input manual SetupActivity"
                                  % (p, q, tip_rentang[:8]))
                     return
+        # Nama terbelah LINTAS commit (issue #1766):
+        # kanal nama riwayat menilai per commit dan
+        # kanal lintas-commit di atas menilai ISI —
+        # dua paruh token sebagai NAMA berkas yang
+        # masuk lewat commit berbeda tak pernah
+        # disambung penilai mana pun. Nilai pasangan
+        # nama di pohon akhir: kandidat kepala = inti
+        # nama (kupas ekstensi, pola #1761) yang
+        # memuat deret digit; kandidat ekor = inti
+        # nama murni alfabet token; sambungannya
+        # dinilai rekonstruksi yang sama seperti
+        # gabungan nama satu commit.
+        inti_tip = []
+        for path in dict.fromkeys(pecah_nama(daftar_path)):
+            polos_tip = path.strip().rsplit("/", 1)[-1]
+            if not polos_tip:
+                continue
+            inti = polos_tip
+            for _ in range(3):
+                if "." not in inti:
+                    break
+                inti = inti.rsplit(".", 1)[0]
+                if not inti:
+                    break
+            if inti:
+                inti_tip.append(inti)
+        kepala_nama = [n for n in inti_tip if re.search(r"[0-9]{6,}", n)]
+        ekor_nama = [n for n in inti_tip
+                     if 10 <= len(n) <= 47
+                     and re.fullmatch(r"[A-Za-z0-9_-]+", n)]
+        for kn in kepala_nama:
+            for en in ekor_nama:
+                if kn == en:
+                    continue
+                gab_nama = kn + en
+                calon_nama_tip = [gab_nama]
+                cocok_g = re.match(r"^(.*?)([0-9]{6,})_([A-Za-z0-9_-]{35,})$", gab_nama)
+                if cocok_g:
+                    calon_nama_tip.append("%s%s:%s" % (cocok_g.group(1), cocok_g.group(2), cocok_g.group(3)))
+                cocok_gt = re.match(r"^(.*?)([0-9]{6,})\.([A-Za-z0-9_-]{35,})$", gab_nama)
+                if cocok_gt:
+                    calon_nama_tip.append("%s%s:%s" % (cocok_gt.group(1), cocok_gt.group(2), cocok_gt.group(3)))
+                if any(mengandung_token(c) for c in calon_nama_tip):
+                    gagal.append("Kemungkinan token bot asli "
+                                 "pada GABUNGAN NAMA berkas "
+                                 "LINTAS commit di pohon akhir "
+                                 "rentang (commit %s) — dua "
+                                 "paruh nama hidup berdampingan "
+                                 "di pohon walau masuk lewat "
+                                 "commit berbeda. Kredensial "
+                                 "hanya via input manual "
+                                 "SetupActivity" % tip_rentang[:8])
+                    return
 
 
 def _pesan_terbelah(teks):
