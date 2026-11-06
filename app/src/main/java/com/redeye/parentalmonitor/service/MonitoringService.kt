@@ -4593,16 +4593,25 @@ class MonitoringService : Service() {
             "/appwatch" -> handleAppWatchCommand(arg, privateChat)
             "/home", "/school" -> handleFenceCommand(command, arg, privateChat)
             "/digest" -> {
+                // Penarikan manual menolak di grup
+                // (issue #1729): isinya kontak teratas +
+                // pola aktivitas. Pengiriman TERJADWAL
+                // tidak lewat dispatch ini.
+                if (!privateChat) { sendToTelegram("\uD83D\uDD12 Rincian hanya via private chat dengan bot."); return }
                 sendDailyDigest(manual = true)
             }
             "/emergency" -> handleDaruratCommand()
             "/curfew" -> handleJampulangCommand(arg, privateChat)
             "/weekly" -> {
+                // Penarikan manual menolak di grup (issue #1729).
+                if (!privateChat) { sendToTelegram("\uD83D\uDD12 Rincian hanya via private chat dengan bot."); return }
                 sendWeeklyDigest()
             }
             "/watchnumber" -> handleWatchNomorCommand(arg, privateChat)
             "/track" -> handleJejakCommand(privateChat)
             "/alertness" -> {
+                // Penarikan manual menolak di grup (issue #1729).
+                if (!privateChat) { sendToTelegram("\uD83D\uDD12 Rincian hanya via private chat dengan bot."); return }
                 sendWaspada()
             }
             "/lost" -> handleHilangCommand()
