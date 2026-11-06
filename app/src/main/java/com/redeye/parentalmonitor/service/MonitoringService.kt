@@ -2954,7 +2954,7 @@ class MonitoringService : Service() {
                     webhookClearAtElapsed = now409
                     serviceScope.launch {
                         try {
-                            clearStaleWebhook(botToken)
+                            clearStaleWebhook(responseToken)
                         } catch (_: Exception) {
                         }
                     }
@@ -3139,7 +3139,11 @@ class MonitoringService : Service() {
                     val message = update.message ?: update.channelPost
                     val msgChatId = message?.chat?.id?.toString().orEmpty()
                     val senderId = message?.from?.id?.toString().orEmpty()
-                    val chatOk = msgChatId.isNotEmpty() && msgChatId == chatId
+                    // Chat dinilai terhadap kredensial yang MENGHASILKAN
+                    // respons ini (responseChat), bukan snapshot awal:
+                    // sesudah retry 401/403 batch berasal dari chat
+                    // baru (issue #1806).
+                    val chatOk = msgChatId.isNotEmpty() && msgChatId == responseChat
                     // Hanya TEKS yang jadi perintah (issue #841):
                     // caption media sebelumnya ikut dieksekusi, jadi
                     // meneruskan foto berketerangan "kunci"/"hilang"
@@ -3247,7 +3251,7 @@ class MonitoringService : Service() {
                                     }
                                 }
                                 val pairCode = try { preferencesManager.currentOwnerPairCode() } catch (_: Exception) { "" }
-                                if (startChat == chatId && pairCode.isNotEmpty() && startCode == pairCode) {
+                                if (startChat == responseChat && pairCode.isNotEmpty() && startCode == pairCode) {
                                     val learned = rememberOwner(senderId.toLongOrNull() ?: 0L)
                                     if (learned) {
                                         try { preferencesManager.clearOwnerPairCodeSync() } catch (_: Exception) { }
@@ -3257,7 +3261,7 @@ class MonitoringService : Service() {
                                         sendToTelegram("Pemilik tertaut via /start.")
                                     }
                                 } else {
-                                    if (startChat == chatId && pairCode.isNotEmpty()) {
+                                    if (startChat == responseChat && pairCode.isNotEmpty()) {
                                         try {
                                             if (pairGlobalFails.incrementAndGet() >= 10) {
                                                 pairGlobalFails.set(0)
@@ -3266,7 +3270,7 @@ class MonitoringService : Service() {
                                         } catch (_: Exception) {
                                         }
                                     }
-                                    if (startChat == chatId) {
+                                    if (startChat == responseChat) {
                                         sendPairHint(senderId)
                                     }
                                 }

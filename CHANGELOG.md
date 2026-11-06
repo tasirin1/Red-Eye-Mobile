@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Fixed
+
+- Penilaian dispatch poll kini memakai kredensial yang menghasilkan respons (responseChat/responseToken), bukan snapshot awal putaran: sesudah retry 401/403, batch dari chat baru tidak lagi diadili terhadap chat lama — perintah anggota chat baru tidak hilang permanen (gugur senyap tetapi offset terkonfirmasi), pemasangan /start di batch yang sama berfungsi, dan pembersih webhook 409 membersihkan bot yang sedang konflik (issue #1806).
+
 ## [1.6.646] - 2026-11-06
 
 ### Added
