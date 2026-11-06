@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Jurnal media (tujuan, anggaran upaya, unggah tak pasti) kini didukung cermin memori yang dimuat sekali: sebelumnya setiap akses membaca berkas utuh dari cakram per berkas per siklus flush — penulis tetap mempersist utuh dari cermin, format dan daya tahan berkas tak berubah (issue #1772).
+
 - Himpunan aplikasi dikenal A11y di prefs kini berplafon keras 1000 entri: sebelumnya himpunan hanya menyusut lewat rekonsiliasi berkala, jadi selama layanan Aksesibilitas lama tidak aktif entri basi menumpuk tanpa batas (issue #1771).
 
 - Peta cap-waktu login/pair kini menyapu entri basi pada setiap panggilan pemangkas: sebelumnya pemangkas kembali dini bila ukuran peta belum melewati 200 sehingga entri basi di bawah ambang menetap di memori seumur proses (issue #1770).

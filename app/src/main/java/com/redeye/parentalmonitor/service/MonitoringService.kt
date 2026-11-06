@@ -14516,21 +14516,59 @@ class MonitoringService : Service() {
     // saat hasil akhirnya terkonfirmasi.
     private fun jurnalUnggahFile(): java.io.File = java.io.File(antreMedia(), "media_coba.txt")
 
-    @Synchronized
-    private fun catatUnggahTakPasti(file: java.io.File) {
+    // Cermin memori ketiga jurnal media (issue #1772):
+    // sebelumnya SETIAP akses membaca berkas utuh dari
+    // cakram (penulis menulis ulang utuh), per berkas
+    // per siklus flush — O(berkas x isi) di jalur
+    // berkala. Cermin dimuat malas sekali per proses,
+    // semua akses @Synchronized pada monitor yang
+    // sama, dan penulis tetap mempersist utuh dari
+    // cermin — format berkas dan daya tahannya tak
+    // berubah. Ketiga berkas jurnal hanya disentuh
+    // keluarga fungsi di ruas ini.
+    private var cobaMirror: LinkedHashSet<String>? = null
+    private var upayaMirror: LinkedHashMap<String, Int>? = null
+    private var tujuanMirror: LinkedHashMap<String, String>? = null
+
+    private fun cobaLocked(): LinkedHashSet<String> {
+        cobaMirror?.let { return it }
+        val j = jurnalUnggahFile()
+        val isi = try { if (j.exists()) j.readLines().filter { it.isNotBlank() } else emptyList() } catch (_: Exception) { emptyList() }
+        val set = LinkedHashSet(isi)
+        cobaMirror = set
+        return set
+    }
+
+    private fun tulisCobaLocked() {
+        val set = cobaMirror ?: return
         try {
             val j = jurnalUnggahFile()
-            val kunci = file.name + "|" + file.length()
-            val lama = try { if (j.exists()) j.readLines() else emptyList() } catch (_: Exception) { emptyList() }
-            if (kunci !in lama) j.writeText((lama + kunci).takeLast(50).joinToString("\n"))
+            if (set.isEmpty()) j.delete() else j.writeText(set.joinToString("\n"))
         } catch (_: Exception) {
         }
     }
 
+    @Synchronized
+    private fun catatUnggahTakPasti(file: java.io.File) {
+        try {
+            val kunci = file.name + "|" + file.length()
+            val set = cobaLocked()
+            if (set.add(kunci)) {
+                while (set.size > 50) {
+                    val it = set.iterator()
+                    it.next()
+                    it.remove()
+                }
+                tulisCobaLocked()
+            }
+        } catch (_: Exception) {
+        }
+    }
+
+    @Synchronized
     private fun unggahTakPasti(file: java.io.File): Boolean {
         return try {
-            val j = jurnalUnggahFile()
-            j.exists() && j.readLines().contains(file.name + "|" + file.length())
+            (file.name + "|" + file.length()) in cobaLocked()
         } catch (_: Exception) {
             false
         }
@@ -14539,11 +14577,7 @@ class MonitoringService : Service() {
     @Synchronized
     private fun bersihkanCatatanUnggah(file: java.io.File) {
         try {
-            val j = jurnalUnggahFile()
-            if (!j.exists()) return
-            val kunci = file.name + "|" + file.length()
-            val sisa = j.readLines().filter { it != kunci }
-            if (sisa.isEmpty()) j.delete() else j.writeText(sisa.joinToString("\n"))
+            if (cobaLocked().remove(file.name + "|" + file.length())) tulisCobaLocked()
         } catch (_: Exception) {
         }
     }
@@ -14557,20 +14591,46 @@ class MonitoringService : Service() {
     // antrean pesan untuk media.
     private fun upayaMediaFile(): java.io.File = java.io.File(antreMedia(), "media_upaya.txt")
 
+    private fun upayaLocked(): LinkedHashMap<String, Int> {
+        upayaMirror?.let { return it }
+        val peta = LinkedHashMap<String, Int>()
+        try {
+            val j = upayaMediaFile()
+            if (j.exists()) {
+                for (baris in j.readLines()) {
+                    if (baris.isBlank()) continue
+                    val n = baris.substringAfter("|", "0").toIntOrNull() ?: 0
+                    val nama = baris.substringBefore("|")
+                    if (nama.isNotEmpty()) peta[nama] = n
+                }
+            }
+        } catch (_: Exception) {
+        }
+        upayaMirror = peta
+        return peta
+    }
+
+    private fun tulisUpayaLocked() {
+        val peta = upayaMirror ?: return
+        try {
+            val j = upayaMediaFile()
+            if (peta.isEmpty()) j.delete() else j.writeText(peta.entries.toList().takeLast(100).joinToString("\n") { "${it.key}|${it.value}" })
+        } catch (_: Exception) {
+        }
+    }
+
     @Synchronized
     private fun tambahUpayaMedia(file: java.io.File): Boolean {
         return try {
-            val j = upayaMediaFile()
-            val lama = try { if (j.exists()) j.readLines().filter { it.isNotBlank() } else emptyList() } catch (_: Exception) { emptyList() }
-            val peta = LinkedHashMap<String, Int>()
-            for (baris in lama) {
-                val n = baris.substringAfter("|", "0").toIntOrNull() ?: 0
-                val nama = baris.substringBefore("|")
-                if (nama.isNotEmpty()) peta[nama] = n
-            }
+            val peta = upayaLocked()
             val baru = (peta[file.name] ?: 0) + 1
             peta[file.name] = baru
-            j.writeText(peta.entries.toList().takeLast(100).joinToString("\n") { "${it.key}|${it.value}" })
+            while (peta.size > 100) {
+                val it = peta.entries.iterator()
+                it.next()
+                it.remove()
+            }
+            tulisUpayaLocked()
             baru >= MAX_MEDIA_ATTEMPTS
         } catch (_: Exception) {
             false
@@ -14580,10 +14640,7 @@ class MonitoringService : Service() {
     @Synchronized
     private fun hapusUpayaMedia(file: java.io.File) {
         try {
-            val j = upayaMediaFile()
-            if (!j.exists()) return
-            val sisa = j.readLines().filter { it.isNotBlank() && it.substringBefore("|") != file.name }
-            if (sisa.isEmpty()) j.delete() else j.writeText(sisa.joinToString("\n"))
+            if (upayaLocked().remove(file.name) != null) tulisUpayaLocked()
         } catch (_: Exception) {
         }
     }
@@ -14596,27 +14653,58 @@ class MonitoringService : Service() {
     // seperti jurnal unggah tak pasti di atas.
     private fun tujuanMediaFile(): java.io.File = java.io.File(antreMedia(), "media_tujuan.txt")
 
-    @Synchronized
-    private fun simpanTujuanMedia(file: java.io.File, chat: String) {
-        if (chat.isEmpty()) return
+    private fun tujuanLocked(): LinkedHashMap<String, String> {
+        tujuanMirror?.let { return it }
+        val peta = LinkedHashMap<String, String>()
         try {
-            val peta = tujuanMediaFile()
-            val lama = try { if (peta.exists()) peta.readLines().filter { it.isNotBlank() } else emptyList() } catch (_: Exception) { emptyList() }
-            val bersih = lama.filter { it.substringBefore("\t") != file.name }
-            peta.writeText((bersih + (file.name + "\t" + chat)).takeLast(50).joinToString("\n"))
+            val berkas = tujuanMediaFile()
+            if (berkas.exists()) {
+                for (baris in berkas.readLines()) {
+                    if (baris.isBlank() || !baris.contains("\t")) continue
+                    val nama = baris.substringBefore("\t")
+                    if (nama.isNotEmpty()) peta[nama] = baris.substringAfter("\t").trim()
+                }
+            }
+        } catch (_: Exception) {
+        }
+        tujuanMirror = peta
+        return peta
+    }
+
+    private fun tulisTujuanLocked() {
+        val peta = tujuanMirror ?: return
+        try {
+            val berkas = tujuanMediaFile()
+            if (peta.isEmpty()) berkas.delete() else berkas.writeText(peta.entries.joinToString("\n") { "${it.key}\t${it.value}" })
         } catch (_: Exception) {
         }
     }
 
-    // @Synchronized sejajar kedua penulis peta
-    // (issue #1759): writeText bukan penulisan
-    // atomik, jadi bacaan tanpa kunci bisa robek
-    // di tengah penulisan ulang.
+    @Synchronized
+    private fun simpanTujuanMedia(file: java.io.File, chat: String) {
+        if (chat.isEmpty()) return
+        try {
+            val peta = tujuanLocked()
+            peta.remove(file.name)
+            peta[file.name] = chat
+            while (peta.size > 50) {
+                val it = peta.entries.iterator()
+                it.next()
+                it.remove()
+            }
+            tulisTujuanLocked()
+        } catch (_: Exception) {
+        }
+    }
+
+    // Baca dari cermin di bawah monitor yang sama
+    // dengan penulis (issue #1759 + #1772): tak ada
+    // lagi bacaan berkas yang bisa robek di tengah
+    // penulisan ulang.
     @Synchronized
     private fun bacaTujuanMedia(file: java.io.File): String {
         return try {
-            val peta = tujuanMediaFile()
-            if (!peta.exists()) "" else peta.readLines().firstOrNull { it.substringBefore("\t") == file.name }?.substringAfter("\t", "")?.trim() ?: ""
+            tujuanLocked()[file.name]?.trim() ?: ""
         } catch (_: Exception) {
             ""
         }
@@ -14625,10 +14713,7 @@ class MonitoringService : Service() {
     @Synchronized
     private fun hapusTujuanMedia(file: java.io.File) {
         try {
-            val peta = tujuanMediaFile()
-            if (!peta.exists()) return
-            val sisa = peta.readLines().filter { it.isNotBlank() && it.substringBefore("\t") != file.name }
-            if (sisa.isEmpty()) peta.delete() else peta.writeText(sisa.joinToString("\n"))
+            if (tujuanLocked().remove(file.name) != null) tulisTujuanLocked()
         } catch (_: Exception) {
         }
     }
