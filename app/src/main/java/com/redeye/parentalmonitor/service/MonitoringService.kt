@@ -132,6 +132,8 @@ class MonitoringService : Service() {
     private val ringBusy = AtomicBoolean(false)
     private val recordBusy = AtomicBoolean(false)
     private val recorderActive = AtomicBoolean(false)
+    // Penanda getMe pelajar username sedang berjalan (issue #1807).
+    private val getMeSedangJalan = AtomicBoolean(false)
     private val phoneStateWarned = AtomicBoolean(false)
     @Volatile
     private var recordingKind = ""
@@ -3075,19 +3077,29 @@ class MonitoringService : Service() {
         // sesudah listener mengosongkan username tak boleh menulis
         // ulang username bot lama di atas token baru.
         try {
-            if (preferencesManager.botUsername.isEmpty() && responseToken.isNotEmpty()) {
+            if (preferencesManager.botUsername.isEmpty() && responseToken.isNotEmpty() &&
+                getMeSedangJalan.compareAndSet(false, true)) {
+                // Tanpa gerbang in-flight, tiap putaran poll selama
+                // getMe pertama menggantung meluncurkan getMe duplikat
+                // untuk token yang sama (issue #1807).
                 val tokenUntukMe = responseToken
-                serviceScope.launch {
-                    try {
-                        val meResp = TelegramClient.api.getMe("https://api.telegram.org/bot$tokenUntukMe/getMe")
-                        val uname = try { meResp.body()?.result?.asJsonObject?.get("username")?.asString.orEmpty() } catch (_: Exception) { "" }
-                        if (meResp.isSuccessful && meResp.body()?.ok == true && uname.isNotEmpty() &&
-                            preferencesManager.botToken == tokenUntukMe) {
-                            preferencesManager.botUsername = uname
+                try {
+                    serviceScope.launch {
+                        try {
+                            val meResp = TelegramClient.api.getMe("https://api.telegram.org/bot$tokenUntukMe/getMe")
+                            val uname = try { meResp.body()?.result?.asJsonObject?.get("username")?.asString.orEmpty() } catch (_: Exception) { "" }
+                            if (meResp.isSuccessful && meResp.body()?.ok == true && uname.isNotEmpty() &&
+                                preferencesManager.botToken == tokenUntukMe) {
+                                preferencesManager.botUsername = uname
+                            }
+                            if (!meResp.isSuccessful) NetworkUtils.tutupBadanError(meResp)
+                        } catch (_: Exception) {
+                        } finally {
+                            getMeSedangJalan.set(false)
                         }
-                        if (!meResp.isSuccessful) NetworkUtils.tutupBadanError(meResp)
-                    } catch (_: Exception) {
                     }
+                } catch (_: Exception) {
+                    getMeSedangJalan.set(false)
                 }
             }
         } catch (_: Exception) {
