@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Handler luapan receiver kini menangkap Throwable, bukan hanya Exception (issue #1725): kegagalan membuat benang jalan-terakhir dengan kelas Error (mis. OutOfMemoryError) sebelumnya membuat tugas hilang senyap tanpa finish() pendingResult dan Error-nya merambat ke benang utama broadcast; kini tugas dijalankan dengan penjaga penuh sebagai jalan terakhir.
 - Loop bangun NotificationForwarderService kini menyimpan vonis resume pada jalur gagal-baca prefs juga (issue #1724): pollWakeOnce sebelumnya keluar sebelum lastResumeOk diperbarui sehingga vonis basi bisa mempertahankan irama 60 detik; prefs yang tak terbaca kini dianggap resume-tak-ok.
 - /appalert status kini menolak di luar private chat (issue #1723): statusnya mengirim aplikasi yang sedang dibuka dan total pemakaian layar hari ini ke chat mana pun perintah diketik; kini memakai pola penolakan yang sama dengan /appwatch status.
 - Catatan restore terkonfirmasi kini ditulis atomik satu commit (issue #1722): pasangan JSON+tenggat sebelumnya ditulis dua commit terpisah, sehingga mati proses di antaranya menyisakan tenggat basi 0 yang dibaca pemeriksa startup sebagai jatuh tempo seketika dan menghapus jendela batal 60 detik; kini satu fungsi saveRestoreConfirmed menulis keduanya sekaligus dan mengembalikan hasil commit.

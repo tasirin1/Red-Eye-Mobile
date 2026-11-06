@@ -38,7 +38,19 @@ object Background {
         java.util.concurrent.RejectedExecutionHandler { r, _ ->
             try {
                 Thread(r, "RedEyeRecvOvfX").apply { isDaemon = true }.start()
-            } catch (_: Exception) {
+            } catch (_: Throwable) {
+                // Kelas Error (mis. OutOfMemoryError saat
+                // membuat benang) BUKAN Exception (issue
+                // #1725): tangkapan Exception saja membuat
+                // tugas hilang senyap — finish()
+                // pendingResult tak pernah terpanggil —
+                // dan Error-nya merambat ke benang
+                // pemanggil broadcast. Jalan terakhir:
+                // jalankan tugasnya di sini dengan
+                // penjaga penuh; finish() tetap terpanggil
+                // walau keadaannya sudah sekarat.
+                try { r.run() } catch (_: Throwable) {
+                }
             }
         }
     )
