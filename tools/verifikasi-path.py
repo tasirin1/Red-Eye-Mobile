@@ -2828,6 +2828,17 @@ def _cek_pesan_tag(gagal, pesan_commit=None):
                     break
             pesan_dalam = (isi_dalam.split("\n\n", 1)[1]
                            if "\n\n" in isi_dalam else "")
+            # Nama + pesan tag dalam ikut korpus
+            # gabungan lintas permukaan (issue #1834):
+            # sebelumnya keduanya hanya dinilai
+            # sendiri-sendiri di blok ini, jadi belahan
+            # yang separuhnya di tag dalam dan separuh
+            # lain di pesan commit atau ref lain tak
+            # pernah tersambung oleh blok gabungan.
+            if nama_dalam:
+                permukaan.append(nama_dalam)
+            if pesan_dalam:
+                permukaan.append(pesan_dalam)
             if (mengandung_token_pesan(nama_dalam)
                     or mengandung_token_pesan(pesan_dalam)
                     or _pesan_terbelah(pesan_dalam)):

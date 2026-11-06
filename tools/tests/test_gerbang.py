@@ -644,6 +644,38 @@ class UjiPesanVerifikasiPath(unittest.TestCase):
         self.assertTrue(verifikasi._cek_pesan_tag(gagal))
         self.assertTrue(any("BERSARANG" in g for g in gagal), gagal)
 
+    def test_tag_bersarang_ikut_gabungan(self):
+        # Issue #1834: pesan tag DALAM separuh token +
+        # pesan commit separuh lain — tag dalam kini
+        # masuk korpus gabungan lintas permukaan.
+        enc = base64.urlsafe_b64encode(
+            TOKEN.encode()).decode().rstrip("=")
+        kepala, ekor = enc[:30], enc[30:]
+        luar_obj = "a" * 40
+        dalam_obj = "b" * 40
+
+        def palsu(*args):
+            gabung = " ".join(args)
+            if "cat-file" in gabung and "-t" in args:
+                return "tag\n" if dalam_obj in gabung else ""
+            if "cat-file" in gabung and luar_obj in gabung:
+                return ("object " + dalam_obj + "\ntype tag\n"
+                        "tag luar\n\nanotasi luar bersih")
+            if "cat-file" in gabung and dalam_obj in gabung:
+                return ("object " + "c" * 40 + "\ntype commit\n"
+                        "tag dalam\n\n" + kepala)
+            if "%(contents)" in gabung:
+                return "anotasi luar bersih"
+            if "%(refname:short)" in gabung:
+                return "luar\ttag\t" + "c" * 40 + "\t" + luar_obj
+            return ""
+
+        self._pasang_jalan(palsu)
+        gagal = []
+        self.assertTrue(verifikasi._cek_pesan_tag(gagal, [ekor]))
+        self.assertTrue(any("lintas permukaan" in g for g in gagal),
+                        gagal)
+
     def test_nama_anggota_tar_terkompresi(self):
         # Issue #1827: nama anggota tar terkompresi
         # (gz/bz2/xz) dan tar polos kini terbaca lewat
