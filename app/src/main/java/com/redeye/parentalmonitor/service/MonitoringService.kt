@@ -11986,7 +11986,7 @@ class MonitoringService : Service() {
                 simpanTujuanMedia(photoFile, chatTujuan)
                 when (sendPhotoFile(photoFile, chatTujuan)) {
                     MediaSendOutcome.SENT -> {
-                        hapusTujuanMedia(photoFile)
+                        if (!photoFile.exists()) hapusTujuanMedia(photoFile)
                         if (reportResult && spreadAwal in 0..PhotoFingerprint.FEATURELESS_SPREAD) {
                             try { sendToTelegram("📷 Catatan: foto nyaris tanpa detail — mungkin buram atau lensa kotor/tertutup sebagian.") } catch (_: Exception) { }
                         }
@@ -12014,7 +12014,7 @@ class MonitoringService : Service() {
                         flushPendingPhotos()
                     }
                     MediaSendOutcome.DROPPED -> {
-                        hapusTujuanMedia(photoFile)
+                        if (!photoFile.exists()) hapusTujuanMedia(photoFile)
                         prunePhotoCache()
                         if (reportResult) {
                             sendToTelegram("⚠️ Foto dibuang — berkas kosong, tak didukung, atau terlalu besar untuk Telegram.")
@@ -12212,7 +12212,7 @@ class MonitoringService : Service() {
                     try { wdUp.cancel() } catch (_: Exception) { }
                     when (hasilKirimShot) {
                         MediaSendOutcome.SENT -> {
-                            hapusTujuanMedia(shotFile)
+                            if (!shotFile.exists()) hapusTujuanMedia(shotFile)
                             if (lastShotStaleFrame) {
                                 lastShotStaleFrame = false
                                 sendToTelegram("ℹ️ Yang terkirim adalah bingkai terakhir yang tertangkap (layar tak menghasilkan bingkai baru) — tampilannya mungkin bukan yang paling kini.")
@@ -12220,7 +12220,7 @@ class MonitoringService : Service() {
                             flushPendingPhotos()
                         }
                         MediaSendOutcome.DROPPED -> {
-                            hapusTujuanMedia(shotFile)
+                            if (!shotFile.exists()) hapusTujuanMedia(shotFile)
                             prunePhotoCache()
                             sendToTelegram("⚠️ Tangkap layar dibuang — berkas kosong, tak didukung, atau terlalu besar untuk Telegram.")
                         }
@@ -13786,7 +13786,7 @@ class MonitoringService : Service() {
                 return
             }
             audioOutcome = uploadOutcome
-            if (audioOutcome != MediaSendOutcome.KEPT) hapusTujuanMedia(audioFile)
+            if (audioOutcome != MediaSendOutcome.KEPT && !audioFile.exists()) hapusTujuanMedia(audioFile)
             when (audioOutcome) {
                 MediaSendOutcome.SENT -> {
                     try {
@@ -13947,8 +13947,13 @@ class MonitoringService : Service() {
             }
             if (response.isSuccessful && response.body()?.ok == true) {
                 noteSendOk()
-                bersihkanCatatanUnggah(audioFile)
-                deleteQuietly(audioFile)
+                // Jurnal coba hanya dibersihkan bila isi
+                // berkas benar-benar musnah (issue #1839):
+                // berkas yang selamat sesudah terkirim akan
+                // dikirim ulang flush berikutnya, dan penanda
+                // tak-pastinya wajib bertahan agar duplikat
+                // berlabel pengiriman ulang (#1671).
+                if (deleteQuietly(audioFile)) bersihkanCatatanUnggah(audioFile)
                 return MediaSendOutcome.SENT
             }
             val errorFull = try {
@@ -14082,7 +14087,7 @@ class MonitoringService : Service() {
                                 val uploadOutcome = kotlinx.coroutines.withTimeoutOrNull(VIDEO_UPLOAD_TIMEOUT_MS) { sendVideoFile(videoFile, chatTujuan) }
                                 when (uploadOutcome ?: MediaSendOutcome.KEPT) {
                                     MediaSendOutcome.SENT -> {
-                                        hapusTujuanMedia(videoFile)
+                                        if (!videoFile.exists()) hapusTujuanMedia(videoFile)
                                         sendToTelegram("🎥 Video terkirim (${seconds} dtk).")
                                         // Pemberitahuan lensa cadangan
                                         // seperti jalur foto (issue #1266):
@@ -14108,7 +14113,7 @@ class MonitoringService : Service() {
                                         // sendVideoFile: entrinya
                                         // ikut dibuang (issue
                                         // #1747), pola cabang SENT.
-                                        hapusTujuanMedia(videoFile)
+                                        if (!videoFile.exists()) hapusTujuanMedia(videoFile)
                                         try { flushPendingVideos() } catch (_: Exception) { }
                                         sendToTelegram("⚠️ Video dibuang — berkas kosong, tak didukung, atau terlalu besar untuk Telegram.")
                                     }
@@ -14211,8 +14216,13 @@ class MonitoringService : Service() {
             if (response.isSuccessful && response.body()?.ok == true) {
                 if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "✓ Video sent successfully!")
                 noteSendOk()
-                bersihkanCatatanUnggah(videoFile)
-                deleteQuietly(videoFile)
+                // Jurnal coba hanya dibersihkan bila isi
+                // berkas benar-benar musnah (issue #1839):
+                // berkas yang selamat sesudah terkirim akan
+                // dikirim ulang flush berikutnya, dan penanda
+                // tak-pastinya wajib bertahan agar duplikat
+                // berlabel pengiriman ulang (#1671).
+                if (deleteQuietly(videoFile)) bersihkanCatatanUnggah(videoFile)
                 return MediaSendOutcome.SENT
             }
             val errorFull = try {
@@ -14395,14 +14405,24 @@ class MonitoringService : Service() {
                         }
                         continue
                     }
-                    hapusUpayaMedia(file)
-                    hapusTujuanMedia(file)
-                    // Jurnal coba ikut dibersihkan di blok
-                    // pasca-kirim skeleton juga (issue #1809):
-                    // flush foto sudah melakukannya, dan hasil
-                    // DROPPED non-classify bisa menyisakan
-                    // entri coba lama.
-                    bersihkanCatatanUnggah(file)
+                    // Ketiga jurnal hanya dibersihkan bila
+                    // berkas sudah tidak ada (issue #1839):
+                    // berkas yang selamat sesudah terkirim
+                    // akan dikirim ulang — jurnal tujuannya
+                    // wajib bertahan agar duplikat meluncur
+                    // ke chat tangkapan asal (#1720), bukan
+                    // chat terkonfigurasi, dan jurnal cobanya
+                    // menjaga label pengiriman ulang (#1671).
+                    if (!file.exists()) {
+                        hapusUpayaMedia(file)
+                        hapusTujuanMedia(file)
+                        // Jurnal coba ikut dibersihkan di blok
+                        // pasca-kirim skeleton juga (issue #1809):
+                        // flush foto sudah melakukannya, dan hasil
+                        // DROPPED non-classify bisa menyisakan
+                        // entri coba lama.
+                        bersihkanCatatanUnggah(file)
+                    }
                     monitorBeatAt = android.os.SystemClock.elapsedRealtime()
                     batchProgress = true
                     progress = true
@@ -15058,8 +15078,13 @@ class MonitoringService : Service() {
                 if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "✓ Photo sent successfully!")
                 noteSendOk()
                 try { preferencesManager.lastPhotoTime = System.currentTimeMillis() } catch (_: Exception) { }
-                bersihkanCatatanUnggah(photoFile)
-                deleteQuietly(photoFile)
+                // Jurnal coba hanya dibersihkan bila isi
+                // berkas benar-benar musnah (issue #1839):
+                // berkas yang selamat sesudah terkirim akan
+                // dikirim ulang flush berikutnya, dan penanda
+                // tak-pastinya wajib bertahan agar duplikat
+                // berlabel pengiriman ulang (#1671).
+                if (deleteQuietly(photoFile)) bersihkanCatatanUnggah(photoFile)
                 return MediaSendOutcome.SENT
             }
             val errorFull = try {
@@ -15208,14 +15233,18 @@ class MonitoringService : Service() {
                             continue
                         }
                     }
-                    hapusUpayaMedia(file)
-                    hapusTujuanMedia(file)
-                    // Jurnal coba ikut dibersihkan (issue
-                    // #1796): jalur anggaran habis di atas
-                    // menghapus berkas tanpa melewati fungsi
-                    // kirim, jadi entri cobanya yatim bila
-                    // tak dibersihkan di sini.
-                    bersihkanCatatanUnggah(file)
+                    // Gerbang keberadaan sama seperti blok
+                    // pasca-kirim skeleton (issue #1839).
+                    if (!file.exists()) {
+                        hapusUpayaMedia(file)
+                        hapusTujuanMedia(file)
+                        // Jurnal coba ikut dibersihkan (issue
+                        // #1796): jalur anggaran habis di atas
+                        // menghapus berkas tanpa melewati fungsi
+                        // kirim, jadi entri cobanya yatim bila
+                        // tak dibersihkan di sini.
+                        bersihkanCatatanUnggah(file)
+                    }
                     if (fileIsHeld) {
                         try {
                             if (photoOutcome == MediaSendOutcome.SENT && PhotoFingerprint.isComparableFingerprint(fileHashFlush)) preferencesManager.setLastPhotoHashSync(fileHashFlush)

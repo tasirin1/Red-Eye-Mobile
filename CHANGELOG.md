@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Fixed
+
+- Jalur SENT kini menggerbang pembersihan jurnal pada kemusnahan berkas (saudara #1836): ketiga fungsi kirim hanya membersihkan jurnal coba bila penghapusan pasca-kirim berhasil, dan blok pasca-kirim kedua flush + konsumen kirim-langsung hanya menghapus jurnal tujuan/upaya/coba bila berkas sudah tidak ada — sebelumnya berkas yang selamat dari kegagalan hapus total sesudah terkirim terkirim ulang ke chat terkonfigurasi (bukan chat tangkapan asal) dan tanpa label pengiriman ulang (issue #1839).
+
 ## [1.6.650] - 2026-11-07
 
 ### Added
