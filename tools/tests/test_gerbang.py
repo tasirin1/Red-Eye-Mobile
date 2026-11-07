@@ -765,5 +765,21 @@ class UjiPesanVerifikasiPath(unittest.TestCase):
             self.assertFalse(
                 cek_token.mengandung_token_pesan("teks jinak pengulangan"))
 
+class UjiFuzzGerbang(unittest.TestCase):
+    def test_fuzz_gerbang_doktrin(self):
+        # Fuzzer uji-diri (perintah owner 2026-11-07):
+        # matriks penghindaran yang dibangkitkan sendiri
+        # dari token kontrol — encode berlapis, sisipan
+        # pemisah, belahan lintas permukaan, ejaan
+        # byteArrayOf — wajib sesuai doktrin: nol lolos
+        # di cakupan, nol positif palsu. Kasus "batas"
+        # (di luar desain terdokumentasi) hanya dicatat
+        # fuzzer, tidak menggagalkan uji ini.
+        fuzz = _muat("fuzz_gerbang", os.path.join("tools", "fuzz-gerbang.py"))
+        hasil = fuzz.jalankan(140)
+        self.assertEqual([], [(k, n, p) for k, n, p, _ in hasil["lolos"]])
+        self.assertEqual([], [(k, n, p) for k, n, p, _ in hasil["palsu"]])
+
+
 if __name__ == "__main__":
     unittest.main()
