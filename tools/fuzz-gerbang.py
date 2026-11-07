@@ -151,6 +151,7 @@ SISIPAN = {
     "newline": "\n",
     "komentar-baris": "//\n",
     "komentar-blok": "/**/",
+    "interp-bersarang": "${ run { \"\" } }",
 }
 
 
@@ -183,6 +184,7 @@ def gen_sela(rng):
         "kutip-plus": "batas",
         "komentar-baris": "batas",
         "komentar-blok": "batas",
+        "interp-bersarang": "batas",
     }
     for nama, sisipan in SISIPAN.items():
         for dasar_nama, dasar in (("polos", TOKEN), ("b64", _b64(TOKEN))):

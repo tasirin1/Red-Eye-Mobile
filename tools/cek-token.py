@@ -274,6 +274,98 @@ def _pola_atau_terbuka(hasil):
                 return True
     return False
 
+def _lewati_interpolasi_rapat(isi, i):
+    """Indeks sesudah '}' penutup interpolasi ${...} yang
+    mulai di i (posisi '$'). Meniru pemindai saudara di
+    verifikasi-path (issue #1289 + rekursi #1906): literal
+    string/char bersarang dilompati utuh dan interpolasi
+    di dalam string bersarang dilewati secara rekursif,
+    jadi '}' isi string tak menutup interpolasi lebih
+    awal dan petik string terdalam tak menutup string
+    tengah."""
+    n = len(isi)
+    j = i + 2
+    kedalaman = 1
+    while j < n and kedalaman > 0:
+        c = isi[j]
+        tiga = isi[j:j + 3]
+        if tiga == chr(34) * 3:
+            akhir = isi.find(tiga, j + 3)
+            j = n if akhir < 0 else akhir + 3
+            continue
+        if c == chr(34) or c == chr(39):
+            kutip = c
+            j += 1
+            while j < n:
+                if isi[j] == chr(92):
+                    j += 2
+                    continue
+                if kutip == chr(34) and isi[j] == "$" \
+                        and isi[j + 1:j + 2] == "{":
+                    j = _lewati_interpolasi_rapat(isi, j)
+                    continue
+                if isi[j] == kutip:
+                    j += 1
+                    break
+                if kutip == chr(34) and isi[j] == chr(10):
+                    break
+                j += 1
+            continue
+        if isi[j:j + 2] == "//":
+            while j < n and isi[j] != chr(10):
+                j += 1
+            continue
+        if isi[j:j + 2] == "/*":
+            dalam = 1
+            j += 2
+            while j < n and dalam > 0:
+                if isi[j:j + 2] == "/*":
+                    dalam += 1
+                    j += 2
+                elif isi[j:j + 2] == "*/":
+                    dalam -= 1
+                    j += 2
+                else:
+                    j += 1
+            continue
+        if c == "{":
+            kedalaman += 1
+        elif c == "}":
+            kedalaman -= 1
+            if kedalaman == 0:
+                return j + 1
+        j += 1
+    return j
+
+
+def _buang_interpolasi(teks):
+    """Buang sisipan templat dari teks yang dipadatkan
+    (issue #1909): ${...} dibuang utuh dengan kurung
+    seimbang sadar string — bentuk bersarang seperti
+    ${ run { "" } } sebelumnya hanya terbuang sampai }
+    pertama sehingga paruh token tak tersambung — dan
+    templat nama sederhana $ident ikut dibuang (nama
+    adalah runtunan pengenal persis seperti parse
+    Kotlin; belahan yang terbukti merakit memakai
+    pemisah bukan-pengenal sesudah nama)."""
+    out = []
+    i, n = 0, len(teks)
+    while i < n:
+        if teks[i] == "$" and teks[i + 1:i + 2] == "{":
+            i = _lewati_interpolasi_rapat(teks, i)
+            continue
+        if teks[i] == "$" and (teks[i + 1:i + 2].isalpha()
+                               or teks[i + 1:i + 2] == "_"):
+            j = i + 1
+            while j < n and (teks[j].isalnum() or teks[j] == "_"):
+                j += 1
+            i = j
+            continue
+        out.append(teks[i])
+        i += 1
+    return "".join(out)
+
+
 def _padatkan(teks):
     # Sisipan interpolasi "${...}" dibuang utuh lebih dulu (menyamai
     # semantik gabung string saat jalan), lalu pemisah belah yang lazim
@@ -297,7 +389,7 @@ def _padatkan(teks):
     # Aksara format dibuang lebih dulu (issue #1800),
     # sebelum pemisah lain dirapatkan.
     rapat = POLA_FORMAT.sub("", teks)
-    rapat = re.sub(r"\$\{[^}]*\}", "", rapat)
+    rapat = _buang_interpolasi(rapat)
     rapat = re.sub(r"[\s\"'\\+]+", "", rapat)
     rapat = re.sub(r"(?<=[A-Za-z0-9_-])\.(?=[A-Za-z0-9_-])", "", rapat)
     # Koma yang diapit karakter token juga pemisah belah (issue #802):

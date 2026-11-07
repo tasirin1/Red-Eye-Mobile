@@ -1160,6 +1160,22 @@ class UjiKupasKodeTemplat(unittest.TestCase):
         self.assertFalse(cek_token.mengandung_token(
             "lihat https://example.com/a/b*c dan rasio 3/4*2 biasa"))
 
+    def test_belah_templat_bersarang_dan_nama_tertuduh(self):
+        # Issue #1909: penghapus interpolasi wajib sadar
+        # kurung bersarang dan menangani templat nama
+        # sederhana — kedua bentuk merakit token utuh
+        # saat jalan (interpolasi bersarang bernilai
+        # string kosong; $x diikuti pemisah bukan
+        # pengenal agar parse nama tak ambigu).
+        h1, h2 = TOKEN[:24], TOKEN[24:]
+        self.assertTrue(cek_token.mengandung_token(
+            '"' + h1 + '${ run { "" } }' + h2 + '"'))
+        self.assertTrue(cek_token.mengandung_token(
+            '"' + h1 + '${ "}" }' + h2 + '"'))
+        i = TOKEN.index("-cc")
+        self.assertTrue(cek_token.mengandung_token(
+            TOKEN[:i] + "$x" + TOKEN[i:]))
+
     def test_komentar_di_string_templat_bukan_komentar(self):
         # Issue #1907: /* di dalam string bersarang templat
         # adalah isi string — kode sesudahnya tak boleh
