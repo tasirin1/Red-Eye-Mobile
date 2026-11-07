@@ -3578,7 +3578,7 @@ class MonitoringService : Service() {
         val currentGeneration = try { preferencesManager.credentialGeneration } catch (_: Exception) { -1L }
         if (generation != currentGeneration) {
             // Generasi naik di tengah dispatch (issue #877): migrasi
-            // grup ke supergrup lewat setChatIdSync menaikkan
+            // grup ke supergrup lewat setChatIdIfCurrentSync menaikkan
             // generasi TANPA mengganti token dan tanpa mereset
             // offset, jadi membuang konfirmasi di sini membuat
             // perintah yang sudah jalan terkirim ulang sesudah

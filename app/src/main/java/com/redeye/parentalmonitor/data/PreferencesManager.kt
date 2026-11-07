@@ -2951,18 +2951,6 @@ class PreferencesManager(context: Context) {
         editor.putLong(KEY_CRED_ERROR_ELAPSED, 0L)
     }
 
-    fun setChatIdSync(newChatId: String): Boolean {
-        return try {
-            synchronized(credentialLock) {
-                val editor = sharedPreferences.edit().putString(KEY_CHAT_ID, newChatId)
-                if (newChatId != chatId) bumpCredentialGeneration(editor)
-                editor.commit()
-            }
-        } catch (_: Exception) {
-            false
-        }
-    }
-
     // Varian CAS untuk adopsi migrasi (issue #1377): Chat ID
     // hanya diganti bila isinya masih persis chat yang dipakai
     // kiriman yang memicu migrasi. Respons migrate_to_chat_id

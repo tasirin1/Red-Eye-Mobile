@@ -94,3 +94,4 @@ setNotifGroupForwardedSync
 a11yKnownApps
 setHeldPhotoHashSync
 setHeldPhotoEntriesRawSync
+setChatIdSync
