@@ -71,7 +71,7 @@ class NumberHistorySearchTest {
         }
     }
 
-    private fun pencarian(data: List<Baris>, kueri: KueriPalsu): NumberHistorySearch<Baris> =
+    private fun pencarian(kueri: KueriPalsu): NumberHistorySearch<Baris> =
         NumberHistorySearch(
             numberColumn = "nomor",
             dateColumn = "tanggal",
@@ -88,7 +88,7 @@ class NumberHistorySearchTest {
     @Test
     fun masukanTanpaDigitKosongTanpaKueri() {
         val kueri = KueriPalsu(emptyList())
-        val hasil = pencarian(emptyList(), kueri).search("abc-def")
+        val hasil = pencarian(kueri).search("abc-def")
         assertTrue(hasil.items.isEmpty())
         assertFalse(hasil.truncated)
         assertTrue(kueri.panggilan.isEmpty())
@@ -102,7 +102,7 @@ class NumberHistorySearchTest {
             Baris("089999999999", kini - 500, 9)
         )
         val kueri = KueriPalsu(data)
-        val hasil = pencarian(data, kueri).search("0812 3456 7890")
+        val hasil = pencarian(kueri).search("0812 3456 7890")
         assertEquals(2, hasil.items.size)
         assertFalse(hasil.truncated)
         assertEquals(listOf("persis"), kueri.panggilan)
@@ -115,7 +115,7 @@ class NumberHistorySearchTest {
     fun persisTerpotongPadaTepatLimit() {
         val data = (1..5).map { Baris("081234567890", kini - it * 1_000L, it.toLong()) }
         val kueri = KueriPalsu(data)
-        val hasil = pencarian(data, kueri).search("081234567890", limit = 3)
+        val hasil = pencarian(kueri).search("081234567890", limit = 3)
         assertEquals(3, hasil.items.size)
         assertTrue(hasil.truncated)
     }
@@ -124,7 +124,7 @@ class NumberHistorySearchTest {
     fun nomorPendekTidakTurunKeFuzzy() {
         val data = listOf(Baris("081234567", kini - 1_000, 1))
         val kueri = KueriPalsu(data)
-        val hasil = pencarian(data, kueri).search("081234599")
+        val hasil = pencarian(kueri).search("081234599")
         assertTrue(hasil.items.isEmpty())
         // Hanya kueri persis yang boleh berjalan untuk <10 digit.
         assertEquals(listOf("persis"), kueri.panggilan)
@@ -138,7 +138,7 @@ class NumberHistorySearchTest {
         // (PhoneNumbers) menerimanya.
         val data = listOf(Baris("99081234567890", kini - 1_000, 1))
         val kueri = KueriPalsu(data)
-        val hasil = pencarian(data, kueri).search("081234567890")
+        val hasil = pencarian(kueri).search("081234567890")
         assertEquals(1, hasil.items.size)
         assertFalse(hasil.truncated)
         assertEquals(listOf("persis", "fuzzy"), kueri.panggilan)
@@ -159,7 +159,7 @@ class NumberHistorySearchTest {
         )
         val data = takCocok + cocok
         val kueri = KueriPalsu(data)
-        val hasil = pencarian(data, kueri).search("081234567890")
+        val hasil = pencarian(kueri).search("081234567890")
         assertEquals(2, hasil.items.size)
         assertFalse(hasil.truncated)
         assertEquals(listOf("persis", "fuzzy", "halaman", "halaman"), kueri.panggilan)

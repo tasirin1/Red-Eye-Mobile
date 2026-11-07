@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Parameter `data` yang tak terpakai pada helper tes `pencarian` di NumberHistorySearchTest dihapus beserta argumennya di keenam situs panggil — `KueriPalsu` sudah memegang daftar yang sama sehingga daftar sebelumnya dilewatkan dua kali (issue #1904).
 - Pencarian definisi `masih_didefinisikan` di verifikasi-path kini mencakup pohon tes (`app/src/test/java`), simetris dengan cakupan `pemanggil()` — perubahan tanda tangan helper tes yang sah sebelumnya divonis positif palsu sebagai metode terhapus yang masih dipanggil (issue #1905).
 - Komentar throttle percobaan /login di MonitoringService dikoreksi dari "3 dtk" menjadi "1,5 dtk" — konstanta `LOGIN_ATTEMPT_THROTTLE_MS` memang 1_500L sejak lahir dan komentar saudara di jalur login sudah menyebutnya benar (issue #1903).
 
