@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.652] - 2026-11-07
+
 ### Fixed
 
 - Metadata verifikasi dependensi dilengkapi untuk empat artefak `androidx.lifecycle:*:2.6.2` (livedata-core, process, viewmodel, viewmodel-savedstate; `.aar` + `.module`, checksum dari Maven resmi Google) — graf resolusi sesudah penurunan `core-ktx` (#1859) memilih 2.6.2 yang belum terpin, sehingga CI Build gagal di `checkDebugAarMetadata` (lanjutan #1859).
