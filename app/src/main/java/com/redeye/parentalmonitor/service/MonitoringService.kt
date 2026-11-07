@@ -13909,6 +13909,12 @@ class MonitoringService : Service() {
                 }
                 keepForRetry = finalized && try { audioFile.exists() && audioFile.length() > 0L } catch (_: Exception) { false }
                 if (keepForRetry) {
+                    // Jurnal tujuan juga di jalur salvage
+                    // pembatalan (issue #1878): tanpa entri ini
+                    // flush menyelesaikan tujuan ke chat
+                    // terkonfigurasi, bukan chat asal perintah —
+                    // kelas yang sama dengan jalur jeda #1867.
+                    simpanTujuanMedia(audioFile, chatTujuan)
                     try {
                         messageQueue.addMessage("\u26A0\uFE0F Rekaman terputus di tengah (layanan dibatalkan/dihentikan). Berkas disimpan untuk dikirim otomatis; durasinya mungkin lebih pendek dari ${seconds} dtk yang diminta.")
                         MessageScheduler.scheduleMessageSend(this)

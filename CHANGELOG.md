@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Fixed
+
+- Jalur salvage pembatalan rekaman audio kini menulis jurnal tujuan media: cabang `CancellationException` yang memfinalisasi rekaman terputus (`renameTo` + `keepForRetry`) dulu tak memanggil `simpanTujuanMedia`, jadi berkas salvage yang ditemukan flush dari pindaian direktori meluncur ke chat terkonfigurasi, bukan chat asal perintah — kelas dampak yang sama dengan jalur jeda #1867, cabangnya pembatalan (issue #1878).
+
 ## [1.6.655] - 2026-11-07
 
 ### Fixed
