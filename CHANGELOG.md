@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.654] - 2026-11-07
+
 ### Fixed
 
 - Provisioning CodeQL kini sejajar build.yml: `cache: gradle` pada setup-java dan Gradle 8.14.3 ter-pin (cache + verifikasi SHA-256 + PATH, langkah yang sama persis) sebelum Autobuild — sebelumnya analis memakai Gradle bawaan runner yang tak ter-pin dan tanpa cache dependensi, jadi perilaku analisis bisa bergeser mengikuti citra runner (issue #1875).
