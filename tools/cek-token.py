@@ -1364,16 +1364,27 @@ def _potong_mengandung_token(nama):
     byte (keduanya genap agar pelurusan UTF-16 terjaga)
     membuat token yang terbelah di batas potong tetap utuh
     di potong berikutnya; memori datar berapa pun ukuran
-    berkas."""
+    berkas. Jembatan PADAT (issue #1916): pemadatan jalur
+    utuh menyambung belahan melintasi pengisi yang menyusut
+    (jutaan newline -> nyaris nol), jadi jembatan byte
+    mentah saja tak cukup — ekor terpadatkan 512 aksara
+    dari potong-potong sebelumnya ikut dinilai bersama
+    padatan potong berjalan, sejajar semantik jalur utuh."""
     ekor = b""
+    jembatan = ""
     with open(nama, "rb") as f:
         while True:
             mentah = f.read(_POTONG)
             if not mentah:
                 return False
             gabung = ekor + mentah
-            if mengandung_token(dekode_berkas(gabung)):
+            teks = dekode_berkas(gabung)
+            if mengandung_token(teks):
                 return True
+            calon = jembatan + _padatkan(teks)
+            if mengandung_token(calon):
+                return True
+            jembatan = calon[-512:]
             ekor = gabung[-_TUMPANG:]
 
 

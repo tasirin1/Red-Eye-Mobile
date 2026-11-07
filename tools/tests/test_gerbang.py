@@ -260,8 +260,17 @@ class UjiKanalBerkasTambahan(unittest.TestCase):
         pos = cek_token._POTONG - 20
         isi[pos:pos + len(TOKEN)] = TOKEN.encode()
         bersih = bytes(cek_token._AMBANG_POTONG + 1024)
+        # Issue #1916: belahan dipisah pengisi terpadatkan
+        # (newline) yang menyeberangi batas potong ikut
+        # tertuduh lewat jembatan padat.
+        belah = bytearray(b"A" * (cek_token._POTONG - 100))
+        belah += TOKEN[:24].encode()
+        belah += b"\n" * (1536 * 1024)
+        belah += TOKEN[24:].encode()
+        belah += b"B" * (600 * 1024)
         with tempfile.TemporaryDirectory() as d:
             for nama, data, harap in (("kotor", bytes(isi), True),
+                                      ("belah", bytes(belah), True),
                                       ("bersih", bersih, False)):
                 path = os.path.join(d, nama)
                 with open(path, "wb") as f:
