@@ -41,6 +41,10 @@ object AppWatch {
 
     private val WORD_RUN = Regex("[\\p{L}\\p{N}]+")
 
+    // Regex spasi untuk perapian cuplikan (issue #1849):
+    // dulu dikompilasi ulang di setiap panggilan snippet.
+    private val SPASI_RUN = Regex("\\s+")
+
     private val MATCH_PREFIXES = listOf("memper", "ber", "ter", "per", "me", "di", "pe", "ke")
 
     private val MATCH_SUFFIXES = setOf("nya", "an", "i", "s", "ing", "ed")
@@ -154,7 +158,7 @@ object AppWatch {
         }
         val from = maxOf(0, start - radius)
         val to = minOf(text.length, end + radius)
-        var snippet = text.substring(from, to).replace(Regex("\\s+"), " ").trim()
+        var snippet = text.substring(from, to).replace(SPASI_RUN, " ").trim()
         if (from > 0) snippet = "\u2026" + snippet
         if (to < text.length) snippet += "\u2026"
         return snippet

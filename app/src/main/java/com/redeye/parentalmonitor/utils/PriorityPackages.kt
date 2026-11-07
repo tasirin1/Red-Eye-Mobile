@@ -8,9 +8,15 @@ package com.redeye.parentalmonitor.utils
 // segmen. Diekstrak dari NotificationForwarderService agar
 // terkunci uji (issue #977).
 object PriorityPackages {
+    // Konstanta klasifikasi dinaikkan ke level objek
+    // (issue #1849): isPriority dipanggil pada jalur
+    // evaluasi tiap notifikasi, jadi membangun set+list
+    // baru di setiap panggilan adalah alokasi murni
+    // terbuang.
+    private val eksak = setOf("bank", "bri", "bca", "bni", "btn", "ovo", "dana", "mandiri", "pay")
+    private val awalan = listOf("brimo", "livin", "gopay", "shopeepay", "mbanking", "m-banking", "wallet", "paypal", "paytm", "spay")
+
     fun isPriority(lowPkg: String): Boolean {
-        val eksak = setOf("bank", "bri", "bca", "bni", "btn", "ovo", "dana", "mandiri", "pay")
-        val awalan = listOf("brimo", "livin", "gopay", "shopeepay", "mbanking", "m-banking", "wallet", "paypal", "paytm", "spay")
         return lowPkg.split('.').any { seg ->
             seg in eksak || awalan.any { seg.startsWith(it) } ||
                 // Merek bertoken menyatu (issue #970, regresi
