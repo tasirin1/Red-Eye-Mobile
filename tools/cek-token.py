@@ -20,7 +20,10 @@ Dipakai tools/verifikasi-path.py (diimpor) dan scripts/cek-cepat.sh:
 Kode keluar selalu 0; keputusan dibaca dari keluaran stdout.
 """
 import base64
+import hashlib
 import html
+import json
+import os
 import re
 import sys
 import urllib.parse
@@ -858,6 +861,57 @@ def mengandung_token(teks):
     return False
 
 
+# Cache vonis lintas lari (issue #1854), HANYA untuk
+# mode --berkas: langkah 5d cek-cepat menilai ulang
+# seluruh pohon dari nol pada setiap lari, padahal
+# hampir semua berkas tak berubah antar-lari (6 berkas
+# teratas = 89% waktu vonis terukur). Kunci entri =
+# hash ISI yang dinilai; kop cache = hash SUMBER berkas
+# hakim ini, jadi perubahan logika penilai mana pun
+# mengosongkan cache secara otomatis. Cache tinggal di
+# direktori cache pengguna (di luar pohon terlacak);
+# jalur uji/fuzzer menilai fungsi mentahnya langsung
+# dan tak pernah menyentuh cache ini. Matikan dengan
+# CEK_TOKEN_TANPA_CACHE=1.
+def _path_cache_vonis():
+    dasar = os.environ.get("XDG_CACHE_HOME") or os.path.join(
+        os.path.expanduser("~"), ".cache")
+    return os.path.join(dasar, "redeye-gerbang", "vonis-cek-token.json")
+
+
+def _muat_cache_vonis():
+    if os.environ.get("CEK_TOKEN_TANPA_CACHE"):
+        return None
+    try:
+        with open(__file__, "rb") as f:
+            versi = hashlib.sha256(f.read()).hexdigest()[:16]
+    except OSError:
+        return None
+    try:
+        with open(_path_cache_vonis(), encoding="utf-8") as f:
+            data = json.load(f)
+        if data.get("versi") != versi or not isinstance(
+                data.get("entri"), dict):
+            return {"versi": versi, "entri": {}}
+        return data
+    except Exception:
+        return {"versi": versi, "entri": {}}
+
+
+def _simpan_cache_vonis(data):
+    if data is None:
+        return
+    try:
+        tujuan = _path_cache_vonis()
+        os.makedirs(os.path.dirname(tujuan), exist_ok=True)
+        sementara = tujuan + ".tmp"
+        with open(sementara, "w", encoding="utf-8") as f:
+            json.dump(data, f)
+        os.replace(sementara, tujuan)
+    except Exception:
+        pass
+
+
 def main():
     mode = sys.argv[1] if len(sys.argv) > 1 else ""
     if mode == "--teks":
@@ -883,6 +937,8 @@ def main():
             _padatkan(teks).encode("utf-8", "surrogateescape"))
         return 0
     if mode == "--berkas":
+        cache = _muat_cache_vonis()
+        kotor = False
         for path in sys.stdin.buffer.read().split(b"\0"):
             if not path:
                 continue
@@ -892,9 +948,26 @@ def main():
                     isi = dekode_berkas(f.read())
             except OSError:
                 continue
-            if mengandung_token(isi):
+            vonis = None
+            kunci = None
+            if cache is not None:
+                kunci = hashlib.sha256(
+                    isi.encode("utf-8", "replace")).hexdigest()
+                vonis = cache["entri"].get(kunci)
+            if vonis is None:
+                vonis = mengandung_token(isi)
+                if cache is not None and kunci is not None:
+                    if len(cache["entri"]) > 10000:
+                        cache["entri"] = {}
+                    cache["entri"][kunci] = vonis
+                    kotor = True
+            if vonis:
+                if kotor:
+                    _simpan_cache_vonis(cache)
                 print(nama)
                 return 0
+        if kotor:
+            _simpan_cache_vonis(cache)
         return 0
     print("pemakaian: cek-token.py --teks | --teks-pesan | --berkas | --padatkan", file=sys.stderr)
     return 2

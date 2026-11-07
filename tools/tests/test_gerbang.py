@@ -526,6 +526,53 @@ class UjiPesanVerifikasiPath(unittest.TestCase):
         self.assertEqual(len(gagal), 1, gagal)
         self.assertIn("TERBELAH lintas pesan", gagal[0])
 
+    def test_cache_vonis_cli(self):
+        # Issue #1854: cache vonis mode --berkas berkunci
+        # hash isi + hash sumber hakim; versi basi wajib
+        # mengosongkan cache (entri palsu di bawah versi
+        # lama tak boleh menekan tuduhan), dan
+        # CEK_TOKEN_TANPA_CACHE=1 memintasnya total.
+        import hashlib
+        import json
+        import os
+        import subprocess
+        import sys
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            target = os.path.join(tmp, "tanam.txt")
+            with open(target, "w") as f:
+                f.write("awalan " + TOKEN + " akhiran")
+            env = dict(os.environ)
+            env["XDG_CACHE_HOME"] = os.path.join(tmp, "cache")
+
+            def lari(tambahan=None):
+                e = dict(env)
+                if tambahan:
+                    e.update(tambahan)
+                hasil = subprocess.run(
+                    [sys.executable,
+                     os.path.join(os.path.dirname(
+                         os.path.abspath(__file__)),
+                         "..", "cek-token.py"),
+                     "--berkas"],
+                    input=(target + "\0").encode(),
+                    capture_output=True, env=e, timeout=120)
+                return hasil.stdout.decode().strip()
+
+            self.assertEqual(lari(), target)
+            self.assertEqual(lari(), target)
+            cache_path = os.path.join(
+                env["XDG_CACHE_HOME"], "redeye-gerbang",
+                "vonis-cek-token.json")
+            self.assertTrue(os.path.exists(cache_path))
+            with open(target) as f:
+                kunci = hashlib.sha256(f.read().encode()).hexdigest()
+            with open(cache_path, "w") as f:
+                json.dump({"versi": "versi-basi",
+                           "entri": {kunci: False}}, f)
+            self.assertEqual(lari(), target)
+            self.assertEqual(lari({"CEK_TOKEN_TANPA_CACHE": "1"}), target)
+
     def test_belahan_tiga_perukaan(self):
         # Issue #1844: belahan TIGA permukaan — tiap
         # pasangan fragmen yang berurutan jumlahnya di
