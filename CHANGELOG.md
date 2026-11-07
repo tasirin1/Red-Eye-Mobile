@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Pengurai `byteArrayOf` gerbang kini mengenal ejaan saintifik/eksponen Double — pola angka menerima eksponen dan cabang nilai membacanya lewat float, sehingga `305e0.toByte()`, `30500e-2.toByte()`, dan `3.05e2.toByte()` tak lagi lolos dari kanal pengurai (issue #1901).
 - Rantai huruf pengurai `byteArrayOf` gerbang kini menerima langkah `.code` sesudah konversi — `'1'.code.toChar().code.toByte()` sebelumnya tidak terhitung sebagai elemen karena langkah `.code` hanya ditambahkan pada rantai angka oleh #1897, sehingga ejaan itu lolos total (issue #1900).
 
 ## [1.6.660] - 2026-11-07

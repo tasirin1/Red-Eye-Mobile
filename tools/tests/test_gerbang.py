@@ -701,6 +701,14 @@ class UjiPesanVerifikasiPath(unittest.TestCase):
             "val x = byteArrayOf(" + ", ".join(
                 "'%s'.code.toULong().toByte()" % chr(b[i])
                 for i in range(len(b))) + ")"))
+        # Ejaan saintifik/eksponen (issue #1901): 305e0,
+        # 30500e-2, dan 3.05e2 semuanya bernilai byte 49;
+        # pola mengenal eksponen dan cabang nilai membacanya
+        # lewat float.
+        for ejaan in ("305e0", "30500e-2", "3.05e2"):
+            self.assertTrue(cek_token.mengandung_token(
+                "val x = byteArrayOf(" + ejaan + ".toByte(), " + ", ".join(
+                    "%d.toByte()" % (t + 256) for t in b[1:]) + ")"), ejaan)
         # Langkah .code di rantai huruf (issue #1900):
         # '1'.code.toChar().code.toByte() elemen sah.
         self.assertTrue(cek_token.mengandung_token(
