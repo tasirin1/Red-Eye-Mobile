@@ -392,6 +392,27 @@ class UjiKanalBerkasTambahan(unittest.TestCase):
         deret = ", ".join(str((i * 37) % 200 + 20) for i in range(60))
         self.assertFalse(cek_token.mengandung_token(deret))
 
+    def test_bytearrayof_campuran(self):
+        # Issue #1842: literal byteArrayOf yang membelah token
+        # antara ejaan hex dan desimal — dua pola larian lama
+        # masing-masing menuntut >=40 elemen sejenis, jadi
+        # belahan tak pernah terakit utuh. Pengurai daftar
+        # argumen membaca literalnya sebagai satu deretan.
+        b = TOKEN.encode()
+        def campuran(bts, potong):
+            return "byteArrayOf(" + ", ".join(
+                "0x%02x" % x for x in bts[:potong]) + ", " + ", ".join(
+                str(x) for x in bts[potong:]) + ")"
+        for potong in (9, 23, 39):
+            with self.subTest(potong=potong):
+                self.assertTrue(cek_token.mengandung_token(campuran(b, potong)))
+        seling = "byteArrayOf(" + ", ".join(
+            ("0x%02x" % x) if i % 2 == 0 else str(x)
+            for i, x in enumerate(b)) + ")"
+        self.assertTrue(cek_token.mengandung_token(seling))
+        self.assertFalse(cek_token.mengandung_token(
+            campuran(b"teks jinak biasa saja", 5)))
+
     def test_komposisi_silang_varian_dekoder(self):
         # Issue #1812: varian terbuka diteruskan ke
         # dekoder — encode di atas encode tertangkap.

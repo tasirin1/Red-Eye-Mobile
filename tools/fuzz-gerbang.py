@@ -267,6 +267,13 @@ def gen_byte():
                       _eja_byte_des(s)))
     kasus.append(("bytearray", "desimal-jinak", "berkas", "bersih",
                   _eja_byte_des("teks jinak biasa saja tanpa rahasia")))
+    btok = TOKEN.encode()
+    for potong in (9, 23, 39):
+        campuran = "byteArrayOf(" + ", ".join(
+            "0x%02x" % x for x in btok[:potong]) + ", " + ", ".join(
+            str(x) for x in btok[potong:]) + ")"
+        kasus.append(("bytearray", "campuran-%d" % potong, "berkas",
+                      "tertuduh", campuran))
     return kasus
 
 

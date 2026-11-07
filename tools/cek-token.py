@@ -706,6 +706,43 @@ def mengandung_fragmen_pesan(teks):
         else:
             celah += 1
     return bool(blok) and tutup(blok)
+def _rakit_bytearray(teks):
+    """Rakitan byte dari literal byteArrayOf(...) (issue #1842).
+
+    Dua pola larian lama (hex murni, desimal murni) masing-masing
+    menuntut >=40 elemen sejenis, jadi literal yang membelah token
+    antara ejaan hex dan desimal tak pernah terakit utuh. Pengurai
+    ini membaca daftar argumen literalnya langsung — elemen hex
+    (0xNN) maupun desimal dibaca sebagai satu deretan berurutan.
+    Menghasilkan bytes tiap literal yang elemennya >=40 dan semua
+    nilainya muat sebagai byte.
+    """
+    for m in re.finditer(r"byteArrayOf\s*\(", teks):
+        awal = m.end()
+        kedalaman = 1
+        i = awal
+        while i < len(teks) and kedalaman:
+            c = teks[i]
+            if c == "(":
+                kedalaman += 1
+            elif c == ")":
+                kedalaman -= 1
+            i += 1
+        if kedalaman:
+            continue
+        dalam = teks[awal:i - 1]
+        elemen = re.findall(r"0[xX][0-9A-Fa-f]+|[0-9]+", dalam)
+        if len(elemen) < 40:
+            continue
+        try:
+            hasil = bytes(
+                int(e, 16) if e[:2].lower() == "0x" else int(e)
+                for e in elemen)
+        except ValueError:
+            continue
+        yield hasil
+
+
 def mengandung_token(teks):
     if not teks:
         return False
@@ -768,6 +805,12 @@ def mengandung_token(teks):
         if len(angka) < 40:
             continue
         hasil = bytes(int(a) for a in angka)
+        if _pola_atau_terbuka(hasil) or _nilai_lapis_bawah(hasil):
+            return True
+    # Rakitan campuran lintas ejaan (issue #1842): daftar
+    # argumen byteArrayOf dibaca utuh oleh pengurai, jadi
+    # belahan hex+desimal dalam satu literal tetap terakit.
+    for hasil in _rakit_bytearray(teks):
         if _pola_atau_terbuka(hasil) or _nilai_lapis_bawah(hasil):
             return True
     # Bentuk ter-encode web (issue #1799) dan escape

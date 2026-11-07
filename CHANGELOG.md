@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Fixed
+
+- Gerbang token: literal `byteArrayOf` campuran hex+desimal kini terakit utuh — pengurai daftar argumen membaca elemen kedua ejaan sebagai satu deretan, menutup lolosnya belahan yang tak mencapai 40 elemen sejenis di pola mana pun (issue #1842).
+
 ## [1.6.651] - 2026-11-07
 
 ### Fixed
