@@ -3515,13 +3515,23 @@ def masih_didefinisikan(nama):
     # metode — tanpa ini nama_metode_hilang memanen nama kelas
     # dari baris deklarasi lama dan masih_didefinisikan (yang
     # dulu hanya mencari "fun") tak pernah menemukannya lagi.
+    # Pohon tes ikut dicari (issue #1905): nama_metode_hilang
+    # memanen juga dari berkas tes dan pemanggil() memindai
+    # seluruh pohon app/, jadi pencarian definisi yang hanya
+    # di main memvonis perubahan tanda tangan helper tes yang
+    # sah sebagai penghapusan — definisi barunya sendiri ikut
+    # tertuduh sebagai pemanggil. Simetris di kedua pohon;
+    # panggilan menggantung sungguhan tetap tertangkap karena
+    # definisinya tidak ada di pohon mana pun.
     pola = re.compile(
         r"(?m)^[ \t]*(?:(?:public|private|protected|internal|override|suspend|inline|"
         r"operator|open|final|abstract|sealed|tailrec|infix|data)\s+)*"
         r"(?:fun\s+(?:<[^>\n]+>\s*)?(?:[\w.]+\.)?|class\s+)%s\s*(?:<[^>\n]+>\s*)?\(" % re.escape(nama))
-    for path in _jalan_pohon(os.path.join("app", "src", "main", "java")):
-        if pola.search(_rapikan_generik(_baca_pohon(path) or "")):
-            return True
+    for akar in (os.path.join("app", "src", "main", "java"),
+                 os.path.join("app", "src", "test", "java")):
+        for path in _jalan_pohon(akar):
+            if pola.search(_rapikan_generik(_baca_pohon(path) or "")):
+                return True
     return False
 
 
