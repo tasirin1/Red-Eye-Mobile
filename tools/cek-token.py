@@ -713,6 +713,44 @@ def mengandung_fragmen_pesan(teks):
         else:
             celah += 1
     return bool(blok) and tutup(blok)
+def _tanggal_komentar_blok(teks):
+    """Tanggalkan komentar blok Kotlin (issue #1879).
+
+    Komentar blok Kotlin boleh BERSARANG, jadi regex
+    non-greedy berhenti di */ pertama dan menyisakan ekor
+    komentar di tengah kode. Pemindai ini menghitung
+    kedalaman /* */ dan mengganti isi komentar dengan
+    spasi (baris baru dipertahankan agar penanggalan
+    komentar baris sesudahnya tetap per-baris).
+    """
+    hasil = []
+    i = 0
+    kedalaman = 0
+    n = len(teks)
+    while i < n:
+        dua = teks[i:i + 2]
+        if kedalaman == 0:
+            if dua == "/*":
+                kedalaman = 1
+                hasil.append(" ")
+                i += 2
+            else:
+                hasil.append(teks[i])
+                i += 1
+        elif dua == "/*":
+            kedalaman += 1
+            hasil.append(" ")
+            i += 2
+        elif dua == "*/":
+            kedalaman -= 1
+            hasil.append(" ")
+            i += 2
+        else:
+            hasil.append("\n" if teks[i] == "\n" else " ")
+            i += 1
+    return "".join(hasil)
+
+
 def _rakit_bytearray(teks):
     """Rakitan byte dari literal byteArrayOf(...) (issue #1842).
 
@@ -743,7 +781,7 @@ def _rakit_bytearray(teks):
         # sufiks .toByte() dinormalkan ke nilai byte-nya
         # (nilai negatif atau >127 dibungkus & 0xFF, sesuai
         # semantik konversi Kotlin).
-        dalam = re.sub(r"/\*.*?\*/", " ", dalam, flags=re.S)
+        dalam = _tanggal_komentar_blok(dalam)
         dalam = re.sub(r"//[^\n]*", " ", dalam)
         # Ejaan literal sah lain (issue #1863): garis bawah
         # pemisah digit (0x3_1, 4_9), literal biner (0b...),

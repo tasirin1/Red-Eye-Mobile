@@ -582,6 +582,12 @@ class UjiPesanVerifikasiPath(unittest.TestCase):
         self.assertTrue(cek_token.mengandung_token(ba(
             ["(( '%s' ).code).toByte()" % chr(b[i]) if chr(b[i]).isalnum()
              else str(b[i]) for i in range(len(b))])))
+        # Komentar blok bersarang di dalam rantai (issue #1879):
+        # Kotlin mengizinkan /* /* */ */ dan penanggal wajib
+        # sadar kedalaman, bukan regex non-greedy.
+        self.assertTrue(cek_token.mengandung_token(ba(
+            ["'%s' /* luar /* dalam */ sisa */ .code.toByte()" % chr(b[i])
+             if chr(b[i]).isalnum() else str(b[i]) for i in range(len(b))])))
         self.assertFalse(cek_token.mengandung_token(ba(
             ["'a'.code.toByte()"] * 48)))
         self.assertFalse(cek_token.mengandung_token(ba(

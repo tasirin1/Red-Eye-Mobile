@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Penanggal komentar blok gerbang kini sadar kedalaman bersarang (`_tanggal_komentar_blok`): komentar blok Kotlin boleh bersarang, jadi regex non-greedy lama berhenti di `*/` pertama dan menyisakan ekor komentar di tengah rantai literal huruf `byteArrayOf` sehingga token lolos; pemindai baru menghitung kedalaman `/*` `*/` dan mempertahankan baris baru, dibuktikan baterai (bersarang 2–3 lapis di dalam rantai tertuduh, jinak bersarang dan CHANGELOG bersih) dan uji suite diperluas (issue #1879).
 - Jalur salvage pembatalan rekaman audio kini menulis jurnal tujuan media: cabang `CancellationException` yang memfinalisasi rekaman terputus (`renameTo` + `keepForRetry`) dulu tak memanggil `simpanTujuanMedia`, jadi berkas salvage yang ditemukan flush dari pindaian direktori meluncur ke chat terkonfigurasi, bukan chat asal perintah — kelas dampak yang sama dengan jalur jeda #1867, cabangnya pembatalan (issue #1878).
 
 ## [1.6.655] - 2026-11-07
