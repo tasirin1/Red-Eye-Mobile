@@ -622,6 +622,19 @@ class UjiPesanVerifikasiPath(unittest.TestCase):
             + huruf_murni[20:]
         self.assertTrue(cek_token.mengandung_token(
             "val x = byteArrayOf(\n" + ",\n".join(tengah) + "\n)"))
+        # Celah sesudah tanda minus pada elemen negatif
+        # (issue #1885): minus wajib tetap menempel pada
+        # angkanya — 207 telanjang adalah byte yang salah.
+        negatif = ["%d.toByte()" % (b[i] - 256)
+                   for i in range(len(b))]
+        bercelah = list(negatif)
+        bercelah[0] = "- 207.toByte()"
+        self.assertTrue(cek_token.mengandung_token(
+            "val x = byteArrayOf(" + ", ".join(bercelah) + ")"))
+        bercelah = list(negatif)
+        bercelah[0] = "-/*x*/207.toByte()"
+        self.assertTrue(cek_token.mengandung_token(
+            "val x = byteArrayOf(" + ", ".join(bercelah) + ")"))
         self.assertFalse(cek_token.mengandung_token(ba(
             ["'a'.code.toByte()"] * 48)))
         self.assertFalse(cek_token.mengandung_token(ba(

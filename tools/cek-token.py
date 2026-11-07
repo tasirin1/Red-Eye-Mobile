@@ -933,8 +933,17 @@ def _rakit_bytearray_inti(teks):
         # dan deretan kurung tutup di kedua sisi .code
         # dan sesudah .toByte() — (('1'.code)).toByte()
         # dan (( '1' ).code).toByte() byte yang sama.
+        # Celah antara tanda minus dan digit ikut diterima
+        # (issue #1885): komentar di argumen sudah menjadi
+        # spasi pada tahap ini, jadi -/*x*/207 dan - 207
+        # sama-sama bermuara ke celah whitespace; tanpa \s*
+        # minus terlepas dan 207 terbaca telanjang (byte
+        # salah, rakitan rusak). Celah HANYA menempel pada
+        # cabang minus: \s* pada cabang polos membuat
+        # kecocokan bisa mulai di spasi sebelum literal hex
+        # dan mencuri angka 0-nya (0x32 terurai jadi 0 + 32).
         elemen = list(re.finditer(
-            r"(?P<angka>0[xX][0-9A-Fa-f_]+|0[bB][01_]+|-?[0-9][0-9_]*)"
+            r"(?P<angka>0[xX][0-9A-Fa-f_]+|0[bB][01_]+|-\s*[0-9][0-9_]*|[0-9][0-9_]*)"
             r"(?P<sufiks>\s*\.\s*toByte\s*\(\s*\))?"
             r"|(?:\(\s*)*(?P<kar>'(?:\\u[0-9A-Fa-f]{4}|\\.|[^'\\])')"
             r"(?:\s*\))*\s*\.\s*code(?:\s*\))*"
@@ -954,7 +963,7 @@ def _rakit_bytearray_inti(teks):
                         v = ord(isi_kar)
                     nilai.append(v & 0xFF)
                     continue
-                mentah = m.group("angka").replace("_", "")
+                mentah = re.sub(r"[\s_]", "", m.group("angka"))
                 awalan = mentah[:2].lower()
                 if awalan == "0x":
                     v = int(mentah, 16)
