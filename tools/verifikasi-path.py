@@ -2999,12 +2999,20 @@ def _cek_pesan_tag(gagal, pesan_commit=None):
     # jumlahnya di bawah kandidat minimum hakim (48),
     # padahal gabungan ketiganya token utuh. Tripel
     # larian yang sumbernya tidak semuanya sama
-    # dinilai dalam keenam urutannya; disiplin
-    # anggarannya meniru tangga pasangan — lantai
-    # adaptif dan cap tripel berbeda, dengan asal-usul
-    # (indeks sumber) tiap larian dipertahankan dan
-    # tiap larian berbeda dibatasi tiga asal-usul
-    # pertama agar enumerasi tetap terikat.
+    # dinilai dalam keenam urutannya.
+    # Disiplin anggaran (issue #1864): himpunan tripel
+    # TIDAK lagi dipotong menurut urutan enumerasi —
+    # vonis dulu bergantung posisi fragmen di banjir
+    # larian jinak. Kini daftar berlabel diurutkan
+    # kanonik (teks larian, lalu indeks sumber), tangga
+    # lantai memilih lantai dari hitungan batas-atas
+    # kandidat, dan penilaian MENYELURUH atas semua
+    # tripel berbeda di lantai terpilih. Katup keras
+    # 300.000 tripel ternilai membatasi banjir patologis;
+    # himpunan yang ternilai saat katup bekerja adalah
+    # awalan kanonik — fungsi dari multiset larian,
+    # bukan dari posisi fragmen di permukaan.
+    berlabel = []
     for lantai_t in (8, 10, 12, 16, 20):
         per_larian = {}
         for idx, t in enumerate(mentah):
@@ -3016,36 +3024,49 @@ def _cek_pesan_tag(gagal, pesan_commit=None):
                 asal = per_larian.setdefault(r, [])
                 if idx not in asal and len(asal) < 3:
                     asal.append(idx)
-        berlabel = [(r, i) for r, asal in per_larian.items()
-                    for i in asal]
-        tripel = set()
+        berlabel = sorted(
+            (r, i) for r, asal in per_larian.items()
+            for i in asal)
         n = len(berlabel)
+        jumlah = 0
         for a in range(n):
             for b in range(a + 1, n):
                 for c in range(b + 1, n):
                     if (berlabel[a][1] == berlabel[b][1]
                             == berlabel[c][1]):
                         continue
-                    tripel.add(tuple(sorted(
-                        (berlabel[a][0], berlabel[b][0],
-                         berlabel[c][0]))))
-                    if len(tripel) > 20000:
-                        break
-                if len(tripel) > 20000:
-                    break
-            if len(tripel) > 20000:
-                break
-        if len(tripel) <= 20000 or lantai_t == 20:
+                    if (len(berlabel[a][0]) + len(berlabel[b][0])
+                            + len(berlabel[c][0]) >= 48):
+                        jumlah += 1
+        if jumlah <= 20000 or lantai_t == 20:
             break
-    for r1, r2, r3 in tripel:
-        if len(r1) + len(r2) + len(r3) < 48:
-            continue
-        for gabung in ((r1, r2, r3), (r1, r3, r2),
-                       (r2, r1, r3), (r2, r3, r1),
-                       (r3, r1, r2), (r3, r2, r1)):
-            if mengandung_token_pesan("".join(gabung)):
-                tuduh_terbelah()
-                return True
+    sudah = set()
+    ternilai = 0
+    n = len(berlabel)
+    for a in range(n):
+        for b in range(a + 1, n):
+            for c in range(b + 1, n):
+                if (berlabel[a][1] == berlabel[b][1]
+                        == berlabel[c][1]):
+                    continue
+                kunci = tuple(sorted(
+                    (berlabel[a][0], berlabel[b][0],
+                     berlabel[c][0])))
+                if kunci in sudah:
+                    continue
+                sudah.add(kunci)
+                r1, r2, r3 = kunci
+                if len(r1) + len(r2) + len(r3) < 48:
+                    continue
+                ternilai += 1
+                if ternilai > 300000:
+                    return False
+                for gabung in ((r1, r2, r3), (r1, r3, r2),
+                               (r2, r1, r3), (r2, r3, r1),
+                               (r3, r1, r2), (r3, r2, r1)):
+                    if mengandung_token_pesan("".join(gabung)):
+                        tuduh_terbelah()
+                        return True
     return False
 
 

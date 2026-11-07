@@ -526,6 +526,28 @@ class UjiPesanVerifikasiPath(unittest.TestCase):
         self.assertEqual(len(gagal), 1, gagal)
         self.assertIn("TERBELAH lintas pesan", gagal[0])
 
+    def test_belahan_tiga_tak_bergantung_posisi(self):
+        # Issue #1864: vonis belahan tiga tak boleh
+        # bergantung posisi fragmen di banjir larian
+        # jinak — enumerasi kanonik + penilaian
+        # menyeluruh menggantikan potong 20.000 menurut
+        # urutan kemunculan.
+        enc = base64.urlsafe_b64encode(
+            TOKEN.encode()).decode().rstrip("=")
+        banjir = ["laporan %s selesai" % ("q" * 21 + "%03d" % i)
+                  for i in range(52)]
+        tripel = [enc[:22], enc[22:42], enc[42:]]
+
+        def nilai(pesan):
+            self._pasang_jalan(lambda *args: "")
+            gagal = []
+            verifikasi._cek_pesan_tag(gagal, list(pesan))
+            return len(gagal) > 0
+
+        self.assertTrue(nilai(tripel))
+        self.assertTrue(nilai(banjir + tripel))
+        self.assertTrue(nilai(tripel + banjir))
+
     def test_bytearrayof_ejaan_literal(self):
         # Issue #1863: ejaan literal Kotlin yang sah —
         # garis bawah pemisah digit, literal biner, dan
