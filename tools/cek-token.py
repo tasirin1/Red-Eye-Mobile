@@ -1018,7 +1018,7 @@ def _rakit_bytearray_inti(teks):
         elemen = list(re.finditer(
             r"(?:\(\s*)*(?P<angka>-?\s*0[xX][0-9A-Fa-f_]+|-?\s*0[bB][01_]+|-\s*[0-9][0-9_]*|[0-9][0-9_]*)"
             r"(?P<sufiks>\s*(?:[uU][lL]|[uU]|[lL])?(?:\s*\)|\s*\.\s*(?:toLong|toInt|toShort)\s*\(\s*\))*\s*\.\s*toByte\s*\(\s*\)(?:\s*\))*)?"
-            r"|(?:\(\s*)*(?P<kar>'(?:\\u[0-9A-Fa-f]{4}|\\.|[^'\\])')"
+            r"|(?P<negkar>-\s*)?(?:\(\s*)*(?P<negkar2>-\s*)?(?P<kar>'(?:\\u[0-9A-Fa-f]{4}|\\.|[^'\\])')"
             r"(?:\s*\))*\s*\.\s*code(?:\s*\)|\s*\.\s*(?:toLong|toInt|toShort)\s*\(\s*\))*"
             r"\s*\.\s*toByte\s*\(\s*\)(?:\s*\))*", dalam))
         if len(elemen) < 40:
@@ -1034,6 +1034,12 @@ def _rakit_bytearray_inti(teks):
                         v = ord(isi_kar[1])
                     else:
                         v = ord(isi_kar)
+                    # Rantai huruf dinegasikan (issue
+                    # #1894): minus di depan kurung atau
+                    # di dalam kurung membungkus nilai
+                    # kode seperti cabang angka bertanda.
+                    if m.group("negkar") or m.group("negkar2"):
+                        v = -v
                     nilai.append(v & 0xFF)
                     continue
                 mentah = re.sub(r"[\s_]", "", m.group("angka"))

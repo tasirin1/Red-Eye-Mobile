@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Pengurai `byteArrayOf` gerbang kini membaca rantai huruf yang dinegasikan — `(-'\u00cf'.code).toByte()` dan bentuk minus di luar kurung/telanjang: tanda minus pada rantai huruf sebelumnya tidak dibaca sama sekali sehingga byte rakitan berbeda dari byte sebenarnya dan ejaan itu lolos total (issue #1894).
+
 - Pengurai `byteArrayOf` gerbang kini menghitung rantai huruf yang melewati konversi perantara sebagai elemen — `'x'.code.toLong().toByte()` (dan `.toInt()`/`.toShort()`, termasuk di dalam kurung) sebelumnya tidak terhitung sehingga literal yang dieja penuh begitu lolos (issue #1893).
 
 - Pengurai `byteArrayOf` gerbang kini mengenali sisipan sah antara angka dan `.toByte()` — akhiran tipe (`305L`, `305u`, `305uL`), kurung pembungkus elemen (`(305).toByte()`), dan rantai konversi (`.toLong()`/`.toInt()`/`.toShort()`, termasuk di dalam kurung): sebelumnya elemen bernilai >255 dengan sisipan itu terbaca telanjang, `bytes()` melempar ValueError, dan seluruh rakitan dibuang sehingga satu elemen beracun membunuh semua elemen sah (issue #1892).

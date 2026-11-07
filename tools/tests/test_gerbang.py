@@ -678,6 +678,13 @@ class UjiPesanVerifikasiPath(unittest.TestCase):
             "val x = byteArrayOf(" + ", ".join(
                 "'%s'.code.toLong().toByte()" % chr(b[i])
                 for i in range(len(b))) + ")"))
+        # Rantai huruf dinegasikan (issue #1894): minus
+        # di dalam kurung membungkus nilai kode — byte
+        # 49 dieja (-'\u00cf'.code).toByte().
+        self.assertTrue(cek_token.mengandung_token(
+            "val x = byteArrayOf(" + ", ".join(
+                "(-'\\u%04X'.code).toByte()" % (256 - b[i])
+                for i in range(len(b))) + ")"))
         self.assertTrue(cek_token.mengandung_token(
             'val pola = ")"\nval x = byteArrayOf('
             + ", ".join(huruf_murni) + ")"))
