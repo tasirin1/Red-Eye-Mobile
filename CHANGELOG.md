@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.663] - 2026-11-07
+
 ### Fixed
 
 - `_kupas_komentar_kode` di verifikasi-path kini melewati interpolasi templat secara utuh saat memindai string — penanda `/*` di dalam string bersarang templat seperti `"${ "/*" }"` sebelumnya membuka komentar hantu yang menelan definisi dan pemanggil asli dari keluaran yang memberi makan cek acuan yatim, metode hilang, dan cakupan uji (issue #1907).
