@@ -48,8 +48,8 @@ class MessageQueue private constructor(context: Context) {
     // angka itu, jadi gabungan pulih (loadDropCountsLocked
     // aditif) wajib menguranginya — tanpa penanda ini angka
     // terlaporkan bangkit dan terlapor dua kali. Persist drop
-    // yang sukses (menulis kelima penghitung sekaligus)
-    // menolkan kelima penanda. Penanda mati bersama proses:
+    // yang sukses (menulis keenam penghitung sekaligus)
+    // menolkan keenam penanda. Penanda mati bersama proses:
     // kebangkitan lintas mati-proses = at-least-once yang
     // memang diterima desain volatile.
     private var takenUnpersistedOverflowDrops = 0L
@@ -386,7 +386,7 @@ class MessageQueue private constructor(context: Context) {
     private fun loadDropCountsLocked(add: Boolean = false) {
         try {
             // Wipe tertunda lintas proses lebih dulu (issue
-            // #1371): sesudahnya kelima kunci terbaca nol.
+            // #1371): sesudahnya keenam kunci terbaca nol.
             terapkanWipeTertundaLocked()
             // Tiap kunci dibaca dengan penjaganya sendiri
             // (issue #1109): satu getLong yang melempar
@@ -396,7 +396,7 @@ class MessageQueue private constructor(context: Context) {
             // dropsDirty=false dan persist berikutnya menulis
             // angka campuran era ke penyimpanan baru sesudah
             // reset. Kini kunci yang gagal terbaca = 0 dan
-            // kelima setter selalu berjalan sebagai satu
+            // keenam setter selalu berjalan sebagai satu
             // gambar utuh.
             fun bacaKunci(key: String): Long {
                 return try { sharedPreferences?.getLong(key, 0L) ?: 0L } catch (_: Exception) { 0L }
