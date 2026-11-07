@@ -60,6 +60,9 @@ class NotificationForwarderService : NotificationListenerService() {
     // Kunci khusus tulis-disk penanda (issue #1018): commit
     // sinkron tidak lagi menahan kunci dua peta penanda.
     private val markerPersistLock = Any()
+    // Job persist penanda tertunda (issue #1851): lihat
+    // jadwalkanPersistPenanda.
+    private var markerPersistJob: Job? = null
     @Volatile
     private var prefsRef: PreferencesManager? = null
     @Volatile
@@ -729,18 +732,87 @@ class NotificationForwarderService : NotificationListenerService() {
                 forwardedIdsView = LinkedHashSet(forwardedIds.keys)
             }
         }
-        // Commit disk di LUAR kunci peta (issue #1018): dulu
-        // tulis sinkron prefs terenkripsi berjalan sambil
-        // menahan dua kunci, menahan penulis lain (seeding
-        // adoptPrefs, flush lain). Yang ditulis adalah view
-        // terbaru yang dibaca di bawah kunci persist, jadi
-        // tulisan yang lebih baru tidak tertimpa yang lama.
+        // Persist disk DITUNDA + digabung (issue #1851,
+        // menggantikan commit sinkron per panggilan #1018):
+        // snapshot yang ditulis selalu view terbaru utuh,
+        // jadi commit per panggilan murni terbuang bila
+        // panggilan berikutnya datang berurutan — flush
+        // yang terpecah banyak segmen dulu membayar satu
+        // commit penuh per segmen di utas serial ini.
+        jadwalkanPersistPenanda()
+    }
+
+    // Penjadwal persist penanda (issue #1851), pola
+    // mengikuti dropPersistJob: satu job menulis hanya
+    // bila snapshot berubah sejak tulisan sukses
+    // terakhir, lalu beres sendiri sesudah mengejar.
+    // Keputusan beres atomik di bawah kunci persist
+    // yang sama dengan penjadwalan, jadi penanda baru
+    // yang tiba tepat saat job beres tetap memicu job
+    // baru. Arah gagal aman: proses mati sebelum job
+    // menulis hanya membuat penanda terakhir belum
+    // tersimpan — paling banter satu notifikasi
+    // diteruskan ulang sesudah restart (sejajar
+    // checkpoint #946). Saat job dibatalkan, satu
+    // tulisan akhir dicoba dulu (pola
+    // persistDropCountFinal).
+    private fun jadwalkanPersistPenanda() {
         synchronized(markerPersistLock) {
-            val groupSnapshot = groupForwardedView.entries.map { it.key + ":" + it.value }
-            val idSnapshot = forwardedIdsView.toList()
-            try {
-                (prefsRef ?: PreferencesManager.getInstance(this)).setForwardedMarkersSync(groupSnapshot, idSnapshot)
-            } catch (_: Exception) {
+            if (markerPersistJob?.isActive == true) return
+            markerPersistJob = scope.launch {
+                try {
+                    var tertulis: Pair<List<String>, List<String>>? = null
+                    var gagalBeruntun = 0
+                    while (true) {
+                        var selesai = false
+                        val potret = synchronized(markerPersistLock) {
+                            val p = groupForwardedView.entries.map { it.key + ":" + it.value } to forwardedIdsView.toList()
+                            if (p == tertulis) {
+                                if (markerPersistJob == coroutineContext[Job]) markerPersistJob = null
+                                selesai = true
+                            }
+                            p
+                        }
+                        if (selesai) break
+                        val ok = try {
+                            (prefsRef ?: PreferencesManager.getInstance(this@NotificationForwarderService)).setForwardedMarkersSync(potret.first, potret.second)
+                        } catch (_: Exception) {
+                            false
+                        }
+                        if (ok) {
+                            tertulis = potret
+                            gagalBeruntun = 0
+                        } else {
+                            // Disk yang gagal permanen tak
+                            // boleh memutar job selamanya:
+                            // menyerah sesudah ±10 detik,
+                            // panggilan penanda berikutnya
+                            // menjadwalkan job baru.
+                            gagalBeruntun++
+                            if (gagalBeruntun >= 40) {
+                                synchronized(markerPersistLock) {
+                                    if (markerPersistJob == coroutineContext[Job]) markerPersistJob = null
+                                }
+                                break
+                            }
+                        }
+                        delay(250L)
+                    }
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    try {
+                        val p = groupForwardedView.entries.map { it.key + ":" + it.value } to forwardedIdsView.toList()
+                        (prefsRef ?: PreferencesManager.getInstance(this@NotificationForwarderService)).setForwardedMarkersSync(p.first, p.second)
+                    } catch (_: Exception) {
+                    }
+                    synchronized(markerPersistLock) {
+                        if (markerPersistJob == coroutineContext[Job]) markerPersistJob = null
+                    }
+                    throw e
+                } catch (_: Exception) {
+                    synchronized(markerPersistLock) {
+                        if (markerPersistJob == coroutineContext[Job]) markerPersistJob = null
+                    }
+                }
             }
         }
     }
