@@ -13698,7 +13698,20 @@ class MonitoringService : Service() {
                 // dan rekaman berjalan sampai durasi penuh.
                 hentikanRekam.set(true)
             }
-            recorder.setOnInfoListener { _, what, _ -> if (galatRekam.get() == 0) galatRekam.set(what) }
+            recorder.setOnInfoListener { _, what, _ ->
+                // Kode info peristiwa wajar tak masuk slot
+                // galat (issue #1873): durasi/berkas
+                // maksimum tercapai, mendekati maksimum,
+                // dan berkas lanjutan mulai adalah kabar
+                // normal — menulisnya ke galatRekam
+                // memvonis rekaman sehat sebagai terganggu
+                // di akhir dan berkasnya dibuang.
+                if (what != android.media.MediaRecorder.MEDIA_RECORDER_INFO_MAX_DURATION_REACHED &&
+                    what != android.media.MediaRecorder.MEDIA_RECORDER_INFO_MAX_FILESIZE_REACHED &&
+                    what != android.media.MediaRecorder.MEDIA_RECORDER_INFO_MAX_FILESIZE_APPROACHING &&
+                    what != android.media.MediaRecorder.MEDIA_RECORDER_INFO_NEXT_OUTPUT_FILE_STARTED &&
+                    galatRekam.get() == 0) galatRekam.set(what)
+            }
             recorder.prepare()
             recorderActive.set(true)
             recorder.start()
