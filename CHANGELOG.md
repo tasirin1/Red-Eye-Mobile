@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.664] - 2026-11-07
+
 ### Fixed
 
 - Pengecualian `matcher` di `cek_pola_boros` verifikasi-path kini hanya berlaku untuk rantai penerima yang sama (`matcher(...).split(`/`.matches(`) — kata `matcher` di komentar atau pernyataan lain sebaris sebelumnya menelan peringatan pola boros yang tak berhubungan (issue #1911).
