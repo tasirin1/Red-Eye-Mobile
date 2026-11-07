@@ -268,9 +268,18 @@ class UjiKanalBerkasTambahan(unittest.TestCase):
         belah += b"\n" * (1536 * 1024)
         belah += TOKEN[24:].encode()
         belah += b"B" * (600 * 1024)
+        # Issue #1917: belahan dipisah komentar blok panjang
+        # yang menyeberangi jahitan ikut tertuduh lewat
+        # penerusan keadaan leksikal antar-potong.
+        komentar = bytearray(b"A" * (cek_token._POTONG - 5000))
+        komentar += TOKEN[:24].encode()
+        komentar += b" /*" + b"\n" * 800000 + b"*/ "
+        komentar += TOKEN[24:].encode()
+        komentar += b"B" * (900 * 1024)
         with tempfile.TemporaryDirectory() as d:
             for nama, data, harap in (("kotor", bytes(isi), True),
                                       ("belah", bytes(belah), True),
+                                      ("komentar", bytes(komentar), True),
                                       ("bersih", bersih, False)):
                 path = os.path.join(d, nama)
                 with open(path, "wb") as f:

@@ -849,12 +849,25 @@ def _tanggal_komentar_blok(teks, copot_baris=False):
     /* di dalamnya BUKAN pembuka komentar, dan membukanya
     sebagai blok hantu menelan kode asli sampai */ berikutnya.
     """
+    return _pindai_komentar(teks, copot_baris)[0]
+
+
+def _pindai_komentar(teks, copot_baris=False, tumpukan=None):
+    """Mesin penanggal komentar berkembalian keadaan akhir.
+
+    _tanggal_komentar_blok membungkus fungsi ini; keadaan
+    akhir (tumpukan) dipakai penilaian per potong untuk
+    memulihkan keadaan leksikal di jahitan potong (issue
+    #1917)."""
     hasil = []
     i = 0
     n = len(teks)
     # Keadaan: "kode", "baris", "huruf", ("blok", dalam),
     # ("string", mentah), ("templat", dalam kurung).
-    tumpukan = ["kode"]
+    if tumpukan is None:
+        tumpukan = ["kode"]
+    else:
+        tumpukan = list(tumpukan)
     while i < n:
         keadaan = tumpukan[-1]
         c = teks[i]
@@ -955,7 +968,7 @@ def _tanggal_komentar_blok(teks, copot_baris=False):
             else:
                 hasil.append(c)
                 i += 1
-    return "".join(hasil)
+    return "".join(hasil), tumpukan
 
 
 def _peta_kurung(teks):
@@ -1369,16 +1382,23 @@ def _potong_mengandung_token(nama):
     (jutaan newline -> nyaris nol), jadi jembatan byte
     mentah saja tak cukup — ekor terpadatkan 512 aksara
     dari potong-potong sebelumnya ikut dinilai bersama
-    padatan potong berjalan, sejajar semantik jalur utuh."""
+    padatan potong berjalan, sejajar semantik jalur utuh.
+    Keadaan leksikal diteruskan antar-potong (issue #1917):
+    tumpukan penanggal komentar dijalankan atas tiap potong
+    dan potong berikutnya diawali pembuka sintetis yang
+    memulihkan keadaannya — tanpa itu potong yang mulai di
+    tengah komentar blok membaca penutup yatim sebagai kode
+    dan belahan berkomentar panjang tak pernah tersambung."""
     ekor = b""
     jembatan = ""
+    tumpukan = ["kode"]
     with open(nama, "rb") as f:
         while True:
             mentah = f.read(_POTONG)
             if not mentah:
                 return False
             gabung = ekor + mentah
-            teks = dekode_berkas(gabung)
+            teks = _awalan_keadaan(tumpukan) + dekode_berkas(gabung)
             if mengandung_token(teks):
                 return True
             calon = jembatan + _padatkan(teks)
@@ -1386,6 +1406,29 @@ def _potong_mengandung_token(nama):
                 return True
             jembatan = calon[-512:]
             ekor = gabung[-_TUMPANG:]
+            _, tumpukan = _pindai_komentar(
+                dekode_berkas(mentah), copot_baris=True,
+                tumpukan=tumpukan)
+
+
+def _awalan_keadaan(tumpukan):
+    """Pembuka sintetis yang memulihkan keadaan leksikal
+    tumpukan penanggal komentar (issue #1917): urutan
+    pembuka yang membawa mesin segar ke keadaan yang sama
+    dengan akhir potong sebelumnya."""
+    bagian = []
+    for keadaan in tumpukan[1:]:
+        if isinstance(keadaan, tuple) and keadaan[0] == "blok":
+            bagian.append("/*" * keadaan[1])
+        elif keadaan == "baris":
+            bagian.append("//")
+        elif isinstance(keadaan, tuple) and keadaan[0] == "string":
+            bagian.append('"""' if keadaan[1] else '"')
+        elif keadaan == "huruf":
+            bagian.append("'")
+        elif isinstance(keadaan, tuple) and keadaan[0] == "templat":
+            bagian.append("${" + "{" * keadaan[1])
+    return "".join(bagian)
 
 
 def main():

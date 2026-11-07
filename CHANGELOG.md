@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Penilaian berkas besar per potong di cek-token kini meneruskan keadaan leksikal komentar antar-potong — belahan token yang dipisah komentar panjang menyeberangi jahitan potong sebelumnya lolos karena potong berikutnya mulai dari keadaan bersih (#1917).
+
 ## [1.6.667] - 2026-11-07
 
 ### Fixed
