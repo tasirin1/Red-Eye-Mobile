@@ -863,6 +863,110 @@ def _lewati_komentar(teks, i):
     return i
 
 
+def _peta_kurung(teks):
+    """Peta indeks kurung buka -> indeks kurung tutup pasangannya.
+
+    Satu lintasan sadar leksikal (tumpukan keadaan yang sama
+    dengan _tanggal_komentar_blok): kurung di dalam komentar,
+    string, dan literal huruf tidak dihitung; ekspresi
+    templat ${...} dihitung sebagai kode. Kurung tak
+    berpasangan tidak masuk peta. Menggantikan pemindaian
+    kedalaman ulang per literal yang kuadratik bila banyak
+    literal tak tertutup (issue #1887): tiap kecocokan
+    byteArrayOf yang tak seimbang dulu memindai ulang sampai
+    akhir teks — dan pemindaian lama yang mulai sesudah nama
+    literal tak pernah melihat string di depannya, sedangkan
+    peta memindai seluruh teks, jadi kesadaran leksikalnya
+    wajib penuh.
+    """
+    peta = {}
+    tumpukan_kurung = []
+    keadaan = ["kode"]
+    i = 0
+    n = len(teks)
+    while i < n:
+        mode = keadaan[-1]
+        c = teks[i]
+        dua = teks[i:i + 2]
+        if mode == "kode" or (isinstance(mode, tuple)
+                              and mode[0] == "templat"):
+            if dua == "/*":
+                keadaan.append(("blok", 1))
+                i += 2
+            elif dua == "//":
+                keadaan.append("baris")
+                i += 2
+            elif teks[i:i + 3] == '"""':
+                keadaan.append(("string", True))
+                i += 3
+            elif c == '"':
+                keadaan.append(("string", False))
+                i += 1
+            elif c == "'":
+                keadaan.append("huruf")
+                i += 1
+            elif mode != "kode" and c == "{":
+                keadaan[-1] = ("templat", mode[1] + 1)
+                i += 1
+            elif mode != "kode" and c == "}":
+                if mode[1] == 0:
+                    keadaan.pop()
+                else:
+                    keadaan[-1] = ("templat", mode[1] - 1)
+                i += 1
+            else:
+                if c == "(":
+                    tumpukan_kurung.append(i)
+                elif c == ")" and tumpukan_kurung:
+                    peta[tumpukan_kurung.pop()] = i
+                i += 1
+        elif mode == "baris":
+            i += 1
+            if c in "\r\n":
+                keadaan.pop()
+        elif isinstance(mode, tuple) and mode[0] == "blok":
+            if dua == "/*":
+                keadaan[-1] = ("blok", mode[1] + 1)
+                i += 2
+            elif dua == "*/":
+                if mode[1] == 1:
+                    keadaan.pop()
+                else:
+                    keadaan[-1] = ("blok", mode[1] - 1)
+                i += 2
+            else:
+                i += 1
+        elif isinstance(mode, tuple) and mode[0] == "string":
+            if c == "\\" and not mode[1]:
+                i += 2
+            elif dua == "${":
+                keadaan.append(("templat", 0))
+                i += 2
+            elif mode[1] and teks[i:i + 3] == '"""':
+                keadaan.pop()
+                i += 3
+            elif not mode[1] and c == '"':
+                keadaan.pop()
+                i += 1
+            elif not mode[1] and c == "\n":
+                keadaan.pop()
+                i += 1
+            else:
+                i += 1
+        elif mode == "huruf":
+            if c == "\\":
+                i += 2
+            elif c == "'":
+                keadaan.pop()
+                i += 1
+            elif c == "\n":
+                keadaan.pop()
+                i += 1
+            else:
+                i += 1
+    return peta
+
+
 def _rakit_bytearray(teks):
     """Rakitan byte dari literal byteArrayOf(...) (issue #1842).
 
@@ -890,28 +994,12 @@ def _rakit_bytearray_inti(teks):
     Menghasilkan bytes tiap literal yang elemennya >=40 dan semua
     nilainya muat sebagai byte.
     """
+    peta = _peta_kurung(teks)
     for m in re.finditer(r"byteArrayOf\s*\(", teks):
-        awal = m.end()
-        kedalaman = 1
-        i = awal
-        while i < len(teks) and kedalaman:
-            c = teks[i]
-            if c == "/" and teks[i + 1:i + 2] in ("*", "/"):
-                # Kurung di dalam komentar tidak ikut
-                # dihitung (issue #1883): kurung tutup di
-                # komentar memotong argumen lebih awal dan
-                # kurung buka di komentar membuat literal
-                # terlewat seluruhnya.
-                i = _lewati_komentar(teks, i)
-                continue
-            if c == "(":
-                kedalaman += 1
-            elif c == ")":
-                kedalaman -= 1
-            i += 1
-        if kedalaman:
+        tutup = peta.get(m.end() - 1)
+        if tutup is None:
             continue
-        dalam = teks[awal:i - 1]
+        dalam = teks[m.end():tutup]
         # Segmentasi di dalam kurung (issue #1843): komentar
         # blok/baris yang menyela deretan dilewati, dan
         # sufiks .toByte() dinormalkan ke nilai byte-nya

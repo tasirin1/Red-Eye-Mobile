@@ -642,6 +642,16 @@ class UjiPesanVerifikasiPath(unittest.TestCase):
         self.assertTrue(cek_token.mengandung_token(
             "val x = byteArrayOf // celah\r("
             + ", ".join(huruf_murni) + ")"))
+        # Peta kurung satu lintasan (issue #1887): ratusan
+        # literal tak tertutup tak boleh menenggelamkan
+        # literal sah di ekor berkas, dan kurung di dalam
+        # string sebelum literal tak ikut berpasangan.
+        tenggelam = ("byteArrayOf(" + "1, " * 8 + "\n") * 300 \
+            + "val x = byteArrayOf(" + ", ".join(huruf_murni) + ")"
+        self.assertTrue(cek_token.mengandung_token(tenggelam))
+        self.assertTrue(cek_token.mengandung_token(
+            'val pola = ")"\nval x = byteArrayOf('
+            + ", ".join(huruf_murni) + ")"))
         self.assertFalse(cek_token.mengandung_token(ba(
             ["'a'.code.toByte()"] * 48)))
         self.assertFalse(cek_token.mengandung_token(ba(
