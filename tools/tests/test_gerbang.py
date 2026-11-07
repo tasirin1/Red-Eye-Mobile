@@ -593,6 +593,21 @@ class UjiPesanVerifikasiPath(unittest.TestCase):
             "val x = byteArrayOf/*k*/(" + ", ".join(
                 "'%s'.code.toByte()" % chr(b[i]) if chr(b[i]).isalnum()
                 else str(b[i]) for i in range(len(b))) + ")"))
+        # Kurung tak seimbang di dalam komentar di tengah
+        # argumen (issue #1883): pemindaian kedalaman wajib
+        # melewati komentar utuh — kurung tutup di komentar
+        # memotong argumen, kurung buka membuatnya terlewat.
+        huruf_murni = ["'%s'.code.toByte()" % chr(b[i])
+                       for i in range(len(b))]
+        for sisip in ("/* urutan: 1) awal */",
+                      "/* ( pembuka */"):
+            tengah = huruf_murni[:20] + [sisip] + huruf_murni[20:]
+            self.assertTrue(cek_token.mengandung_token(
+                "val x = byteArrayOf(" + ", ".join(tengah) + ")"))
+        tengah = huruf_murni[:20] + ["// catatan ) di sini"] \
+            + huruf_murni[20:]
+        self.assertTrue(cek_token.mengandung_token(
+            "val x = byteArrayOf(\n" + ",\n".join(tengah) + "\n)"))
         self.assertFalse(cek_token.mengandung_token(ba(
             ["'a'.code.toByte()"] * 48)))
         self.assertFalse(cek_token.mengandung_token(ba(

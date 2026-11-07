@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Pemindaian kedalaman kurung pengurai `byteArrayOf` di gerbang kini melewati komentar secara utuh: kurung di dalam komentar blok/baris di tengah argumen dulu ikut terhitung — kurung tutup memotong isi argumen (elemen ekor hilang) dan kurung buka membuat literal terlewat seluruhnya, sehingga token ejaan huruf/campuran bisa lolos dari gerbang (issue #1883).
+
 - Impor mati `android.os.Build` di `MainActivity` dihapus: berkas itu hanya memakai nama-penuh `android.os.Build.VERSION.SDK_INT` dan `BuildConfig` (kelas berbeda), jadi impornya tak pernah terpakai (issue #1882).
 
 - Jurnal tujuan media foto dan video kini ditulis sinkron sebelum lompatan `serviceScope.launch`: berkas final sudah berada di direktori antrean saat `sendCapturedPhoto`/callback `onVideoTaken` berjalan, tetapi jurnal sebelumnya baru ditulis di dalam badan launch — bila layanan dihancurkan pada celah sub-detik itu, berkas yatim tanpa jurnal ter-flush ke chat terkonfigurasi, bukan chat asal (kelas #1867/#1878, jalur balapan teardown). Penulisan ulang jurnal di badan launch idempoten dan chat kosong tetap no-op (issue #1881).

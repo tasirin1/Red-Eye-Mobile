@@ -751,6 +751,34 @@ def _tanggal_komentar_blok(teks):
     return "".join(hasil)
 
 
+def _lewati_komentar(teks, i):
+    """Indeks tepat sesudah komentar yang mulai di i.
+
+    teks[i:i + 2] adalah "/*" (blok, sadar bersarang) atau
+    "//" (baris, sampai baris baru \\n atau \\r). Komentar
+    yang tak tertutup berjalan sampai akhir teks.
+    """
+    n = len(teks)
+    if teks[i + 1] == "*":
+        kedalaman = 1
+        i += 2
+        while i < n and kedalaman:
+            dua = teks[i:i + 2]
+            if dua == "/*":
+                kedalaman += 1
+                i += 2
+            elif dua == "*/":
+                kedalaman -= 1
+                i += 2
+            else:
+                i += 1
+        return i
+    i += 2
+    while i < n and teks[i] not in "\r\n":
+        i += 1
+    return i
+
+
 def _rakit_bytearray(teks):
     """Rakitan byte dari literal byteArrayOf(...) (issue #1842).
 
@@ -784,6 +812,14 @@ def _rakit_bytearray_inti(teks):
         i = awal
         while i < len(teks) and kedalaman:
             c = teks[i]
+            if c == "/" and teks[i + 1:i + 2] in ("*", "/"):
+                # Kurung di dalam komentar tidak ikut
+                # dihitung (issue #1883): kurung tutup di
+                # komentar memotong argumen lebih awal dan
+                # kurung buka di komentar membuat literal
+                # terlewat seluruhnya.
+                i = _lewati_komentar(teks, i)
+                continue
             if c == "(":
                 kedalaman += 1
             elif c == ")":
