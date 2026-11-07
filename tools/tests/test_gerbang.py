@@ -672,6 +672,12 @@ class UjiPesanVerifikasiPath(unittest.TestCase):
             self.assertTrue(cek_token.mengandung_token(
                 "val x = byteArrayOf(" + ", ".join(elemen) + ")"),
                 sisipan)
+        # Rantai huruf lewat konversi perantara (issue
+        # #1893): 'x'.code.toLong().toByte() elemen sah.
+        self.assertTrue(cek_token.mengandung_token(
+            "val x = byteArrayOf(" + ", ".join(
+                "'%s'.code.toLong().toByte()" % chr(b[i])
+                for i in range(len(b))) + ")"))
         self.assertTrue(cek_token.mengandung_token(
             'val pola = ")"\nval x = byteArrayOf('
             + ", ".join(huruf_murni) + ")"))
