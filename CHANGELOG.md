@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Regex pemisah spasi di `NumericArg.parse` kini di-hoist ke konstanta objek (`SPASI`) menyamai `ATTACHED` — sebelumnya `Regex("\\s+")` dikompilasi ulang pada setiap panggilan parse, padahal parse berjalan untuk setiap argumen angka perintah dan polanya tak pernah berubah (issue #1877).
 - Pengurai `byteArrayOf` gerbang kini menerima kurung berlapis/bersarang pada rantai literal huruf — `(('1'.code)).toByte()`, `(('1')).code.toByte()`, `(( '1' ).code).toByte()` mengkompilasi ke byte yang sama tetapi regex #1869 hanya menerima satu kurung sehingga token lolos; deretan kurung buka/tutup kini diterima di ketiga posisi rantai, dibuktikan baterai sembilan kasus (semua bentuk bersarang tertuduh, kontrol jinak bersarang dan CHANGELOG bersih) dan uji suite diperluas (issue #1876).
 
 ## [1.6.654] - 2026-11-07

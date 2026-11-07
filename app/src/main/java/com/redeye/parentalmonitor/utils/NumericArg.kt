@@ -24,6 +24,11 @@ object NumericArg {
 
     private val ATTACHED = Regex("^([0-9]+)([a-z]+)$")
 
+    // Pemisah spasi di-hoist ke level objek (issue #1877):
+    // sebelumnya Regex dibangun ulang pada setiap panggilan
+    // parse, padahal polanya tetap — menyamai ATTACHED di atas.
+    private val SPASI = Regex("\\s+")
+
     // Faktor ke satuan dasar keluarga: detik untuk waktu, meter jarak.
     private fun faktor(s: Satuan): Long = when (s) {
         Satuan.DETIK -> 1L
@@ -37,7 +42,7 @@ object NumericArg {
     fun parse(raw: String, native: Satuan): Int? {
         val t = raw.trim().lowercase(Locale.ROOT)
         if (t.isEmpty()) return null
-        val parts = t.split(Regex("\\s+")).filter { it.isNotEmpty() }
+        val parts = t.split(SPASI).filter { it.isNotEmpty() }
         var num: Long? = null
         var unit: Satuan? = null
         when (parts.size) {
