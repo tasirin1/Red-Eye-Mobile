@@ -276,10 +276,22 @@ class UjiKanalBerkasTambahan(unittest.TestCase):
         komentar += b" /*" + b"\n" * 800000 + b"*/ "
         komentar += TOKEN[24:].encode()
         komentar += b"B" * (900 * 1024)
+        # Issue #1918: pembuka komentar terbelah PERSIS di
+        # jahitan ("/" byte terakhir potong, "*" byte
+        # pertama berikutnya) dengan komentar membentang
+        # dua jahitan ikut tertuduh lewat kemajuan keadaan
+        # dari teks gabungan.
+        jahit = bytearray(b"A" * (cek_token._POTONG - 25))
+        jahit += TOKEN[:24].encode()
+        jahit += b"/"
+        jahit += b"*" + b"\n" * (2 * cek_token._POTONG) + b"*/ "
+        jahit += TOKEN[24:].encode()
+        jahit += b"B" * (100 * 1024)
         with tempfile.TemporaryDirectory() as d:
             for nama, data, harap in (("kotor", bytes(isi), True),
                                       ("belah", bytes(belah), True),
                                       ("komentar", bytes(komentar), True),
+                                      ("jahit", bytes(jahit), True),
                                       ("bersih", bersih, False)):
                 path = os.path.join(d, nama)
                 with open(path, "wb") as f:

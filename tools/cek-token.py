@@ -1388,17 +1388,24 @@ def _potong_mengandung_token(nama):
     dan potong berikutnya diawali pembuka sintetis yang
     memulihkan keadaannya — tanpa itu potong yang mulai di
     tengah komentar blok membaca penutup yatim sebagai kode
-    dan belahan berkomentar panjang tak pernah tersambung."""
+    dan belahan berkomentar panjang tak pernah tersambung.
+    Kemajuan keadaan memindai teks GABUNGAN dari potret di
+    awal wilayah tumpang-tindih (issue #1918): memindai byte
+    segar saja melewatkan pembuka dua-aksara yang terbelah
+    persis di jahitan (`/` di ujung potong, `*` di awal
+    potong berikutnya)."""
     ekor = b""
     jembatan = ""
     tumpukan = ["kode"]
+    tumpukan_mundur = ["kode"]
     with open(nama, "rb") as f:
         while True:
             mentah = f.read(_POTONG)
             if not mentah:
                 return False
             gabung = ekor + mentah
-            teks = _awalan_keadaan(tumpukan) + dekode_berkas(gabung)
+            dasar = dekode_berkas(gabung)
+            teks = _awalan_keadaan(tumpukan) + dasar
             if mengandung_token(teks):
                 return True
             calon = jembatan + _padatkan(teks)
@@ -1407,8 +1414,11 @@ def _potong_mengandung_token(nama):
             jembatan = calon[-512:]
             ekor = gabung[-_TUMPANG:]
             _, tumpukan = _pindai_komentar(
-                dekode_berkas(mentah), copot_baris=True,
-                tumpukan=tumpukan)
+                dasar, copot_baris=True, tumpukan=tumpukan_mundur)
+            pangkal = gabung[:-_TUMPANG] if len(gabung) > _TUMPANG else b""
+            _, tumpukan_mundur = _pindai_komentar(
+                dekode_berkas(pangkal), copot_baris=True,
+                tumpukan=tumpukan_mundur)
 
 
 def _awalan_keadaan(tumpukan):
