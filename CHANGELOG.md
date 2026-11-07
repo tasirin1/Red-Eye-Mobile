@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- `cek_izin_baru` di verifikasi-path kini menilai izin per elemen pada gabungan baris tambah dengan regex toleran — elemen multi-baris (gaya formatter Android Studio), petik tunggal, dan spasi sekitar `=` sebelumnya lolos tanpa pengingat izin baru padahal ketiganya bentuk XML yang sah (issue #1910).
 - Penghapus interpolasi di pemadatan cek-token kini sadar kurung bersarang dan menangani templat nama sederhana — belahan `${ run { "" } }` (interpolasi bersarang yang bernilai string kosong) dan belahan `$x` sebelumnya lolos karena penghapusan berhenti di `}` pertama dan bentuk nama sederhana tak ditangani, padahal keduanya merakit token utuh saat jalan (issue #1909).
 - Pemadatan cek-token kini menanggalkan komentar lebih dulu secara leksikal (pemindai sadar string yang sama dengan kanal byteArrayOf) — belahan yang dipisah komentar kosong sebelumnya lolos di semua kanal berkas padahal di Kotlin komentar adalah spasi sehingga `"paruh1" + // "paruh2"` sungguh menyambung token utuh saat jalan; isi komentar sendiri kini tak ikut tersambung sehingga contoh format angka di komentar prosa tetap bersih (issue #1908).
 

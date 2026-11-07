@@ -1684,12 +1684,35 @@ def cek_pola_boros(peringatan, diff):
 
 
 def cek_izin_baru(peringatan, diff):
+    # Nilai per ELEMEN pada gabungan baris tambah (issue
+    # #1910): elemen multi-baris (nama atribut di baris
+    # berikutnya — gaya bawaan formatter Android Studio),
+    # petik tunggal, dan spasi sekitar = adalah bentuk
+    # XML sah yang sebelumnya lolos tanpa pengingat
+    # karena pencocokan menuntut tag + nama petik ganda
+    # pada satu baris yang sama.
+    # Hanya hunk AndroidManifest.xml yang dinilai: izin
+    # hanya hidup di sana, dan membatasi domain juga
+    # mencegah literal contoh izin di berkas lain
+    # (termasuk uji gerbang ini sendiri) tertuduh.
+    potongan = []
+    di_manifest = False
     for baris in diff.splitlines():
-        if baris.startswith("+") and "uses-permission" in baris:
-            cocok = re.search(r'android:name="([^"]+)"', baris)
-            if cocok:
-                peringatan.append("Izin baru %s — pastikan perlu + tercatat README"
-                                  % cocok.group(1))
+        if baris.startswith("+++"):
+            di_manifest = baris.rstrip().endswith("AndroidManifest.xml")
+            continue
+        if baris.startswith("diff --git"):
+            di_manifest = False
+            continue
+        if di_manifest and baris.startswith("+"):
+            potongan.append(baris[1:])
+    gabungan = "\n".join(potongan)
+    for cocok in re.finditer(
+            r"<uses-permission(?:-sdk-23)?\b[^>]*?"
+            r"android:name\s*=\s*[\"']([^\"']+)[\"']",
+            gabungan):
+        peringatan.append("Izin baru %s — pastikan perlu + tercatat README"
+                          % cocok.group(1))
 
 
 def cek_definisi_baru(peringatan, diff):

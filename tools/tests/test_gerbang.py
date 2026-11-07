@@ -493,6 +493,32 @@ class UjiKanalBerkasTambahan(unittest.TestCase):
         self.assertFalse(cek_token.mengandung_token(contoh))
 
 
+class UjiIzinBaru(unittest.TestCase):
+    def test_bentuk_sah_terbit_pengingat(self):
+        # Issue #1910: pengingat izin baru wajib terbit
+        # untuk elemen multi-baris, petik tunggal, dan
+        # spasi sekitar = — bukan hanya satu baris petik
+        # ganda; baris konteks/hapus tak dituduh.
+        kepala = ("diff --git a/app/src/main/AndroidManifest.xml "
+                   "b/app/src/main/AndroidManifest.xml\n"
+                   "+++ b/app/src/main/AndroidManifest.xml\n")
+        for diff in (
+            '+<uses-permission android:name="android.permission.CAMERA"/>',
+            '+<uses-permission\n'
+            '+    android:name="android.permission.CAMERA"/>',
+            "+<uses-permission android:name='android.permission.CAMERA'/>",
+            '+<uses-permission android:name = "android.permission.CAMERA"/>',
+        ):
+            peringatan = []
+            verifikasi.cek_izin_baru(peringatan, kepala + diff)
+            self.assertEqual(len(peringatan), 1, diff)
+        peringatan = []
+        verifikasi.cek_izin_baru(
+            peringatan,
+            kepala + ' <uses-permission android:name="android.permission.CAMERA"/>')
+        self.assertEqual(peringatan, [])
+
+
 class UjiPesanVerifikasiPath(unittest.TestCase):
     # Kanal pesan milik verifikasi-path (bukan cek-token):
     # gabungan lintas commit, metadata, dan nama tag.
