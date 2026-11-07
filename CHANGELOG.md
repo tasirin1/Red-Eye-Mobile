@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Fuzzer gerbang: sel kosong matriks ditutup — pasangan enkoder-sama (hex(hex), b32(b32), persen(persen), entitas(entitas), escape-u(escape-u)) kini dibangkitkan, ejaan desimal `byteArrayOf` ikut diuji, dan keluarga belah menstub permukaan tag (nama tag × pesan, anotasi tag × branch, nama tag × anotasi tag) selain branch; total 173 kasus, tetap nol lolos dan nol positif palsu (issue #1841).
 - Gerbang token: kanal `byteArrayOf` kini juga merakit ejaan DESIMAL (`byteArrayOf(49, 50, ...)`), bukan hanya pasangan `0xNN` — sebelumnya token yang ditempel sebagai deretan angka desimal (semua aksara token ASCII < 128) lolos total; vonis rakitannya sama seperti rakitan hex (issue #1840).
 - Jalur SENT kini menggerbang pembersihan jurnal pada kemusnahan berkas (saudara #1836): ketiga fungsi kirim hanya membersihkan jurnal coba bila penghapusan pasca-kirim berhasil, dan blok pasca-kirim kedua flush + konsumen kirim-langsung hanya menghapus jurnal tujuan/upaya/coba bila berkas sudah tidak ada — sebelumnya berkas yang selamat dari kegagalan hapus total sesudah terkirim terkirim ulang ke chat terkonfigurasi (bukan chat tangkapan asal) dan tanpa label pengiriman ulang (issue #1839).
 

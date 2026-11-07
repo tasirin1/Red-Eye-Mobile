@@ -125,8 +125,6 @@ def gen_encode():
     kuat = ["persen", "entitas", "escape-u", "b64", "hex", "b32"]
     for luar in kuat:
         for dalam in kuat:
-            if luar == dalam and luar != "b64":
-                continue
             s = ENKODER[luar](ENKODER[dalam](TOKEN))
             for permukaan in ("berkas", "pesan"):
                 kasus.append(("encode2", luar + "(" + dalam + ")",
@@ -215,6 +213,17 @@ def gen_belah():
                                    ["prosa " + ENC[k:] + " selesai"])))
     kasus.append(("belah", "tepi-tengah/57", "belah", "batas",
                   ("wip/" + ENC[:57], ["prosa " + ENC[57:] + " selesai"])))
+    # (5) Permukaan TAG: kepala di nama tag, ekor di pesan;
+    # kepala di anotasi tag (tengah), ekor di tepi branch;
+    # belahan nama-tag x anotasi-tag lain.
+    kasus.append(("belah", "tag-pesan/26", "belah", "tertuduh",
+                  ("", [ENC[26:]], ("v" + ENC[:26], "anotasi bersih"))))
+    kasus.append(("belah", "anotasi-tengah/11", "belah", "tertuduh",
+                  ("wip/" + ENC[11:], [],
+                   ("v9", "catatan " + ENC[:11] + " selesai"))))
+    kasus.append(("belah", "tag-tag/31", "belah", "tertuduh",
+                  ("", [], ("v" + ENC[:31], "anotasi bersih"),
+                   ("v8", ENC[31:] + " catatan"))))
     # (4) Dua fragmen tengah di dua pesan berbeda.
     for k in (11, 26):
         kasus.append(("belah", "tengah-tengah/" + str(k), "belah",
@@ -231,6 +240,11 @@ def _eja_byte(teks):
         "0x%02x" % b for b in teks.encode()) + ")"
 
 
+def _eja_byte_des(teks):
+    return "byteArrayOf(" + ", ".join(
+        str(b) for b in teks.encode()) + ")"
+
+
 def gen_byte():
     kasus = []
     for nama, s in [
@@ -243,6 +257,16 @@ def gen_byte():
         kasus.append(("bytearray", nama, "berkas", "tertuduh", _eja_byte(s)))
     kasus.append(("bytearray", "b64(b64)-batas", "berkas", "batas",
                   _eja_byte(_b64(_b64(TOKEN)))))
+    for nama, s in [
+        ("desimal-polos", TOKEN),
+        ("desimal-persen", _persen(TOKEN)),
+        ("desimal-b64", _b64(TOKEN)),
+        ("desimal-hex", _hex(TOKEN)),
+    ]:
+        kasus.append(("bytearray", nama, "berkas", "tertuduh",
+                      _eja_byte_des(s)))
+    kasus.append(("bytearray", "desimal-jinak", "berkas", "bersih",
+                  _eja_byte_des("teks jinak biasa saja tanpa rahasia")))
     return kasus
 
 
@@ -272,12 +296,22 @@ def gen_jinak():
 
 
 def vonis_belah(muatan):
-    branch, pesan_list = muatan
+    branch, pesan_list = muatan[0], muatan[1]
+    tag_list = [t for t in muatan[2:] if t]
 
     def palsu(*args):
         gabung = " ".join(args)
         if "refs/heads" in gabung:
             return branch
+        if "refname:short" in gabung and "refs/tags" in gabung:
+            return "\n".join(
+                nama + "\ttag\t" + "c" * 40 + "\t" + "d" * 40
+                for nama, _ in tag_list)
+        if "%(contents)" in gabung:
+            for nama, anotasi in tag_list:
+                if "refs/tags/" + nama in gabung:
+                    return anotasi
+            return ""
         return ""
 
     jalan_asli = verifikasi.jalan
