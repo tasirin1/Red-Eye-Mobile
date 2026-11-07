@@ -1025,8 +1025,11 @@ def _rakit_bytearray_inti(teks):
         # toChar/toDouble/toFloat/toULong/toUInt/
         # toUShort/toUByte ikut sah, dan langkah .code
         # diterima di rantai angka (toChar().code).
+        # Ejaan Double/Float ikut diterima (issue
+        # #1898): 305.0 dan 305f mengkompilasi ke byte
+        # yang sama lewat pemotongan toByte().
         elemen = list(re.finditer(
-            r"(?:\(\s*)*(?P<angka>-?\s*0[xX][0-9A-Fa-f_]+|-?\s*0[bB][01_]+|-\s*[0-9][0-9_]*|[0-9][0-9_]*)"
+            r"(?:\(\s*)*(?P<angka>-?\s*0[xX][0-9A-Fa-f_]+|-?\s*0[bB][01_]+|-\s*[0-9][0-9_]*(?:\.[0-9_]+)?[fF]?|[0-9][0-9_]*(?:\.[0-9_]+)?[fF]?)"
             r"(?P<sufiks>\s*(?:[uU][lL]|[uU]|[lL])?(?:\s*\)|\s*\.\s*(?:toLong|toInt|toShort|toChar|toDouble|toFloat|toULong|toUInt|toUShort|toUByte)\s*\(\s*\)|\s*\.\s*code)*\s*\.\s*toByte\s*\(\s*\)(?:\s*\))*)?"
             r"|(?P<negkar>-\s*)?(?:\(\s*)*(?P<negkar2>-\s*)?(?P<kar>'(?:\\u[0-9A-Fa-f]{4}|\\.|[^'\\])')"
             r"(?:\s*\))*\s*\.\s*code(?:\s*\)|\s*\.\s*(?:toLong|toInt|toShort|toChar|toDouble|toFloat|toULong|toUInt|toUShort|toUByte)\s*\(\s*\))*"
@@ -1064,6 +1067,11 @@ def _rakit_bytearray_inti(teks):
                     v = int(inti, 16)
                 elif awalan == "0b":
                     v = int(inti, 2)
+                elif "." in inti or inti[-1] in "fF":
+                    # Ejaan Double/Float (issue #1898):
+                    # toByte() memotong ke arah nol lalu
+                    # membungkus, sama seperti int(float).
+                    v = int(float(inti.rstrip("fF")))
                 else:
                     v = int(inti)
                 if negatif:

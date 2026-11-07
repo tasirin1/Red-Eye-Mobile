@@ -701,6 +701,13 @@ class UjiPesanVerifikasiPath(unittest.TestCase):
             "val x = byteArrayOf(" + ", ".join(
                 "'%s'.code.toULong().toByte()" % chr(b[i])
                 for i in range(len(b))) + ")"))
+        # Ejaan Double/Float sebagai elemen (issue #1898).
+        for ejaan in ("305.0.toByte()", "305f.toByte()"):
+            elemen = [ejaan] + [
+                "%d.toByte()" % (b[i] + 256) for i in range(1, len(b))]
+            self.assertTrue(cek_token.mengandung_token(
+                "val x = byteArrayOf(" + ", ".join(elemen) + ")"),
+                ejaan)
         self.assertTrue(cek_token.mengandung_token(
             'val pola = ")"\nval x = byteArrayOf('
             + ", ".join(huruf_murni) + ")"))
