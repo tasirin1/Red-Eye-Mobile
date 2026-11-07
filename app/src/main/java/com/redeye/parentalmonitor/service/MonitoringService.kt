@@ -3229,7 +3229,13 @@ class MonitoringService : Service() {
                     if (command == "/start" && arg.isNotEmpty()) {
                         val accessPin = try { preferencesManager.accessPin } catch (_: Exception) { "" }
                         if (cachedOwnerId == 0L && senderId.isNotEmpty() && msgChatId == senderId && accessPin.isNotEmpty()) {
-                            sendDirect(senderId, "\uD83D\uDD11 PIN akses aktif. Kirim /login <PIN> untuk masuk.")
+                            // Kirim diluncurkan, bukan sebaris
+                            // (issue #1845): loop batch tak
+                            // menahan dispatch update berikutnya
+                            // di balik callTimeout jaringan.
+                            serviceScope.launch {
+                                sendDirect(senderId, "\uD83D\uDD11 PIN akses aktif. Kirim /login <PIN> untuk masuk.")
+                            }
                             offsetDeferred = true
                             finishUpdateTrack(update.updateId, responseGeneration, true)
                             continue
@@ -3242,7 +3248,13 @@ class MonitoringService : Service() {
                         val hintTarget = senderId.ifEmpty { msgChatId }
                         val hintNow = android.os.SystemClock.elapsedRealtime()
                         if (claimHintSlot("login:$hintTarget", hintNow)) {
-                            sendDirect(hintTarget, loginHintText())
+                            // Diluncurkan juga (issue #1845);
+                            // teks petunjuk dibentuk di titik
+                            // keputusan, kirimnya asinkron.
+                            val teksPetunjuk = loginHintText()
+                            serviceScope.launch {
+                                sendDirect(hintTarget, teksPetunjuk)
+                            }
                         }
                         offsetDeferred = true
                         finishUpdateTrack(update.updateId, responseGeneration, true)
@@ -3280,7 +3292,13 @@ class MonitoringService : Service() {
                                         try { pairAttemptAt.remove(senderId) } catch (_: Exception) { }
                                         try { pairGlobalFails.set(0) } catch (_: Exception) { }
                                         registerBotCommands()
-                                        sendToTelegram("Pemilik tertaut via /start.")
+                                        // Notis diluncurkan (issue #1845);
+                                        // mutasi keadaan di atasnya
+                                        // tetap sebaris berurutan
+                                        // seperti semula.
+                                        serviceScope.launch {
+                                            sendToTelegram("Pemilik tertaut via /start.")
+                                        }
                                     }
                                 } else {
                                     if (startChat == responseChat && pairCode.isNotEmpty()) {
@@ -3293,7 +3311,10 @@ class MonitoringService : Service() {
                                         }
                                     }
                                     if (startChat == responseChat) {
-                                        sendPairHint(senderId)
+                                        // Diluncurkan (issue #1845).
+                                        serviceScope.launch {
+                                            sendPairHint(senderId)
+                                        }
                                     }
                                 }
                             }
@@ -3301,7 +3322,11 @@ class MonitoringService : Service() {
                             val nowNotice = android.os.SystemClock.elapsedRealtime()
                             if (nowNotice >= pairNoticeAt.get()) {
                                 pairNoticeAt.set(nowNotice + PAIR_NOTICE_COOLDOWN_MS)
-                                sendToTelegram("\u26A0\uFE0F Pemasangan diabaikan: pemilik sudah tertaut.")
+                                // Diluncurkan (issue #1845);
+                                // cap jeda di atas tetap sebaris.
+                                serviceScope.launch {
+                                    sendToTelegram("\u26A0\uFE0F Pemasangan diabaikan: pemilik sudah tertaut.")
+                                }
                             }
                         }
                     }

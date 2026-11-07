@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Lima kirim jaringan fase pairing/petunjuk di loop polling Telegram kini diluncurkan asinkron (`serviceScope.launch`), bukan sebaris — satu panggilan lambat tak lagi menahan dispatch sisa batch sampai callTimeout 60 detik; mutasi keadaan dan cap jedanya tetap sebaris di titik keputusan (issue #1845).
 - Gerbang rentang: belahan token ke TIGA permukaan kini dinilai juga — mekanisme tripel larian (sumber tidak semuanya sama, keenam urutan, lantai adaptif + cap tripel meniru tangga pasangan) menutup lolosnya belahan 22/20/22 dan 30/16/16 yang tiap pasangan berurutannya di bawah kandidat minimum hakim (issue #1844).
 - Gerbang token: pengurai `byteArrayOf` kini melewati komentar di dalam kurung dan menormalkan sufiks `.toByte()` per elemen (termasuk nilai negatif pembungkus) — bentuk tersegmentasi yang mengkompilasi ke token persis tak lagi lolos; bentuk dua literal digabung `+` tetap sisa terdokumentasi di luar pengurai (issue #1843).
 - Gerbang token: literal `byteArrayOf` campuran hex+desimal kini terakit utuh — pengurai daftar argumen membaca elemen kedua ejaan sebagai satu deretan, menutup lolosnya belahan yang tak mencapai 40 elemen sejenis di pola mana pun (issue #1842).
