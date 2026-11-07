@@ -26,6 +26,7 @@ import com.redeye.parentalmonitor.network.TelegramPollClient
 import com.redeye.parentalmonitor.utils.AccessPin
 import com.redeye.parentalmonitor.utils.AppWatch
 import com.redeye.parentalmonitor.utils.BootClock
+import com.redeye.parentalmonitor.utils.ChatTujuanMedia
 import com.redeye.parentalmonitor.utils.PhotoPause
 import com.redeye.parentalmonitor.utils.CommandSuggest
 import com.redeye.parentalmonitor.utils.ContactsPaging
@@ -13931,18 +13932,7 @@ class MonitoringService : Service() {
             if (NetworkUtils.rateLimitedRemainMs() > 0L) return MediaSendOutcome.KEPT
             if (!hasNetwork()) return MediaSendOutcome.KEPT
             val (botToken, chatIdMentah) = sendCreds()
-            // Chat tujuan menghormati override perintah
-            // sensitif (issue #1548): /photo, /screenshot,
-            // /record* yang diketik dari chat privat tak
-            // boleh menerbitkan medianya ke grup. Tujuan
-            // eksplisit chatTujuan (issue #1720) didahulukan:
-            // ia ditangkap pemanggil SAAT perintah berjalan,
-            // karena jepret/rekam asinkron mengirim sesudah
-            // jendela override ditutup — membaca jendela di
-            // sini saja membuat muatan media selalu bocor ke
-            // chat terkonfigurasi. Di luar jendela perintah
-            // override kosong = konfigurasi.
-            val chatId = chatTujuan.ifEmpty { replyOverrideChatId }.ifEmpty { chatIdMentah }
+            val chatId = ChatTujuanMedia.resolusi(chatTujuan, replyOverrideChatId, chatIdMentah)
             if (botToken.isEmpty() || chatId.isEmpty()) return MediaSendOutcome.KEPT
             val requestFile = audioFile.asRequestBody("audio/mp4".toMediaTypeOrNull())
             val audioPart = MultipartBody.Part.createFormData("audio", audioFile.name, requestFile)
@@ -14199,18 +14189,7 @@ class MonitoringService : Service() {
                 return MediaSendOutcome.KEPT
             }
             val (botToken, chatIdMentah) = sendCreds()
-            // Chat tujuan menghormati override perintah
-            // sensitif (issue #1548): /photo, /screenshot,
-            // /record* yang diketik dari chat privat tak
-            // boleh menerbitkan medianya ke grup. Tujuan
-            // eksplisit chatTujuan (issue #1720) didahulukan:
-            // ia ditangkap pemanggil SAAT perintah berjalan,
-            // karena jepret/rekam asinkron mengirim sesudah
-            // jendela override ditutup — membaca jendela di
-            // sini saja membuat muatan media selalu bocor ke
-            // chat terkonfigurasi. Di luar jendela perintah
-            // override kosong = konfigurasi.
-            val chatId = chatTujuan.ifEmpty { replyOverrideChatId }.ifEmpty { chatIdMentah }
+            val chatId = ChatTujuanMedia.resolusi(chatTujuan, replyOverrideChatId, chatIdMentah)
             if (botToken.isEmpty() || chatId.isEmpty()) {
                 android.util.Log.e("MonitoringService", "Bot credentials missing")
                 return MediaSendOutcome.KEPT
@@ -15041,18 +15020,7 @@ class MonitoringService : Service() {
             }
 
             val (botToken, chatIdMentah) = sendCreds()
-            // Chat tujuan menghormati override perintah
-            // sensitif (issue #1548): /photo, /screenshot,
-            // /record* yang diketik dari chat privat tak
-            // boleh menerbitkan medianya ke grup. Tujuan
-            // eksplisit chatTujuan (issue #1720) didahulukan:
-            // ia ditangkap pemanggil SAAT perintah berjalan,
-            // karena jepret/rekam asinkron mengirim sesudah
-            // jendela override ditutup — membaca jendela di
-            // sini saja membuat muatan media selalu bocor ke
-            // chat terkonfigurasi. Di luar jendela perintah
-            // override kosong = konfigurasi.
-            val chatId = chatTujuan.ifEmpty { replyOverrideChatId }.ifEmpty { chatIdMentah }
+            val chatId = ChatTujuanMedia.resolusi(chatTujuan, replyOverrideChatId, chatIdMentah)
 
             if (botToken.isEmpty() || chatId.isEmpty()) {
                 android.util.Log.e("MonitoringService", "Bot credentials missing")
