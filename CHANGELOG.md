@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.669] - 2026-11-07
+
 ### Fixed
 - Kemajuan keadaan leksikal penilaian berkas besar per potong di cek-token kini memindai teks gabungan dari potret di awal tumpang-tindih — pembuka komentar yang terbelah persis di jahitan potong sebelumnya tak dikenali pelacak keadaan (#1918).
 
