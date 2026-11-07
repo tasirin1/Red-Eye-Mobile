@@ -283,6 +283,17 @@ def _padatkan(teks):
     # dibuang: merapatkan semua tanda baca kode terbukti menyambung
     # kata-kata kode biasa (fixture uji "A".repeat(35) dsb.) menjadi
     # ekor pola palsu.
+    # Komentar ditanggalkan lebih dulu secara leksikal
+    # (issue #1908): di Kotlin komentar adalah spasi,
+    # jadi belahan yang dipisah komentar — "paruh1" +
+    # // baris baru "paruh2", + /**/, /* */ + — sungguh
+    # merakit token utuh saat jalan, sementara isi
+    # komentar sendiri bukan kode dan tak boleh ikut
+    # tersambung (contoh format angka di komentar prosa
+    # adalah positif palsu bila isi komentar diperlakukan
+    # kode). Pemindai yang sama seperti kanal byteArrayOf
+    # (sadar string: // di dalam string URL utuh).
+    teks = _tanggal_komentar_blok(teks, copot_baris=True)
     # Aksara format dibuang lebih dulu (issue #1800),
     # sebelum pemisah lain dirapatkan.
     rapat = POLA_FORMAT.sub("", teks)
@@ -315,6 +326,13 @@ def _padatkan(teks):
     rapat = re.sub(r"(?<=[A-Za-z0-9+/=_-]);(?=[A-Za-z0-9+/=_-])", "", rapat)
     rapat = re.sub(r"(?<=[A-Za-z0-9+/=_-]);(?=:)", "", rapat)
     rapat = re.sub(r"(?<=:);(?=[A-Za-z0-9+/=_-])", "", rapat)
+    # (Penanda komentar sebagai pemisah ditangani di
+    # kepala fungsi lewat penanggalan leksikal — lihat
+    # issue #1908 di sana. Runtunan / dan * mentah TIDAK
+    # dibuang di sini: contoh format "123/456" di dalam
+    # komentar prosa NotificationPrivacy.kt terbukti
+    # tersambung dengan baris komentar berikutnya menjadi
+    # pola palsu begitu / diperlakukan pemisah biasa.)
     # Pasangan kurung di antara fragmen (issue #1814):
     # bentuk ("paruh1") + ("paruh2") menyisakan runtunan
     # )( di sambungan sesudah pemisah lain dibuang.

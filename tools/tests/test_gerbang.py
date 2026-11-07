@@ -1141,6 +1141,25 @@ class UjiKupasKodeTemplat(unittest.TestCase):
                 self.assertEqual(
                     hasil.count(buka), hasil.count(tutup), sumber)
 
+    def test_belah_penanda_komentar_tertuduh(self):
+        # Issue #1908: komentar adalah spasi di Kotlin —
+        # belahan yang dipisah komentar kosong merakit
+        # token utuh saat jalan dan wajib tertuduh di
+        # permukaan berkas; isi komentar sendiri bukan
+        # kode (contoh format angka di komentar prosa
+        # NotificationPrivacy.kt tetap bersih).
+        h1, h2 = TOKEN[:24], TOKEN[24:]
+        self.assertTrue(cek_token.mengandung_token(
+            'val t = "' + h1 + '" +\n//\n"' + h2 + '"'))
+        self.assertTrue(cek_token.mengandung_token(
+            'val t = "' + h1 + '" + /**/ "' + h2 + '"'))
+        self.assertTrue(cek_token.mengandung_token(
+            'val t = "' + h1 + '" /* */ + "' + h2 + '"'))
+        self.assertTrue(cek_token.mengandung_token(
+            h1 + "/**/" + h2))
+        self.assertFalse(cek_token.mengandung_token(
+            "lihat https://example.com/a/b*c dan rasio 3/4*2 biasa"))
+
     def test_komentar_di_string_templat_bukan_komentar(self):
         # Issue #1907: /* di dalam string bersarang templat
         # adalah isi string — kode sesudahnya tak boleh
