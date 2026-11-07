@@ -1,7 +1,6 @@
 package com.redeye.parentalmonitor.ui
 
 import android.content.Intent
-import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
