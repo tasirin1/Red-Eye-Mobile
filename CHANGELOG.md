@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Dua komentar salah hitung di `PreferencesManager` diperbarui dari "ketiga/tiga" menjadi "keempat/empat": penulis himpunan aplikasi dikenal yang melewati `a11yKnownAppsLock` ada empat fungsi (forget/remember/prune/seed), bukan tiga — perilaku kunci #917 tidak berubah, hanya komentarnya yang kini sesuai kode (issue #1896).
+
 - Penanggalan komentar baris di jalur `byteArrayOf` gerbang kini sadar string: penggantian regex `//...` pada lintasan kedua pembungkus (dan di inti pengurai) digantikan mode `copot_baris` pada pemindai leksikal yang sama, karena `//` di dalam string URL sebaris sebelumnya menelan literal `byteArrayOf/*k*/(...)` bercelah di baris yang sama sehingga lolos (issue #1895).
 
 - Pengurai `byteArrayOf` gerbang kini membaca rantai huruf yang dinegasikan — `(-'\u00cf'.code).toByte()` dan bentuk minus di luar kurung/telanjang: tanda minus pada rantai huruf sebelumnya tidak dibaca sama sekali sehingga byte rakitan berbeda dari byte sebenarnya dan ejaan itu lolos total (issue #1894).

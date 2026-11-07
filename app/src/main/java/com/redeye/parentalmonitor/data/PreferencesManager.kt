@@ -2484,7 +2484,7 @@ class PreferencesManager(context: Context) {
     // mendekripsi SETIAP entri + menyalin himpunan — dan
     // rememberA11yApp memanggilnya di SETIAP pergantian
     // aplikasi depan hanya untuk uji keanggotaan. Cermin di
-    // bawah a11yKnownAppsLock yang sudah ada (ketiga penulis
+    // bawah a11yKnownAppsLock yang sudah ada (keempat penulis
     // melewatinya) membuat jalur umum O(1); dekripsi penuh
     // hanya terjadi sekali per proses.
     @Volatile
@@ -2521,7 +2521,7 @@ class PreferencesManager(context: Context) {
     // hari kembali memicu alert "aplikasi baru dibuka". Tanpa ini
     // himpunan bersifat tambah-saja seumur pemasangan.
     // Kunci khusus baca-ubah-tulis himpunan aplikasi dikenal
-    // (issue #917): tiga fungsi di bawah dipanggil lintas thread
+    // (issue #917): empat fungsi di bawah dipanggil lintas thread
     // (receiver paket vs layanan Aksesibilitas); tanpa kunci,
     // lost-update membuat alert aplikasi baru dobel atau aplikasi
     // yang baru di-uninstall tertimpa masuk lagi.
