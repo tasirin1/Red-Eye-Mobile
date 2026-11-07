@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.665] - 2026-11-07
+
 ### Fixed
 - cek-cepat kini juga menilai isi staged berkas yang git laporkan biner lewat atribut (langkah 4d) — token yang hanya ada di blob staged dengan salinan kerja bersih sebelumnya lolos semua langkah lokal (#1914).
 - Mode rentang verifikasi-path kini menilai pohon ujung rentang juga di `cek_import_mati` dan konfirmasi tuduhan token — keduanya masih membaca berkas kerja sehingga edit tak ter-commit bisa mengubah vonis dua arah (#1913).
