@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.653] - 2026-11-07
+
 ### Fixed
 
 - Workflow gitleaks kini memasang blok `concurrency` yang sama dengan ketiga workflow lain (grup per-ref, batalkan yang tersalip, tag dikecualikan) — sebelumnya ia satu-satunya workflow berpemicu push tanpa blok itu, jadi push maraton berurutan menjalankan scan penuh untuk commit yang sudah bukan HEAD (issue #1866).
