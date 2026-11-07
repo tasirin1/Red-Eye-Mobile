@@ -15337,14 +15337,30 @@ class MonitoringService : Service() {
             // nama agar pelepasan tertahan di bawah hanya
             // menyentuh korban yang isinya benar-benar
             // musnah (issue #1831).
+            // Dekode hanya bila ada entri warisan yang
+            // menunggu dilepas berdasar hash (issue #1872):
+            // hash korban semata-mata dipakai blok
+            // mutateHeldPhotoEntries di bawah, dan hanya
+            // saat entri raw==null && name==null masih ada
+            // sesudah pelepasan berdasar nama — entri
+            // warisan tak pernah terlepas oleh nama, jadi
+            // keberadaannya di daftar kini setara. Tanpa
+            // entri warisan, dekode foto penuh per korban
+            // murni terbuang. Gagal baca daftar = tetap
+            // dekode (arah perilaku lama).
+            val perluHash = try {
+                heldPhotoEntriesNow().any { it.raw == null && it.name == null }
+            } catch (_: Exception) { true }
             val hashKorban = HashMap<String, Long>()
-            for (file in dropped) {
-                try {
-                    val h = PhotoFingerprint.analyze(file).second
-                    // Sentinel tak-terdekode (0/1) tak masuk
-                    // daftar lepas (issue #1820).
-                    if (PhotoFingerprint.isComparableFingerprint(h)) hashKorban[file.name] = h
-                } catch (_: Exception) { }
+            if (perluHash) {
+                for (file in dropped) {
+                    try {
+                        val h = PhotoFingerprint.analyze(file).second
+                        // Sentinel tak-terdekode (0/1) tak masuk
+                        // daftar lepas (issue #1820).
+                        if (PhotoFingerprint.isComparableFingerprint(h)) hashKorban[file.name] = h
+                    } catch (_: Exception) { }
+                }
             }
             // Penghapusan berjalan SEBELUM pelepasan
             // tertahan dan pembersihan jurnal (issue
