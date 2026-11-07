@@ -750,11 +750,17 @@ def _rakit_bytearray(teks):
         # dan literal huruf ('1'.code.toByte(), termasuk
         # ejaan \\uXXXX) — semuanya mengkompilasi ke byte
         # yang sama, jadi pengurai menormalkan ketiganya.
+        # Kurung di tengah rantai huruf ikut diterima
+        # (issue #1869): ('1'.code).toByte(),
+        # ('1').code.toByte(), dan bungkus penuh —
+        # kurung ekspresi tak mengubah nilai byte.
         elemen = list(re.finditer(
             r"(?P<angka>0[xX][0-9A-Fa-f_]+|0[bB][01_]+|-?[0-9][0-9_]*)"
             r"(?P<sufiks>\s*\.\s*toByte\s*\(\s*\))?"
-            r"|(?P<kar>'(?:\\u[0-9A-Fa-f]{4}|\\.|[^'\\])')"
-            r"\s*\.\s*code\s*\.\s*toByte\s*\(\s*\)", dalam))
+            r"|\(?\s*(?P<kar>'(?:\\u[0-9A-Fa-f]{4}|\\.|[^'\\])')"
+            r"\s*(?:\.\s*code\s*\)?\s*\.\s*toByte"
+            r"|\)\s*\.\s*code\s*\.\s*toByte)"
+            r"\s*\(\s*\)\s*\)?", dalam))
         if len(elemen) < 40:
             continue
         try:

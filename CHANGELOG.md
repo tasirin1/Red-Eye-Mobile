@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Pengurai `byteArrayOf` gerbang kini menerima kurung di tengah rantai literal huruf — `('1'.code).toByte()`, `('1').code.toByte()`, dan bungkus penuh `('1'.code.toByte())` mengkompilasi ke byte yang sama tetapi sebelumnya tak terakit sehingga token lolos; dibuktikan baterai delapan bentuk (tiga bentuk kurung + campuran + unicode berkurung tertuduh, kontrol jinak dan CHANGELOG bersih) dan uji suite diperluas (issue #1869).
 - Job persist hitungan gugur notifikasi kini menyerah sesudah 10 kegagalan tulis beruntun (±10 detik pada iramanya) meniru job penanda #1851 — sebelumnya loop-nya hanya beres bila tulisan akhirnya berhasil, jadi disk yang gagal permanen memutar job 1 Hz seumur proses; gugur berikutnya menjadwalkan job baru seperti pola penanda (issue #1868).
 - Jalur jeda kini menulis jurnal tujuan media untuk audio dan video: cabang `monitoringPaused` dulu return/mengabari sebelum `simpanTujuanMedia`, jadi media tertahan yang diminta dari chat asal lain meluncur ke chat terkonfigurasi sesudah /resume karena flush menyelesaikan tujuan dari jurnal dan entri yang hilang jatuh ke chat terkonfigurasi. Foto dan screenshot sudah menjurnal normal; penemuan berkas tertahan memang dari pindaian direktori antrean, jadi entri jurnal adalah satu-satunya keping yang hilang (issue #1867).
 
