@@ -413,6 +413,28 @@ class UjiKanalBerkasTambahan(unittest.TestCase):
         self.assertFalse(cek_token.mengandung_token(
             campuran(b"teks jinak biasa saja", 5)))
 
+    def test_bytearrayof_tersegmentasi(self):
+        # Issue #1843: segmentasi di dalam byteArrayOf —
+        # komentar yang menyela deretan dan sufiks .toByte()
+        # per elemen — mengkompilasi ke token persis tetapi
+        # memutus larian yang dituntut pola lama. Pengurai
+        # daftar argumen melewati komentar dan menormalkan
+        # .toByte() (termasuk nilai negatif pembungkus).
+        b = TOKEN.encode()
+        persen = "".join("%%%02X" % ord(c) for c in TOKEN).encode()
+        des = lambda bts: ", ".join(str(x) for x in bts)
+        kasus = [
+            "byteArrayOf(" + des(b[:24]) + " /* jeda */ , " + des(b[24:]) + ")",
+            "byteArrayOf(" + des(b[:24]) + ", // jeda\n" + des(b[24:]) + ")",
+            "byteArrayOf(" + ", ".join(
+                str(x) + ".toByte()" for x in persen) + ")",
+        ]
+        for s in kasus:
+            with self.subTest(bentuk=s[:40]):
+                self.assertTrue(cek_token.mengandung_token(s))
+        self.assertFalse(cek_token.mengandung_token(
+            "byteArrayOf(" + des(b"teks jinak") + " /* catatan */ )"))
+
     def test_komposisi_silang_varian_dekoder(self):
         # Issue #1812: varian terbuka diteruskan ke
         # dekoder — encode di atas encode tertangkap.

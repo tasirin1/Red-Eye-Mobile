@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Gerbang token: pengurai `byteArrayOf` kini melewati komentar di dalam kurung dan menormalkan sufiks `.toByte()` per elemen (termasuk nilai negatif pembungkus) — bentuk tersegmentasi yang mengkompilasi ke token persis tak lagi lolos; bentuk dua literal digabung `+` tetap sisa terdokumentasi di luar pengurai (issue #1843).
 - Gerbang token: literal `byteArrayOf` campuran hex+desimal kini terakit utuh — pengurai daftar argumen membaca elemen kedua ejaan sebagai satu deretan, menutup lolosnya belahan yang tak mencapai 40 elemen sejenis di pola mana pun (issue #1842).
 
 ## [1.6.651] - 2026-11-07

@@ -274,6 +274,14 @@ def gen_byte():
             str(x) for x in btok[potong:]) + ")"
         kasus.append(("bytearray", "campuran-%d" % potong, "berkas",
                       "tertuduh", campuran))
+    des = lambda bts: ", ".join(str(x) for x in bts)
+    kasus.append(("bytearray", "segmen-komentar", "berkas", "tertuduh",
+                  "byteArrayOf(" + des(btok[:24]) + " /* jeda */ , "
+                  + des(btok[24:]) + ")"))
+    kasus.append(("bytearray", "segmen-tobyte", "berkas", "tertuduh",
+                  "byteArrayOf(" + ", ".join(
+                      str(x) + ".toByte()"
+                      for x in _persen(TOKEN).encode()) + ")"))
     return kasus
 
 

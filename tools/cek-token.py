@@ -731,13 +731,27 @@ def _rakit_bytearray(teks):
         if kedalaman:
             continue
         dalam = teks[awal:i - 1]
-        elemen = re.findall(r"0[xX][0-9A-Fa-f]+|[0-9]+", dalam)
+        # Segmentasi di dalam kurung (issue #1843): komentar
+        # blok/baris yang menyela deretan dilewati, dan
+        # sufiks .toByte() dinormalkan ke nilai byte-nya
+        # (nilai negatif atau >127 dibungkus & 0xFF, sesuai
+        # semantik konversi Kotlin).
+        dalam = re.sub(r"/\*.*?\*/", " ", dalam, flags=re.S)
+        dalam = re.sub(r"//[^\n]*", " ", dalam)
+        elemen = re.findall(
+            r"(0[xX][0-9A-Fa-f]+|-?[0-9]+)"
+            r"(\s*\.\s*toByte\s*\(\s*\))?", dalam)
         if len(elemen) < 40:
             continue
         try:
-            hasil = bytes(
-                int(e, 16) if e[:2].lower() == "0x" else int(e)
-                for e in elemen)
+            nilai = []
+            for mentah, sufiks in elemen:
+                v = (int(mentah, 16) if mentah[:2].lower() == "0x"
+                     else int(mentah))
+                if sufiks or v < 0:
+                    v &= 0xFF
+                nilai.append(v)
+            hasil = bytes(nilai)
         except ValueError:
             continue
         yield hasil
