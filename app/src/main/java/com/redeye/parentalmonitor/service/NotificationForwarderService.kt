@@ -1703,6 +1703,7 @@ class NotificationForwarderService : NotificationListenerService() {
                 dropPersistJob = scope.launch {
                     try {
                         var lastWritten = -1
+                        var gagalBeruntun = 0
                         var done = false
                         var firstPass = true
                         while (!done) {
@@ -1719,7 +1720,25 @@ class NotificationForwarderService : NotificationListenerService() {
                                 if (snapshot != lastWritten) {
                                     val prefs = prefsRef
                                     val written = if (prefs == null) true else try { prefs.setPendingNotifDropsSync(snapshot, snap.second) } catch (_: Exception) { false }
-                                    if (written) lastWritten = snapshot
+                                    if (written) {
+                                        lastWritten = snapshot
+                                        gagalBeruntun = 0
+                                    } else {
+                                        // Disk yang gagal permanen
+                                        // tak boleh memutar job
+                                        // selamanya (pola job penanda
+                                        // #1851, issue #1868):
+                                        // menyerah sesudah 10
+                                        // kegagalan beruntun (±10
+                                        // detik pada irama 1 detik);
+                                        // gugur berikutnya
+                                        // menjadwalkan job baru.
+                                        gagalBeruntun++
+                                        if (gagalBeruntun >= 10) {
+                                            synchronized(dropNoticeLock) { dropPersistJob = null }
+                                            done = true
+                                        }
+                                    }
                                 } else {
                                     synchronized(dropNoticeLock) {
                                         val nowTotal = dropNoticeCount.get() + dropNoticeInFlight
