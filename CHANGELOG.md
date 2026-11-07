@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Provisioning CodeQL kini sejajar build.yml: `cache: gradle` pada setup-java dan Gradle 8.14.3 ter-pin (cache + verifikasi SHA-256 + PATH, langkah yang sama persis) sebelum Autobuild — sebelumnya analis memakai Gradle bawaan runner yang tak ter-pin dan tanpa cache dependensi, jadi perilaku analisis bisa bergeser mengikuti citra runner (issue #1875).
 - Job `verifikasi` (build.yml dan verifikasi.yml) dan job `rilis` (build.yml) kini memasang `timeout-minutes: 30` menyamai job build — sebelumnya 7 dari 9 job workflow tanpa batas waktu sehingga run yang menggantung (enumerasi gerbang atas rentang arbitrer, langkah rilis macet) menahan rantai build/rilis sampai bawaan GitHub 360 menit (issue #1874).
 - Listener info MediaRecorder tak lagi menulis kode info peristiwa wajar ke slot galat rekam: kode durasi/berkas maksimum tercapai, mendekati maksimum, dan berkas lanjutan mulai kini dikecualikan — sebelumnya kode info bukan-galat apa pun yang mendarat pertama mencemari `galatRekam`, sehingga rekaman sehat bisa divonis terganggu di akhir dan berkasnya dibuang (issue #1873).
 - Prune cache foto kini hanya mendekode sidik jari korban bila masih ada entri warisan (raw dan nama sama-sama kosong) yang menunggu dilepas berdasar hash — hash korban semata-mata dipakai untuk pelepasan itu, jadi tanpa entri warisan dekode foto penuh per korban murni terbuang; gagal membaca daftar entri jatuh ke perilaku lama (tetap dekode), dan kesetaraan syaratnya dijaga karena entri warisan tak pernah terlepas oleh nama (issue #1872).
