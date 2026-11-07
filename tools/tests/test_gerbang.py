@@ -526,6 +526,29 @@ class UjiPesanVerifikasiPath(unittest.TestCase):
         self.assertEqual(len(gagal), 1, gagal)
         self.assertIn("TERBELAH lintas pesan", gagal[0])
 
+    def test_bytearrayof_ejaan_literal(self):
+        # Issue #1863: ejaan literal Kotlin yang sah —
+        # garis bawah pemisah digit, literal biner, dan
+        # literal huruf .code.toByte() — wajib terakit
+        # utuh seperti ejaan polosnya.
+        b = TOKEN.encode()
+
+        def ba(elems):
+            return "val x = byteArrayOf(" + ", ".join(elems) + ")"
+
+        self.assertTrue(cek_token.mengandung_token(ba(
+            ["0x%x_%x" % (b[i] >> 4, b[i] & 15) for i in range(len(b))])))
+        self.assertTrue(cek_token.mengandung_token(ba(
+            ["%d_%d" % (b[i] // 10, b[i] % 10) if b[i] >= 10
+             else str(b[i]) for i in range(len(b))])))
+        self.assertTrue(cek_token.mengandung_token(ba(
+            ["0b" + format(b[i], "08b") for i in range(len(b))])))
+        self.assertTrue(cek_token.mengandung_token(ba(
+            ["'%s'.code.toByte()" % chr(b[i]) if chr(b[i]).isalnum()
+             else str(b[i]) for i in range(len(b))])))
+        self.assertFalse(cek_token.mengandung_token(ba(
+            ["'a'.code.toByte()"] * 48)))
+
     def test_cache_vonis_cli(self):
         # Issue #1854: cache vonis mode --berkas berkunci
         # hash isi + hash sumber hakim; versi basi wajib

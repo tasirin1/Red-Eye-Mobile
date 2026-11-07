@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Pengurai `byteArrayOf` gerbang kini menormalkan ejaan literal Kotlin sah yang tersisa: garis bawah pemisah digit (`0x3_1`, `4_9`), literal biner (`0b...`), dan literal huruf (`'1'.code.toByte()`, termasuk ejaan `\uXXXX`) — ketiganya mengkompilasi ke byte yang sama tetapi sebelumnya terakit salah/tak terlihat sehingga token lolos total; dibuktikan baterai lima ejaan tertuduh + kontrol jinak bersih (issue #1863).
 - 59 properti `PreferencesManager` lagi diturunkan `var` → `val` dan setter-nya dihapus — sensus #1850 hanya menangkap bentuk satu-baris seragam, sehingga setter berbentuk blok/bentuk lain lolos; termasuk jebakan nyata setter `monitoringPaused` yang memakai `apply()` padahal jalur resmi `setMonitoringPausedSync` sengaja `commit()` (#1395). Sensus induk atas daftar Audit-144 membuktikan 0 penugasan di seluruh main+test untuk ke-59-nya (kontrol hidup `notifForwardEnabled` terkecualikan dengan benar); seluruh 177 getter utuh (issue #1862).
 - Pendaftaran perintah bot (`registerBotCommands`) di cabang sukses pairing kini diluncurkan asinkron seperti lima kirim #1845 — dua panggilan `setMyCommands` tak lagi menahan dispatch sisa batch, terutama pada pairing pertama saat gerbang hash belum bisa menolong karena `ownerId` baru berubah; fungsi itu menjaga dirinya sendiri penuh (kegagalan tercatat dan ter-log) dan hash-nya membaca pemilik yang sudah dipersist sebelum peluncuran (issue #1861).
 

@@ -745,17 +745,40 @@ def _rakit_bytearray(teks):
         # semantik konversi Kotlin).
         dalam = re.sub(r"/\*.*?\*/", " ", dalam, flags=re.S)
         dalam = re.sub(r"//[^\n]*", " ", dalam)
-        elemen = re.findall(
-            r"(0[xX][0-9A-Fa-f]+|-?[0-9]+)"
-            r"(\s*\.\s*toByte\s*\(\s*\))?", dalam)
+        # Ejaan literal sah lain (issue #1863): garis bawah
+        # pemisah digit (0x3_1, 4_9), literal biner (0b...),
+        # dan literal huruf ('1'.code.toByte(), termasuk
+        # ejaan \\uXXXX) — semuanya mengkompilasi ke byte
+        # yang sama, jadi pengurai menormalkan ketiganya.
+        elemen = list(re.finditer(
+            r"(?P<angka>0[xX][0-9A-Fa-f_]+|0[bB][01_]+|-?[0-9][0-9_]*)"
+            r"(?P<sufiks>\s*\.\s*toByte\s*\(\s*\))?"
+            r"|(?P<kar>'(?:\\u[0-9A-Fa-f]{4}|\\.|[^'\\])')"
+            r"\s*\.\s*code\s*\.\s*toByte\s*\(\s*\)", dalam))
         if len(elemen) < 40:
             continue
         try:
             nilai = []
-            for mentah, sufiks in elemen:
-                v = (int(mentah, 16) if mentah[:2].lower() == "0x"
-                     else int(mentah))
-                if sufiks or v < 0:
+            for m in elemen:
+                if m.group("kar") is not None:
+                    isi_kar = m.group("kar")[1:-1]
+                    if isi_kar.startswith("\\u"):
+                        v = int(isi_kar[2:], 16)
+                    elif isi_kar.startswith("\\"):
+                        v = ord(isi_kar[1])
+                    else:
+                        v = ord(isi_kar)
+                    nilai.append(v & 0xFF)
+                    continue
+                mentah = m.group("angka").replace("_", "")
+                awalan = mentah[:2].lower()
+                if awalan == "0x":
+                    v = int(mentah, 16)
+                elif awalan == "0b":
+                    v = int(mentah, 2)
+                else:
+                    v = int(mentah)
+                if m.group("sufiks") or v < 0:
                     v &= 0xFF
                 nilai.append(v)
             hasil = bytes(nilai)
