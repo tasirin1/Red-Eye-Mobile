@@ -1030,8 +1030,11 @@ def _rakit_bytearray_inti(teks):
         # cabang minus: \s* pada cabang polos membuat
         # kecocokan bisa mulai di spasi sebelum literal hex
         # dan mencuri angka 0-nya (0x32 terurai jadi 0 + 32).
+        # Minus juga menempel pada cabang hex/biner (issue
+        # #1888): -0xCF dan -0b11001111 adalah ejaan negatif
+        # sah yang byte-nya sama dengan pembungkus desimal.
         elemen = list(re.finditer(
-            r"(?P<angka>0[xX][0-9A-Fa-f_]+|0[bB][01_]+|-\s*[0-9][0-9_]*|[0-9][0-9_]*)"
+            r"(?P<angka>-?\s*0[xX][0-9A-Fa-f_]+|-?\s*0[bB][01_]+|-\s*[0-9][0-9_]*|[0-9][0-9_]*)"
             r"(?P<sufiks>\s*\.\s*toByte\s*\(\s*\))?"
             r"|(?:\(\s*)*(?P<kar>'(?:\\u[0-9A-Fa-f]{4}|\\.|[^'\\])')"
             r"(?:\s*\))*\s*\.\s*code(?:\s*\))*"
@@ -1052,13 +1055,21 @@ def _rakit_bytearray_inti(teks):
                     nilai.append(v & 0xFF)
                     continue
                 mentah = re.sub(r"[\s_]", "", m.group("angka"))
-                awalan = mentah[:2].lower()
+                # Tanda minus dibaca terpisah (issue #1888):
+                # awalan 0x/0b pada nilai bertanda ada di
+                # posisi kedua, jadi deteksi awalan wajib
+                # sesudah tanda ditanggalkan.
+                negatif = mentah.startswith("-")
+                inti = mentah[1:] if negatif else mentah
+                awalan = inti[:2].lower()
                 if awalan == "0x":
-                    v = int(mentah, 16)
+                    v = int(inti, 16)
                 elif awalan == "0b":
-                    v = int(mentah, 2)
+                    v = int(inti, 2)
                 else:
-                    v = int(mentah)
+                    v = int(inti)
+                if negatif:
+                    v = -v
                 if m.group("sufiks") or v < 0:
                     v &= 0xFF
                 nilai.append(v)

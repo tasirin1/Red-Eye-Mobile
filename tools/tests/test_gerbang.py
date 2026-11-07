@@ -649,6 +649,17 @@ class UjiPesanVerifikasiPath(unittest.TestCase):
         tenggelam = ("byteArrayOf(" + "1, " * 8 + "\n") * 300 \
             + "val x = byteArrayOf(" + ", ".join(huruf_murni) + ")"
         self.assertTrue(cek_token.mengandung_token(tenggelam))
+        # Ejaan negatif hex dan biner (issue #1888): minus
+        # wajib menempel pada semua basis, bukan desimal
+        # saja — -0xCF adalah byte 49 seperti -207.
+        self.assertTrue(cek_token.mengandung_token(
+            "val x = byteArrayOf(" + ", ".join(
+                ("-0x%X" % (256 - b[i])) + ".toByte()"
+                for i in range(len(b))) + ")"))
+        self.assertTrue(cek_token.mengandung_token(
+            "val x = byteArrayOf(" + ", ".join(
+                ("-0b" + format(256 - b[i], "08b")) + ".toByte()"
+                for i in range(len(b))) + ")"))
         self.assertTrue(cek_token.mengandung_token(
             'val pola = ")"\nval x = byteArrayOf('
             + ", ".join(huruf_murni) + ")"))
