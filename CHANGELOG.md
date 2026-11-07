@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.658] - 2026-11-07
+
 ### Fixed
 
 - Helper mati `_lewati_komentar` di `tools/cek-token.py` dihapus: nol situs panggil sesudah pemindaian kurung per literal digantikan peta kurung satu lintasan (#1887) — sisa refactor yang tertinggal di perkakas gerbang (issue #1891).
