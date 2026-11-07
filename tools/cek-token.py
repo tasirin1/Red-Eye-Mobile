@@ -835,34 +835,6 @@ def _tanggal_komentar_blok(teks):
     return "".join(hasil)
 
 
-def _lewati_komentar(teks, i):
-    """Indeks tepat sesudah komentar yang mulai di i.
-
-    teks[i:i + 2] adalah "/*" (blok, sadar bersarang) atau
-    "//" (baris, sampai baris baru \\n atau \\r). Komentar
-    yang tak tertutup berjalan sampai akhir teks.
-    """
-    n = len(teks)
-    if teks[i + 1] == "*":
-        kedalaman = 1
-        i += 2
-        while i < n and kedalaman:
-            dua = teks[i:i + 2]
-            if dua == "/*":
-                kedalaman += 1
-                i += 2
-            elif dua == "*/":
-                kedalaman -= 1
-                i += 2
-            else:
-                i += 1
-        return i
-    i += 2
-    while i < n and teks[i] not in "\r\n":
-        i += 1
-    return i
-
-
 def _peta_kurung(teks):
     """Peta indeks kurung buka -> indeks kurung tutup pasangannya.
 

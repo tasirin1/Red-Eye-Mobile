@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Helper mati `_lewati_komentar` di `tools/cek-token.py` dihapus: nol situs panggil sesudah pemindaian kurung per literal digantikan peta kurung satu lintasan (#1887) — sisa refactor yang tertinggal di perkakas gerbang (issue #1891).
+
 - Lima parameter tak terpakai dihapus beserta penyesuaian situs panggilnya: `context` pada `A11yMonitor.loadUsage`/`saveUsageFor`/`persistLocked`, `lensFacing` pada `CameraService.getJpegOrientation` (badan menurunkan ulang arah dari karakteristik kamera), dan `todayKey` pada `DigestSchedule.nightCatchUpDue` (badan hanya memakai doneKey/yesterdayKey/hour) — parameter hantu menyesatkan pembaca seolah nilai itu ikut menentukan hasil; perilaku tidak berubah dan uji DigestSchedule disesuaikan (issue #1890).
 
 - Tiga komentar basi di `MessageQueue` diperbarui dari "kelima" menjadi "keenam": penghitung drop sudah berkategori enam sejak #1520 (kategori pesan hilang akibat data antrean rusak), tetapi komentar jalur persist/muat/wipe masih menyebut lima sehingga menyesatkan pembaca (issue #1889).
