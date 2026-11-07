@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.651] - 2026-11-07
+
 ### Fixed
 
 - Fuzzer gerbang: sel kosong matriks ditutup — pasangan enkoder-sama (hex(hex), b32(b32), persen(persen), entitas(entitas), escape-u(escape-u)) kini dibangkitkan, ejaan desimal `byteArrayOf` ikut diuji, dan keluarga belah menstub permukaan tag (nama tag × pesan, anotasi tag × branch, nama tag × anotasi tag) selain branch; total 173 kasus, tetap nol lolos dan nol positif palsu (issue #1841).
