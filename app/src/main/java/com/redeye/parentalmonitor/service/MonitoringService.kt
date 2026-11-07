@@ -2094,7 +2094,7 @@ class MonitoringService : Service() {
     // memori, jadi restart mereset anggaran tebakan yang belum
     // mencapai ambang. Kini jumlah gagal per pengirim + global
     // disimpan (cap dinding hanya untuk membuang entri basi saat
-    // memulihkan; throttle 3 dtk sengaja tetap memori — nilainya
+    // memulihkan; throttle 1,5 dtk sengaja tetap memori — nilainya
     // sesaat dan cap elapsed-nya tak berarti lintas boot).
     private val loginBudgetRestored = java.util.concurrent.atomic.AtomicBoolean(false)
 

@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Fixed
+
+- Komentar throttle percobaan /login di MonitoringService dikoreksi dari "3 dtk" menjadi "1,5 dtk" — konstanta `LOGIN_ATTEMPT_THROTTLE_MS` memang 1_500L sejak lahir dan komentar saudara di jalur login sudah menyebutnya benar (issue #1903).
+
 ## [1.6.661] - 2026-11-07
 
 ### Fixed
