@@ -725,25 +725,11 @@ class PreferencesManager(context: Context) {
         }
     }
 
-    var botToken: String
+    val botToken: String
         get() = prefString(KEY_BOT_TOKEN, "")
-        set(value) {
-            synchronized(credentialLock) {
-                val editor = sharedPreferences.edit().putString(KEY_BOT_TOKEN, value)
-                if (value != botToken) bumpCredentialGeneration(editor)
-                editor.apply()
-            }
-        }
 
-    var chatId: String
+    val chatId: String
         get() = prefString(KEY_CHAT_ID, "")
-        set(value) {
-            synchronized(credentialLock) {
-                val editor = sharedPreferences.edit().putString(KEY_CHAT_ID, value)
-                if (value != chatId) bumpCredentialGeneration(editor)
-                editor.apply()
-            }
-        }
 
     // Username bot sendiri (issue #843): dipelajari dari getMe agar
     // perintah beralamat @BotLain bisa dikenali bukan untuk bot ini.
