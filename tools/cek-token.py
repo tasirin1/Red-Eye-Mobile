@@ -594,7 +594,11 @@ def mengandung_token_pesan(teks):
     # string (\xNN #1801): dekode BUKAN pemadatan
     # #1425 — hanya aksara yang memang ter-encode
     # yang dibuka, prosa tetap tak tersambung.
-    for varian in _varian_terbuka(teks):
+    # Varian terbuka dihitung SEKALI (issue #1853):
+    # komposisi silang di bawah dulu memanggilnya lagi
+    # untuk teks yang sama.
+    varian_semua = _varian_terbuka(teks)
+    for varian in varian_semua:
         if _pola_mentah_cocok(varian) or \
                 _pola_mentah_cocok(re.sub(r"\s+", "", varian)):
             return True
@@ -604,7 +608,7 @@ def mengandung_token_pesan(teks):
     # entitas-kan lolos bila varian hanya dinilai pola
     # mentah. Sumber dekoder kini teks + tanpa spasi +
     # semua varian terbuka.
-    sumber_semua = [teks, tanpa_spasi] + _varian_terbuka(teks)
+    sumber_semua = [teks, tanpa_spasi] + varian_semua
     for sumber in sumber_semua:
         for m in POLA_KANDIDAT_B64.finditer(sumber):
             if _cocok_b64(m.group(0)):
@@ -771,9 +775,15 @@ def mengandung_token(teks):
     # (mentah + terpadatkan) ikut menjadi sumber
     # dekoder, sama seperti di permukaan pesan.
     sumber_semua = [teks, tanpa_spasi, rapat]
-    for varian in _varian_terbuka(teks):
+    # Varian terbuka + padatannya dihitung SEKALI
+    # (issue #1853): putaran bentuk web di bawah dulu
+    # menghitung ulang keduanya dari nol untuk teks
+    # yang sama — sekitar seperempat waktu vonis
+    # berkas besar adalah hitungan ulang identik.
+    pasangan_varian = [(v, _padatkan(v)) for v in _varian_terbuka(teks)]
+    for varian, padat in pasangan_varian:
         sumber_semua.append(varian)
-        sumber_semua.append(_padatkan(varian))
+        sumber_semua.append(padat)
     for sumber in sumber_semua:
         for m in POLA_KANDIDAT_B64.finditer(sumber):
             if _cocok_b64(m.group(0)):
@@ -830,9 +840,9 @@ def mengandung_token(teks):
     # Bentuk ter-encode web (issue #1799) dan escape
     # string (\uXXXX #1765, \xNN #1801): varian
     # terbukanya dinilai seperti teks biasa.
-    for varian in _varian_terbuka(teks):
+    for varian, padat in pasangan_varian:
         if _pola_mentah_cocok(varian) \
-                or _pola_mentah_cocok(_padatkan(varian)):
+                or _pola_mentah_cocok(padat):
             return True
     # Bentuk base32 (issue #1765): padanan kanal
     # base64 untuk alfabet base32 — hasil dekode
