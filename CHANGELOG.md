@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.667] - 2026-11-07
+
 ### Fixed
 - Penilaian berkas besar per potong di cek-token kini menjembatani juga bentuk terpadatkan antar-potong — belahan token yang dipisah pengisi menyusut (mis. jutaan baris kosong) menyeberangi batas potong sebelumnya lolos (#1916).
 
