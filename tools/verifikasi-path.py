@@ -4289,9 +4289,16 @@ def utama():
     # saat cek-token.py hilang mengikat fallback literal
     # permanen walau berkasnya kembali di proses yang
     # sama (jangkauan harness-impor).
-    global mengandung_token, mengandung_token_pesan
+    # Daftarnya kini lengkap (issue #1865): _padatkan
+    # dan _penilai_fragmen berasal dari modul yang sama
+    # dan tertinggal beku — penilai fragmen lokal
+    # pra-#1742 hidup lagi seumur proses sesudah impor
+    # yang gagal memuat cek-token.py.
+    global mengandung_token, mengandung_token_pesan, _padatkan, _penilai_fragmen
     mengandung_token = _muat_mengandung_token()
     mengandung_token_pesan = _muat_mengandung_token_pesan()
+    _padatkan = _muat_padatkan()
+    _penilai_fragmen = _muat_penilai_fragmen()
     gagal = []
     peringatan = []
     diff = ""
