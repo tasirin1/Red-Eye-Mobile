@@ -1664,18 +1664,38 @@ POLA_BOROS = [
 ]
 
 
+def _ada_pola_telanjang(isi, pola):
+    # True bila ada kemunculan pola yang BUKAN lanjutan
+    # rantai matcher(...) pada ekspresi yang sama (issue
+    # #1911): pengecualian matcher sebelumnya selebar
+    # baris penuh — kata matcher di komentar atau
+    # pernyataan lain sebaris menelan peringatan pola
+    # boros yang tak berhubungan.
+    awal = 0
+    while True:
+        i = isi.find(pola, awal)
+        if i < 0:
+            return False
+        if not re.search(
+                r"matcher\s*\((?:[^()]|\([^()]*\))*\)\s*$", isi[:i]):
+            return True
+        awal = i + 1
+
+
 def cek_pola_boros(peringatan, diff):
     tampil = set()
     for _, isi in tambah_kode(diff):
         for pola, saran in POLA_BOROS:
             if pola in isi and pola not in tampil:
-                if pola == ".split(" and "matcher" in isi.lower():
+                if pola == ".split(" \
+                        and not _ada_pola_telanjang(isi, pola):
                     continue  # POLA_X.matcher().split() sah
                 tampil.add(pola)
                 peringatan.append("Pola boros di baris baru %s — %s: %s"
                                   % (pola.strip(), saran, isi.strip()[:70]))
     for _, isi in tambah_kode(diff):
-        if ".matches(" in isi and "matcher" not in isi.lower() \
+        if ".matches(" in isi \
+                and _ada_pola_telanjang(isi, ".matches(") \
                 and ".matches(" not in tampil:
             tampil.add(".matches(")
             peringatan.append("Pola boros di baris baru .matches( — "

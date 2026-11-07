@@ -519,6 +519,29 @@ class UjiIzinBaru(unittest.TestCase):
         self.assertEqual(peringatan, [])
 
 
+class UjiPolaBorosMatcher(unittest.TestCase):
+    def _diff(self, baris):
+        return ("diff --git a/app/src/main/java/com/redeye/X.kt "
+                "b/app/src/main/java/com/redeye/X.kt\n"
+                "+++ b/app/src/main/java/com/redeye/X.kt\n"
+                "+" + baris)
+
+    def test_pengecualian_matcher_hanya_rantai(self):
+        # Issue #1911: pengecualian matcher hanya untuk
+        # rantai penerima yang sama — kata matcher di
+        # komentar atau pernyataan lain sebaris tidak
+        # lagi menelan peringatan pola boros.
+        for baris, harap in (
+            ('val a = POLA.matcher(teks).split(",")', 0),
+            ('val a = teks.split(",") // matcher lama', 1),
+            ('pola.matcher(teks); val a = teks.split(",")', 1),
+            ('val b = teks.matches(re) // matcher', 1),
+        ):
+            peringatan = []
+            verifikasi.cek_pola_boros(peringatan, self._diff(baris))
+            self.assertEqual(len(peringatan), harap, baris)
+
+
 class UjiPesanVerifikasiPath(unittest.TestCase):
     # Kanal pesan milik verifikasi-path (bukan cek-token):
     # gabungan lintas commit, metadata, dan nama tag.
