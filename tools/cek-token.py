@@ -755,6 +755,21 @@ def mengandung_token(teks):
         # tertuduh sebagai teks.
         if _pola_atau_terbuka(hasil) or _nilai_lapis_bawah(hasil):
             return True
+    # Bentuk byteArrayOf DESIMAL (issue #1840): deretan
+    # angka 0-255 berkoma adalah ejaan lain dari kanal
+    # yang sama — semua aksara token ASCII < 128, jadi
+    # token dapat ditempel utuh sebagai desimal tanpa
+    # pernah terakit oleh pola hex di atas. Vonisnya
+    # sama seperti rakitan hex.
+    for m in re.finditer(
+            r"(?:\b(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\b[\s,]*)+",
+            teks):
+        angka = re.findall(r"[0-9]+", m.group(0))
+        if len(angka) < 40:
+            continue
+        hasil = bytes(int(a) for a in angka)
+        if _pola_atau_terbuka(hasil) or _nilai_lapis_bawah(hasil):
+            return True
     # Bentuk ter-encode web (issue #1799) dan escape
     # string (\uXXXX #1765, \xNN #1801): varian
     # terbukanya dinilai seperti teks biasa.

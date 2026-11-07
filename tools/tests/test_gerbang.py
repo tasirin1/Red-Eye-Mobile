@@ -368,6 +368,30 @@ class UjiKanalBerkasTambahan(unittest.TestCase):
         jinak = eja("teks jinak biasa saja tanpa rahasia")
         self.assertFalse(cek_token.mengandung_token(jinak))
 
+    def test_bytearrayof_desimal(self):
+        # Issue #1840: ejaan DESIMAL byteArrayOf — rakitan
+        # byte sebelumnya hanya mengenali pasangan 0xNN,
+        # jadi token yang ditempel sebagai deretan angka
+        # desimal (semua aksara token ASCII < 128) lolos
+        # total.
+        def eja_des(teks):
+            return "byteArrayOf(" + ", ".join(
+                str(b) for b in teks.encode()) + ")"
+        persen = "".join("%%%02X" % ord(c) for c in TOKEN)
+        b64 = base64.b64encode(TOKEN.encode()).decode()
+        for nama, s in [
+            ("polos", TOKEN),
+            ("persen", persen),
+            ("b64", b64),
+            ("hex", TOKEN.encode().hex()),
+        ]:
+            with self.subTest(ejaan=nama):
+                self.assertTrue(cek_token.mengandung_token(eja_des(s)))
+        self.assertFalse(cek_token.mengandung_token(
+            eja_des("teks jinak biasa saja tanpa rahasia")))
+        deret = ", ".join(str((i * 37) % 200 + 20) for i in range(60))
+        self.assertFalse(cek_token.mengandung_token(deret))
+
     def test_komposisi_silang_varian_dekoder(self):
         # Issue #1812: varian terbuka diteruskan ke
         # dekoder — encode di atas encode tertangkap.

@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Gerbang token: kanal `byteArrayOf` kini juga merakit ejaan DESIMAL (`byteArrayOf(49, 50, ...)`), bukan hanya pasangan `0xNN` — sebelumnya token yang ditempel sebagai deretan angka desimal (semua aksara token ASCII < 128) lolos total; vonis rakitannya sama seperti rakitan hex (issue #1840).
 - Jalur SENT kini menggerbang pembersihan jurnal pada kemusnahan berkas (saudara #1836): ketiga fungsi kirim hanya membersihkan jurnal coba bila penghapusan pasca-kirim berhasil, dan blok pasca-kirim kedua flush + konsumen kirim-langsung hanya menghapus jurnal tujuan/upaya/coba bila berkas sudah tidak ada — sebelumnya berkas yang selamat dari kegagalan hapus total sesudah terkirim terkirim ulang ke chat terkonfigurasi (bukan chat tangkapan asal) dan tanpa label pengiriman ulang (issue #1839).
 
 ## [1.6.650] - 2026-11-07
