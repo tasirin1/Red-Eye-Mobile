@@ -4246,7 +4246,7 @@ def utama():
     parser.add_argument("--rentang", default="", help="rentang diff A...B (dipakai CI)")
     args = parser.parse_args()
 
-    global REF_BENIH, REF_POHON, _isi_strings_wajib, _MODUL_CACHE
+    global REF_BENIH, REF_POHON, _isi_strings_wajib, _MODUL_CACHE, _cek_tag_sudah_jalan
     # Reset keadaan modul di awal lari (issue #1528):
     # REF_POHON/REF_BENIH hanya dipasang cabang --rentang
     # dan tak pernah dikembalikan, baca() ter-lru_cache,
@@ -4267,6 +4267,15 @@ def utama():
     # yang berubah di antara dua lari tak terbaca ulang
     # tanpa penolan ini.
     _MODUL_CACHE = None
+    # Bendera sekali-jalan cek tag (issue #1855):
+    # bendera ini tertinggal dari daftar reset di atas —
+    # proses yang menjalankan utama() dua kali (suite,
+    # fuzzer, pemakaian pustaka) melewatkan seluruh
+    # penilaian pesan/branch/tag pada lari kedua SENYAP.
+    # Suite dan fuzzer sampai menyetel bendera privat
+    # ini dengan tangan di beberapa tempat sebagai
+    # tambalan; kini prolog sendiri yang menolkannya.
+    _cek_tag_sudah_jalan = False
     # Ikatan pemindai token dimuat ulang (issue #1569):
     # binding dibekukan saat impor — impor yang terjadi
     # saat cek-token.py hilang mengikat fallback literal

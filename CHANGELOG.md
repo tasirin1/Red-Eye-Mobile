@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Bendera sekali-jalan cek tag (`_cek_tag_sudah_jalan`) kini ikut ditolkan prolog reset `utama()` — sebelumnya ia tertinggal dari daftar reset #1528, jadi proses yang menjalankan gerbang dua kali (suite/fuzzer/pemakaian pustaka) melewatkan seluruh penilaian pesan/branch/tag pada lari kedua secara senyap; dibuktikan di titik masuk nyata: dua lari seproses kini sama-sama menjalankan enumerasi ref penuh (issue #1855).
 - Gerbang token mode `--berkas` kini memakai cache vonis lintas lari di direktori cache pengguna: kunci entri hash isi yang dinilai, kop cache hash sumber hakimnya (perubahan logika penilai mana pun mengosongkan cache otomatis), dapat dimatikan dengan `CEK_TOKEN_TANPA_CACHE=1`; sapuan pohon berulang turun dari 13,2 detik menjadi 0,09 detik pada pohon yang tak berubah, dan jalur uji/fuzzer tak menyentuh cache ini (issue #1854).
 - Gerbang token: varian terbuka + padatannya kini dihitung sekali per vonis dan dipakai ulang di semua putaran (`mengandung_token` dan `mengandung_token_pesan`) — sebelumnya dihitung dua kali untuk teks yang sama; vonis dibuktikan identik atas seluruh pohon (223 berkas × 2 hakim, 0 beda) dan waktu vonis berkas terbesar turun 3,40 → 2,34 detik (issue #1853).
 - Fungsi produksi mati `PreferencesManager.setChatIdSync` dihapus — 0 pemanggil di seluruh korpus (jalur hidupnya varian CAS `setChatIdIfCurrentSync` dari #1377), dan komentar #877 di MonitoringService yang masih mengkreditkan fungsi mayat itu untuk migrasi grup→supergrup diperbaiki ke fungsi yang sebenarnya (issue #1852).
