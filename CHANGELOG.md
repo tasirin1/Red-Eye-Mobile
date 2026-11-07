@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Fixed
+
+- Jurnal tujuan media foto dan video kini ditulis sinkron sebelum lompatan `serviceScope.launch`: berkas final sudah berada di direktori antrean saat `sendCapturedPhoto`/callback `onVideoTaken` berjalan, tetapi jurnal sebelumnya baru ditulis di dalam badan launch — bila layanan dihancurkan pada celah sub-detik itu, berkas yatim tanpa jurnal ter-flush ke chat terkonfigurasi, bukan chat asal (kelas #1867/#1878, jalur balapan teardown). Penulisan ulang jurnal di badan launch idempoten dan chat kosong tetap no-op (issue #1881).
+
 ## [1.6.656] - 2026-11-07
 
 ### Fixed

@@ -12010,6 +12010,13 @@ class MonitoringService : Service() {
         // terkirim; hanya jalur laporan manual agar foto
         // otomatis tak berbiaya dekode tambahan.
         val spreadAwal = if (reportResult) photoSpreadNow else -1
+        // Jurnal tujuan ditulis sinkron SEBELUM lompatan
+        // launch (issue #1881): berkas sudah final di
+        // direktori antrean; bila scope batal sebelum badan
+        // launch berjalan, berkas yatim tanpa jurnal akan
+        // ter-flush ke chat terkonfigurasi. Penulisan ulang
+        // di badan launch idempoten; chat kosong no-op.
+        simpanTujuanMedia(photoFile, chatTujuan)
         serviceScope.launch {
             try {
                 if (!reportResult && dataSaverHoldNow(1)) {
@@ -14122,6 +14129,11 @@ class MonitoringService : Service() {
                     try { wd.cancel() } catch (_: Exception) { }
                     recorderActive.set(false)
                     markMediaActive(videoFile)
+                    // Jurnal tujuan sinkron sebelum lompatan
+                    // launch (issue #1881): berkas sudah final
+                    // (CameraService me-rename sebelum callback);
+                    // alasan sama dengan jalur foto.
+                    simpanTujuanMedia(videoFile, chatTujuan)
                     serviceScope.launch {
                         try {
                             if (try { preferencesManager.monitoringPaused } catch (_: Exception) { false }) {
