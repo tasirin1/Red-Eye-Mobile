@@ -683,18 +683,6 @@ AWALAN_STYLE_PUSTAKA = (
     "Theme_",
 )
 
-# Penanda ruang-nama pustaka untuk penyempitan #1442:
-# selimut awalan saja membebaskan SEMUA nama berawalan
-# keluarga pustaka dari vonis yatim sisi kode — termasuk
-# salah-ketik yang tak ada di pustaka mana pun. Kini
-# bebas hanya bila nama juga memuat penanda ruang-nama
-# pustaka sungguhan (Platform_ adalah penandanya sendiri:
-# style platform tampil sebagai Platform_*). Sisa risiko
-# (salah-ketik DI DALAM ruang-nama asli) tertangkap
-# kompiler, karena rujukan R.style harus ada untuk lolos
-# build.
-PENANDA_PUSTAKA_STYLE = ("Material", "AppCompat", "Design", "Mdc")
-
 # Segmen ruang-nama pustaka yang dikenal persis (issue
 # #1449): penanda substring bebas membebaskan nama seperti
 # Widget_DesignKu / Widget_TombolDesign, dan tiga awalan
