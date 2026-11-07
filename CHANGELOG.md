@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Komentar salah hitung di `PreferencesManager` diperbarui dari "Tiga penulis" menjadi "Lima penulis": penanda blokir kredensial ditulis lima fungsi (set/clear/setIfMatch penanda, adoptOwnerChatSync, putCredentialState), bukan tiga — perilaku commit-guard #1370 tidak berubah, hanya komentarnya yang kini sesuai kode (issue #1899).
+
 - Pengurai `byteArrayOf` gerbang kini menerima elemen literal Double/Float (`305.0.toByte()`, `305f.toByte()`): cabang angka menerima ejaan pecahan dan akhiran `f`, dan cabang nilai membacanya lewat pemotongan float ke arah nol sesuai semantik `toByte()` — sebelumnya ejaan itu tak terurai sama sekali dan lolos total (issue #1898).
 
 - Daftar nama konversi perantara pengurai `byteArrayOf` gerbang dilengkapi — `toChar`, `toDouble`, `toFloat`, `toULong`, `toUInt`, `toUShort`, `toUByte` kini dikenal pada rantai angka maupun huruf (dan langkah `.code` diterima di rantai angka untuk `toChar().code`): sebelumnya elemen yang melewati konversi itu tak dikenal dan literalnya lolos total (issue #1897).

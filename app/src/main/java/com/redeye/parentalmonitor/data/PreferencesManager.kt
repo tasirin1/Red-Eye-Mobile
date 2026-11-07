@@ -1319,7 +1319,7 @@ class PreferencesManager(context: Context) {
     val credentialErrorElapsed: Long
         get() = prefLong(KEY_CRED_ERROR_ELAPSED, 0L)
 
-    // Tiga penulis penanda blokir kredensial di bawah memakai
+    // Lima penulis penanda blokir kredensial memakai
     // commit(), bukan apply() (issue #1370): penanda ini
     // keadaan keamanan — mati proses sebelum apply() ter-flush
     // menghapus blokir dari cakram dan restart mengulang kirim
