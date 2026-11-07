@@ -754,6 +754,22 @@ def _tanggal_komentar_blok(teks):
 def _rakit_bytearray(teks):
     """Rakitan byte dari literal byteArrayOf(...) (issue #1842).
 
+    Pembungkus dua lintasan: lintasan pertama atas teks apa
+    adanya; bila terdeteksi celah komentar di antara nama dan
+    kurung buka (issue #1880), lintasan kedua berjalan atas
+    salinan yang komentarnya sudah ditanggalkan — pencari
+    inti hanya toleran whitespace, sedangkan komentar adalah
+    whitespace sah di Kotlin.
+    """
+    yield from _rakit_bytearray_inti(teks)
+    if re.search(r"byteArrayOf\s*/", teks):
+        bersih = re.sub(r"//[^\n]*", " ", _tanggal_komentar_blok(teks))
+        yield from _rakit_bytearray_inti(bersih)
+
+
+def _rakit_bytearray_inti(teks):
+    """Satu lintasan penguraian atas teks yang diberikan.
+
     Dua pola larian lama (hex murni, desimal murni) masing-masing
     menuntut >=40 elemen sejenis, jadi literal yang membelah token
     antara ejaan hex dan desimal tak pernah terakit utuh. Pengurai
