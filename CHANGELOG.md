@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.650] - 2026-11-07
+
 ### Added
 
 - Fuzzer uji-diri gerbang token (`tools/fuzz-gerbang.py`, perintah owner): membangkitkan sendiri matriks penghindaran dari token kontrol sintetis — encode satu/dua lapis, sisipan pemisah, belahan lintas permukaan, ejaan `byteArrayOf` — dan menuntut vonis sesuai doktrin (tertuduh/bersih; kasus di luar batas desain terdokumentasi hanya dicatat). Terhubung ke suite regresi gerbang sebagai uji ke-58 agar setiap regresi kanal tertangkap CI, bukan menunggu audit berikutnya.
