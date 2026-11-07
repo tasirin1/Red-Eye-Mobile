@@ -10484,7 +10484,7 @@ class MonitoringService : Service() {
                 }
                 return
             }
-            if (DigestSchedule.nightCatchUpDue(done, yesterday, key, h) ||
+            if (DigestSchedule.nightCatchUpDue(done, yesterday, h) ||
                 DigestSchedule.nightZoneShiftCatchUpDue(done, yesterday, h, doneAt, now, doneOff, off.toLong())) {
                 if (awaitingOwnerLogin()) return
                 if (nightDigestAttemptKey != yesterday) {

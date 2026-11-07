@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Lima parameter tak terpakai dihapus beserta penyesuaian situs panggilnya: `context` pada `A11yMonitor.loadUsage`/`saveUsageFor`/`persistLocked`, `lensFacing` pada `CameraService.getJpegOrientation` (badan menurunkan ulang arah dari karakteristik kamera), dan `todayKey` pada `DigestSchedule.nightCatchUpDue` (badan hanya memakai doneKey/yesterdayKey/hour) — parameter hantu menyesatkan pembaca seolah nilai itu ikut menentukan hasil; perilaku tidak berubah dan uji DigestSchedule disesuaikan (issue #1890).
+
 - Tiga komentar basi di `MessageQueue` diperbarui dari "kelima" menjadi "keenam": penghitung drop sudah berkategori enam sejak #1520 (kategori pesan hilang akibat data antrean rusak), tetapi komentar jalur persist/muat/wipe masih menyebut lima sehingga menyesatkan pembaca (issue #1889).
 
 - Pengurai `byteArrayOf` gerbang kini menerima ejaan elemen negatif hex dan biner (`-0xCF.toByte()`, `-0b11001111.toByte()`): tanda minus pada pola elemen sebelumnya hanya menempel pada alternatif desimal sehingga ejaan bertanda basis lain lolos total, dan cabang nilai kini membaca tanda secara terpisah sebelum mendeteksi awalan basis (issue #1888).

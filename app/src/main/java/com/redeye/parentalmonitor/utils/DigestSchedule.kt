@@ -45,7 +45,7 @@ object DigestSchedule {
     // yang sama (dua ringkasan harian dalam sehari). Sesudah jendela
     // pagi, susulan dilewati; digest malam reguler tetap jatuh tempo
     // malam ini karena penanda selesai tidak berubah.
-    fun nightCatchUpDue(doneKey: String, yesterdayKey: String, todayKey: String, hour: Int): Boolean {
+    fun nightCatchUpDue(doneKey: String, yesterdayKey: String, hour: Int): Boolean {
         return hour in 5..11 && doneKey.isNotEmpty() && yesterdayKey.isNotEmpty() && doneKey < yesterdayKey
     }
 

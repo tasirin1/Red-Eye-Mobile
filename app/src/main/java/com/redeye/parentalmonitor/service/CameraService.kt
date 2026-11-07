@@ -341,7 +341,7 @@ class CameraService(private val context: Context) {
             // so warmup preview frames can never be mistaken for the still photo.
             val photoSize = choosePhotoSize(cameraManager, cameraId)
             val meterSize = choosePreviewSize(cameraManager, cameraId, photoSize)
-            val jpegOrientation = getJpegOrientation(cameraManager, cameraId, lensFacing)
+            val jpegOrientation = getJpegOrientation(cameraManager, cameraId)
             val dummyTexture = android.graphics.SurfaceTexture(1)
             try {
                 dummyTexture.setDefaultBufferSize(meterSize.first, meterSize.second)
@@ -687,7 +687,7 @@ class CameraService(private val context: Context) {
             try { rec.setAudioChannels(1) } catch (_: Exception) { }
             rec.setVideoSize(videoSize.first, videoSize.second)
             try {
-                rec.setOrientationHint(getJpegOrientation(cameraManager, cameraId, lensFacing))
+                rec.setOrientationHint(getJpegOrientation(cameraManager, cameraId))
             } catch (_: Exception) {
             }
             try {
@@ -1017,7 +1017,7 @@ class CameraService(private val context: Context) {
     }
 
     @Suppress("DEPRECATION")
-    private fun getJpegOrientation(cameraManager: CameraManager, cameraId: String, lensFacing: Int): Int {
+    private fun getJpegOrientation(cameraManager: CameraManager, cameraId: String): Int {
         return try {
             val characteristics = characteristicsOf(cameraManager, cameraId) ?: return 0
             val sensor = characteristics.get(CameraCharacteristics.SENSOR_ORIENTATION) ?: 0

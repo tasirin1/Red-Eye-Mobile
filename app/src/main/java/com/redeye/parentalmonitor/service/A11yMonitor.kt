@@ -291,13 +291,13 @@ object A11yMonitor {
                 val spanEnd = A11yUsageMath.splitBoundaryWallMillis(startWall, todayStart, java.util.TimeZone.getDefault())
                 val span = spanEnd - startWall
                 val todayUsage = usage
-                usage = loadUsage(context, startDay)
+                usage = loadUsage(startDay)
                 currentPackage = pkg
                 currentLabel = labelFor(context, pkg)
                 currentStartWall = startWall
                 currentStartElapsed = 1L
                 accrueSessionLocked(spanEnd, 1L + span)
-                saveUsageFor(context, startDay)
+                saveUsageFor(startDay)
                 usage = todayUsage
                 currentPackage = pkg
                 currentLabel = labelFor(context, pkg)
@@ -730,7 +730,7 @@ object A11yMonitor {
                 suspendedPackage = ""
                 ensureLoadedLocked(app)
                 finishSessionLocked(System.currentTimeMillis(), SystemClock.elapsedRealtime())
-                persistLocked(app, true)
+                persistLocked(true)
             }
         }
         // Flush akhir tak boleh ikut nasib DiscardPolicy
@@ -762,7 +762,7 @@ object A11yMonitor {
                 }
                 finishSessionLocked(System.currentTimeMillis(), SystemClock.elapsedRealtime())
                 lastEventKey = ""
-                persistLocked(app, true)
+                persistLocked(true)
             }
         }
         // Anti-buang seperti flush (issue #1324 +
@@ -861,7 +861,7 @@ object A11yMonitor {
             // sehingga paruh akhir malam terakhir terbaca
             // dari slot yang salah.
             val yesterday = TimeFmt.dayKey(A11yUsageMath.previousDayStartWallMillis(System.currentTimeMillis(), java.util.TimeZone.getDefault()))
-            return loadUsage(app, yesterday).values.map { it.copy() }
+            return loadUsage(yesterday).values.map { it.copy() }
                 .filter { it.millis > 0L || it.launches > 0 }
                 .sortedByDescending { it.millis }
         }
@@ -947,10 +947,10 @@ object A11yMonitor {
                     for (boundary in boundaries) {
                         val elapsedAtBoundary = nowElapsed - (nowWall - boundary)
                         accrueSessionLocked(boundary, elapsedAtBoundary)
-                        saveUsageFor(context, segDay)
+                        saveUsageFor(segDay)
                         if (boundary >= dayStart) break
                         segDay = TimeFmt.dayKey(boundary)
-                        usage = loadUsage(context, segDay)
+                        usage = loadUsage(segDay)
                     }
                     segmentsSaved = true
                     resumeWall = dayStart
@@ -964,11 +964,11 @@ object A11yMonitor {
             } else {
                 finishSessionLocked(nowWall, nowElapsed)
             }
-            if (!segmentsSaved) saveUsageFor(context, previousDay)
+            if (!segmentsSaved) saveUsageFor(previousDay)
         }
         loadedDay = today
         loaded = true
-        usage = loadUsage(context, today)
+        usage = loadUsage(today)
         seedKnownAppsLocked(context)
         if (activePackage.isNotEmpty() && (previousDay.isEmpty() || today != previousDay)) {
             val manager = prefs
@@ -983,7 +983,7 @@ object A11yMonitor {
         }
     }
 
-    private fun loadUsage(context: Context, today: String): MutableMap<String, AppUsage> {
+    private fun loadUsage(today: String): MutableMap<String, AppUsage> {
         val manager = prefs ?: return HashMap()
         return try {
             // Slot cadangan lebih dulu (issue #1037): bila
@@ -1591,7 +1591,7 @@ object A11yMonitor {
                     stampNightAlert(manager, currentPackage, nowWall, nowElapsed)
                     crossAlert = "\uD83C\uDF19 <b>Aplikasi masih dipakai malam</b>\n" + Html.escape(labelFor(app, currentPackage)) + "\n<code>" + currentPackage + "</code>\n" + TimeFmt.short(nowWall)
                 }
-                persistLocked(app, false)
+                persistLocked(false)
             }
             crossAlert?.let {
                 // Antre menolak (issue #811): cap malam dikembalikan.
@@ -1603,7 +1603,7 @@ object A11yMonitor {
         serahkanTugasA11y(task)
     }
 
-    private fun saveUsageFor(context: Context, day: String) {
+    private fun saveUsageFor(day: String) {
         val manager = prefs ?: return
         try {
             manager.setA11yUsage(day, try { gson.toJson(usage) } catch (_: Exception) { "" })
@@ -1613,7 +1613,7 @@ object A11yMonitor {
         }
     }
 
-    private fun persistLocked(context: Context, force: Boolean) {
+    private fun persistLocked(force: Boolean) {
         val now = SystemClock.elapsedRealtime()
         if (!force && (now - lastPersistElapsed < PERSIST_INTERVAL_MS || persistBackoffActive(now))) return
         val manager = prefs ?: return
