@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.655] - 2026-11-07
+
 ### Fixed
 
 - Regex pemisah spasi di `NumericArg.parse` kini di-hoist ke konstanta objek (`SPASI`) menyamai `ATTACHED` — sebelumnya `Regex("\\s+")` dikompilasi ulang pada setiap panggilan parse, padahal parse berjalan untuk setiap argumen angka perintah dan polanya tak pernah berubah (issue #1877).
