@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Metadata verifikasi dependensi dilengkapi untuk empat artefak `androidx.lifecycle:*:2.6.2` (livedata-core, process, viewmodel, viewmodel-savedstate; `.aar` + `.module`, checksum dari Maven resmi Google) — graf resolusi sesudah penurunan `core-ktx` (#1859) memilih 2.6.2 yang belum terpin, sehingga CI Build gagal di `checkDebugAarMetadata` (lanjutan #1859).
 - `tools:targetApi` di manifest dinaikkan 35 → 36 menyamai `targetSdk` yang sudah 36 sejak #1674 — atribut basi itu membuat lint mengkalibrasi cek peka-API-target seolah target masih 35 (issue #1860).
 - Dependensi `androidx.core:core-ktx` diturunkan ke artefak dasar `androidx.core:core` (versi sama) — sensus membuktikan permukaan khas-ktx nol terpakai: seluruh impor `androidx.core.*` hanya `ContextCompat`/`NotificationCompat` dari artefak dasar (klaim di level deklarasi, bukan janji ukuran APK) (issue #1859).
 - Sapuan komentar XML di cek-cepat (`sapu_komentar_xml`, awk) kini sadar CDATA seperti cermin Python-nya (#1345) — sebelumnya `<!--` di dalam blok CDATA membuka "komentar hantu" yang menelan baris pathData asli berikutnya utuh (fail-open langkah pemeriksaan drawable); dibuktikan dengan fixture CDATA berkomentar jebakan, komentar multi-baris, dan CDATA multi-baris (issue #1858).
