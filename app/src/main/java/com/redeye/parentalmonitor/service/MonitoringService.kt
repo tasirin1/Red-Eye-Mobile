@@ -13987,54 +13987,56 @@ class MonitoringService : Service() {
         }
     }
 
+    // Satu titik reset + notis untuk fase penjaga
+    // recordAndSendVideo (issue #1848): tujuh penjaga
+    // keluar-awal dulu menyalin pasangan reset
+    // recordBusy/recordingKind satu-satu — penjaga baru
+    // yang lupa menyalinnya membuat recordBusy macet
+    // true permanen karena watchdog perekaman baru
+    // lahir SESUDAH fase penjaga. Kini penjaga cukup
+    // memanggil ini lalu return.
+    private fun batalkanRekamanVideo(kirim: suspend () -> Unit) {
+        recordBusy.set(false)
+        recordingKind = ""
+        serviceScope.launch { kirim() }
+    }
+
     private fun recordAndSendVideo(seconds: Int, chatTujuan: String = "") {
         if (NetworkUtils.isAuthBlocked(preferencesManager)) {
-            recordBusy.set(false)
-            recordingKind = ""
-            serviceScope.launch {
+            batalkanRekamanVideo {
                 sendToTelegram("Token ditolak — video ditahan sampai token diperbaiki di Setup.")
             }
             return
         }
         if (android.os.SystemClock.elapsedRealtime() < mediaBackoffUntil) {
-            recordBusy.set(false)
-            recordingKind = ""
-            serviceScope.launch {
+            batalkanRekamanVideo {
                 sendToTelegram("Dibatasi Telegram (rate limit) — video ditahan lalu dicoba lagi.")
             }
             return
         }
         ensureForegroundTypes()
         if (!hasCameraPermission()) {
-            recordBusy.set(false)
-            recordingKind = ""
-            serviceScope.launch {
+            batalkanRekamanVideo {
                 sendToTelegram("⚠️ Izin Kamera belum diberikan. Buka Setup dan berikan izin Kamera.")
             }
             return
         }
         if (!hasMicPermission()) {
-            recordBusy.set(false)
-            recordingKind = ""
-            serviceScope.launch {
+            batalkanRekamanVideo {
                 sendToTelegram("⚠️ Izin Mikrofon belum diberikan. Buka Setup dan berikan izin Mikrofon.")
             }
             return
         }
         if (cameraBusy.get()) {
-            recordBusy.set(false)
-            recordingKind = ""
-            serviceScope.launch {
+            batalkanRekamanVideo {
                 sendToTelegram("⚠️ Kamera sedang dipakai untuk foto, coba /recordvideo lagi sebentar.")
             }
             return
         }
         if (isCameraDisabledByPolicy()) {
-            recordBusy.set(false)
-            recordingKind = ""
             autoPausePhotosOnPolicyBlock()
             val blockers = cameraBlockingAdmins()
-            serviceScope.launch {
+            batalkanRekamanVideo {
                 sendToTelegram("⚠️ Video diblokir kebijakan perangkat (CAMERA_DISABLED). " + policyFailureHint(blockers))
             }
             return
@@ -14045,9 +14047,7 @@ class MonitoringService : Service() {
             } catch (_: Exception) {
             }
             if (pendingVideoCount() >= MAX_VIDEO_KEPT) {
-                recordBusy.set(false)
-                recordingKind = ""
-                serviceScope.launch {
+                batalkanRekamanVideo {
                     if (videoFlushBusy.get()) {
                         sendToTelegram("⏳ Sedang mengirim video tertunda, coba lagi sebentar.")
                     } else {
