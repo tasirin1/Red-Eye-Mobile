@@ -14143,6 +14143,11 @@ class MonitoringService : Service() {
                                 sendToTelegram("⏸️ Monitoring dijeda — video disimpan, dikirim sesudah /resume.")
                             } else if (videoFile.length() > MAX_VIDEO_BYTES) {
                                 deleteQuietly(videoFile)
+                                // Jurnal tujuan ikut dibersihkan
+                                // (issue #1902): berkas tak akan
+                                // pernah di-flush, entri yatimnya
+                                // bisa mengusir entri antre lain.
+                                hapusTujuanMedia(videoFile)
                                 sendToTelegram("⚠️ Video terlalu besar (>${MAX_VIDEO_BYTES / (1024L * 1024L)} MB). Coba /recordvideo dengan detik lebih sedikit.")
                             } else {
                                 val usedSnapshot = try { cameraService.lastLensFacing } catch (_: Exception) { -1 }
