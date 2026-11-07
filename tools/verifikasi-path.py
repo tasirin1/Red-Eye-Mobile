@@ -2040,8 +2040,9 @@ def _konfirmasi_diff_berdiri(diff):
     sudah membebaskannya lewat konfirmasi isi staged penuh
     (#1620), dan mode rentang CI menghukumnya: dua gerbang,
     dua vonis untuk perubahan yang sama. Nilai ulang isi
-    berkas-berkas berubah (pohon kerja = ujung rentang di
-    CI) satu per satu dan gabungannya (pola #1625): tuduhan
+    berkas-berkas berubah (pohon ujung rentang pada mode
+    rentang, berkas kerja pada mode bawaan) satu per satu
+    dan gabungannya (pola #1625): tuduhan
     hanya berdiri bila ada isi yang tertuduh. Tak ada isi
     yang bisa dinilai sama sekali = tuduhan berdiri
     (gagal-tertutup)."""
@@ -2055,7 +2056,10 @@ def _konfirmasi_diff_berdiri(diff):
     dinilai = 0
     gabungan = []
     for path in paths:
-        isi = baca(path)
+        # Isi dari pohon yang dinilai (issue #1913, keluarga
+        # #1490): mode rentang membaca ujung rentang, bukan
+        # berkas kerja yang bisa menyimpang.
+        isi = _baca_pohon(path)
         if isi is None:
             continue
         dinilai += 1
@@ -4223,8 +4227,13 @@ def cek_ikon_launcher(gagal):
 
 def cek_import_mati(gagal):
     """Import Kotlin/Java yang namanya tak dipakai di kode (GAGAL)."""
-    for path in jalan_repo("app", ext=EKSTENSI_KODE):
-        bersih = kupas_kode(baca_teks(path), simpan_interpolasi=True, bersarang=not path.endswith(".java"))
+    # Daftar & isi dari pohon yang dinilai (issue #1913,
+    # keluarga #1490): mode rentang menilai pohon ujung.
+    for path in _jalan_pohon("app", ext=EKSTENSI_KODE):
+        mentah = _baca_pohon(path)
+        if mentah is None:
+            continue
+        bersih = kupas_kode(mentah, simpan_interpolasi=True, bersarang=not path.endswith(".java"))
         tanpa = re.sub(r"^\s*import\s+.*$", "", bersih, flags=re.M)
         for m in re.finditer(r"^\s*import\s+([\w.*]+)(\s+as\s+(\w+))?\s*;?\s*$",
                              bersih, flags=re.M):

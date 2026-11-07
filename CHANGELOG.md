@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Mode rentang verifikasi-path kini menilai pohon ujung rentang juga di `cek_import_mati` dan konfirmasi tuduhan token — keduanya masih membaca berkas kerja sehingga edit tak ter-commit bisa mengubah vonis dua arah (#1913).
 - Gerbang token: tebak UTF-16 tanpa BOM yang salah atas berkas biner campuran tidak lagi menghancurkan token polos sebelum dipindai — bacaan UTF-8 ikut dinilai sebagai vonis gabungan di kedua perkakas (#1912).
 
 ## [1.6.664] - 2026-11-07
