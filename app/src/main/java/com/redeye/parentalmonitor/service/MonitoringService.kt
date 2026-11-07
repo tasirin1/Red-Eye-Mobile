@@ -14490,13 +14490,29 @@ class MonitoringService : Service() {
         try { pruneVideoCacheInti(maxKept, known) } finally { pruneBusy.set(false) }
     }
 
-    private fun pruneVideoCacheInti(maxKept: Int, known: List<File>? = null) {
-        if (videoFlushBusy.get()) return
-        if (pruneDitundaJamMundur(listOf("video_"), ".mp4")) return
+    // Inti prune bersama video + audio (issue #1847): kedua
+    // badannya dulu kembar nyaris kata per kata, jadi aturan
+    // jurnal #1831/#1836/#1839 wajib mendarat dua kali. Beda
+    // nyata hanya parameternya. Sapuan tmp audio kini juga
+    // di dalam try batin (dulu di luar): kegagalan daftar tmp
+    // tak lagi membatalkan seluruh prune audio, menyamai
+    // bentuk video.
+    private fun pruneMediaCacheInti(
+        maxKept: Int,
+        known: List<File>?,
+        flushBusy: AtomicBoolean,
+        prefix: String,
+        ext: String,
+        tmpSuffix: String,
+        tmpMaxAgeMs: Long,
+        label: String
+    ) {
+        if (flushBusy.get()) return
+        if (pruneDitundaJamMundur(listOf(prefix), ext)) return
         try {
             try {
                 antreMedia().listFiles { file ->
-                    file.isFile && file.name.startsWith("video_") && file.name.endsWith(".mp4.tmp") && System.currentTimeMillis() - file.lastModified() > 3_600_000L
+                    file.isFile && file.name.startsWith(prefix) && file.name.endsWith(tmpSuffix) && System.currentTimeMillis() - file.lastModified() > tmpMaxAgeMs
                 }?.forEach { deleteQuietly(it) }
             } catch (_: Exception) {
             }
@@ -14511,7 +14527,7 @@ class MonitoringService : Service() {
             // tanpa saringan ini mereka ikut terhitung isi
             // cache dan divonis "dibuang (cache penuh)".
             val files = (known?.filter { it.exists() } ?: antreMedia().listFiles { file ->
-                file.isFile && file.name.startsWith("video_") && file.name.endsWith(".mp4")
+                file.isFile && file.name.startsWith(prefix) && file.name.endsWith(ext)
             }?.toList())
                 ?.map { file ->
                     val t = try { TimeFmt.mediaNameTimeMs(file.name) } catch (_: Exception) { -1L }
@@ -14551,12 +14567,20 @@ class MonitoringService : Service() {
             }
             if (terhapus == 0) return
             try {
-                messageQueue.addMessage("⚠️ $terhapus berkas video dibuang (cache penuh).", true)
+                messageQueue.addMessage("⚠️ $terhapus berkas $label dibuang (cache penuh).", true)
                 MessageScheduler.scheduleMessageSend(this)
             } catch (_: Exception) {
             }
         } catch (_: Exception) {
         }
+    }
+
+
+    private fun pruneVideoCacheInti(maxKept: Int, known: List<File>? = null) {
+        pruneMediaCacheInti(
+            maxKept = maxKept, known = known, flushBusy = videoFlushBusy,
+            prefix = "video_", ext = ".mp4", tmpSuffix = ".mp4.tmp",
+            tmpMaxAgeMs = 3_600_000L, label = "video")
     }
 
     private suspend fun flushPendingAudio(max: Int = 5) {
@@ -14579,59 +14603,10 @@ class MonitoringService : Service() {
     }
 
     private fun pruneAudioCacheInti(maxKept: Int, known: List<File>? = null) {
-        if (audioFlushBusy.get()) return
-        if (pruneDitundaJamMundur(listOf("audio_"), ".m4a")) return
-        try {
-            val staleTmpCutoff = System.currentTimeMillis() - 6 * 60 * 60_000L
-            antreMedia().listFiles { file ->
-                file.isFile && file.name.startsWith("audio_") && file.name.endsWith(".tmp") && file.lastModified() < staleTmpCutoff
-            }?.forEach { deleteQuietly(it) }
-            // Daftar known disaring keberadaannya (issue
-            // #1795), sama seperti prune video di atas.
-            val files = (known?.filter { it.exists() } ?: antreMedia().listFiles { file ->
-                file.isFile && file.name.startsWith("audio_") && file.name.endsWith(".m4a")
-            }?.toList())
-                ?.map { file ->
-                    val t = try { TimeFmt.mediaNameTimeMs(file.name) } catch (_: Exception) { -1L }
-                    (if (t > 0L) t else file.lastModified()) to file
-                }
-                ?.sortedBy { it.first }
-                ?.map { it.second }
-                ?.filter { !isMediaActive(it) } ?: return
-            // Korban disaring aktif SEKALI lagi di titik
-            // pemilihan (issue #1821): saringan di daftar
-            // awal dinilai sebelum pengurutan, jadi berkas
-            // yang baru mulai diunggah flush lain sesudah
-            // itu bisa ikut terpilih tanpa saringan ini.
-            val dropped = files.dropLast(maxKept).filter { !isMediaActive(it) }
-            if (dropped.isEmpty()) return
-            // Entri tujuan korban ikut dibuang (issue #1747).
-            // Ketiga jurnal dibersihkan (issue #1779,
-            // dilengkapi jurnal coba di #1796):
-            // jalur flush selalu membersihkan upaya +
-            // tujuan; prune yang hanya membersihkan
-            // tujuan meninggalkan entri upaya yatim
-            // di media_upaya.txt sampai terdesak plafon.
-            // Jurnal hanya dibersihkan untuk korban yang
-            // isinya benar-benar musnah (issue #1831),
-            // sama seperti prune video di atas.
-            var terhapus = 0
-            for (korban in dropped) {
-                if (deleteQuietly(korban)) {
-                    terhapus++
-                    hapusUpayaMedia(korban)
-                    hapusTujuanMedia(korban)
-                    bersihkanCatatanUnggah(korban)
-                }
-            }
-            if (terhapus == 0) return
-            try {
-                messageQueue.addMessage("\u26A0\uFE0F $terhapus berkas rekaman dibuang (cache penuh).", true)
-                MessageScheduler.scheduleMessageSend(this)
-            } catch (_: Exception) {
-            }
-        } catch (_: Exception) {
-        }
+        pruneMediaCacheInti(
+            maxKept = maxKept, known = known, flushBusy = audioFlushBusy,
+            prefix = "audio_", ext = ".m4a", tmpSuffix = ".tmp",
+            tmpMaxAgeMs = 6 * 60 * 60_000L, label = "rekaman")
     }
 
     private fun canonicalPhoneDigits(raw: String): String {
