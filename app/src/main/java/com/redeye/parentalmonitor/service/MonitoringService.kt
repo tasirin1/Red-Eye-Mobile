@@ -3292,7 +3292,17 @@ class MonitoringService : Service() {
                                         try { preferencesManager.clearOwnerPairCodeSync() } catch (_: Exception) { }
                                         try { pairAttemptAt.remove(senderId) } catch (_: Exception) { }
                                         try { pairGlobalFails.set(0) } catch (_: Exception) { }
-                                        registerBotCommands()
+                                        // Pendaftaran perintah diluncurkan
+                                        // (issue #1861): dua panggilan
+                                        // setMyCommands tak lagi menahan
+                                        // dispatch sisa batch. Fungsi ini
+                                        // menjaga dirinya sendiri penuh
+                                        // (kegagalan tercatat + log), dan
+                                        // gerbang hash-nya membaca pemilik
+                                        // yang barusan dipersist di atas.
+                                        serviceScope.launch {
+                                            registerBotCommands()
+                                        }
                                         // Notis diluncurkan (issue #1845);
                                         // mutasi keadaan di atasnya
                                         // tetap sebaris berurutan

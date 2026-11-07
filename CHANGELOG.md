@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Fixed
+
+- Pendaftaran perintah bot (`registerBotCommands`) di cabang sukses pairing kini diluncurkan asinkron seperti lima kirim #1845 — dua panggilan `setMyCommands` tak lagi menahan dispatch sisa batch, terutama pada pairing pertama saat gerbang hash belum bisa menolong karena `ownerId` baru berubah; fungsi itu menjaga dirinya sendiri penuh (kegagalan tercatat dan ter-log) dan hash-nya membaca pemilik yang sudah dipersist sebelum peluncuran (issue #1861).
+
 ## [1.6.652] - 2026-11-07
 
 ### Fixed
