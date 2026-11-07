@@ -526,6 +526,49 @@ class UjiPesanVerifikasiPath(unittest.TestCase):
         self.assertEqual(len(gagal), 1, gagal)
         self.assertIn("TERBELAH lintas pesan", gagal[0])
 
+    def test_belahan_tiga_perukaan(self):
+        # Issue #1844: belahan TIGA permukaan — tiap
+        # pasangan fragmen yang berurutan jumlahnya di
+        # bawah kandidat minimum hakim (48), jadi
+        # mekanisme pasangan lolos; mekanisme tripel
+        # menilai gabungan ketiganya.
+        enc = base64.urlsafe_b64encode(
+            TOKEN.encode()).decode().rstrip("=")
+
+        def nilai(branch="", pesan=(), tags=()):
+            def palsu(*args):
+                gabung = " ".join(args)
+                if "refs/heads" in gabung:
+                    return branch
+                if "refs/remotes/origin" in gabung:
+                    return ""
+                if "%(contents)" in gabung:
+                    for nama, anotasi in tags:
+                        if "refs/tags/" + nama in gabung:
+                            return anotasi
+                    return ""
+                if ("refname:short" in gabung
+                        and "refs/tags" in gabung):
+                    return "\n".join(
+                        n + "\ttag\t" + "c" * 40 + "\t" + "d" * 40
+                        for n, _ in tags)
+                return ""
+            self._pasang_jalan(palsu)
+            gagal = []
+            verifikasi._cek_pesan_tag(gagal, list(pesan))
+            return len(gagal) > 0
+
+        self.assertTrue(nilai(
+            branch="wip/" + enc[:22], pesan=[enc[22:42]],
+            tags=[("v9", enc[42:] + " catatan")]))
+        self.assertTrue(nilai(
+            pesan=[enc[:30], enc[30:46], enc[46:]]))
+        self.assertFalse(nilai(
+            branch="fitur-biasa", pesan=["pesan bersih saja"],
+            tags=[("v1", "anotasi bersih")]))
+        self.assertFalse(nilai(
+            branch="wip/" + enc[:22], pesan=[enc[22:42]]))
+
     def test_metadata_rentang(self):
         def palsu(*args):
             gabung = " ".join(args)

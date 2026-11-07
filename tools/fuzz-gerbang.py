@@ -224,6 +224,13 @@ def gen_belah():
     kasus.append(("belah", "tag-tag/31", "belah", "tertuduh",
                   ("", [], ("v" + ENC[:31], "anotasi bersih"),
                    ("v8", ENC[31:] + " catatan"))))
+    kasus.append(("belah", "tripel-pesan/30-16-16", "belah", "tertuduh",
+                  ("", [ENC[:30], ENC[30:46], ENC[46:]])))
+    kasus.append(("belah", "tripel-campur/22-20-22", "belah", "tertuduh",
+                  ("wip/" + ENC[:22], [ENC[22:42]],
+                   ("v9", ENC[42:] + " catatan"))))
+
+
     # (4) Dua fragmen tengah di dua pesan berbeda.
     for k in (11, 26):
         kasus.append(("belah", "tengah-tengah/" + str(k), "belah",

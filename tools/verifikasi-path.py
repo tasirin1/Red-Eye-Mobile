@@ -3006,6 +3006,59 @@ def _cek_pesan_tag(gagal, pesan_commit=None):
                     "Kredensial hanya via input "
                     "manual SetupActivity")
                 return True
+    # Belahan TIGA permukaan (issue #1844): belahan
+    # seperti 22/20/22 lolos dari mekanisme pasangan
+    # karena tiap pasangan fragmen yang BERURUTAN
+    # jumlahnya di bawah kandidat minimum hakim (48),
+    # padahal gabungan ketiganya token utuh. Tripel
+    # larian yang sumbernya tidak semuanya sama
+    # dinilai dalam keenam urutannya; disiplin
+    # anggarannya meniru tangga pasangan — lantai
+    # adaptif dan cap tripel berbeda, dengan asal-usul
+    # (indeks sumber) tiap larian dipertahankan dan
+    # tiap larian berbeda dibatasi tiga asal-usul
+    # pertama agar enumerasi tetap terikat.
+    for lantai_t in (8, 10, 12, 16, 20):
+        per_larian = {}
+        for idx, t in enumerate(mentah):
+            for m in re.finditer(
+                    r"[A-Za-z0-9_\-:]+", t or ""):
+                r = m.group(0)
+                if len(r) < lantai_t:
+                    continue
+                asal = per_larian.setdefault(r, [])
+                if idx not in asal and len(asal) < 3:
+                    asal.append(idx)
+        berlabel = [(r, i) for r, asal in per_larian.items()
+                    for i in asal]
+        tripel = set()
+        n = len(berlabel)
+        for a in range(n):
+            for b in range(a + 1, n):
+                for c in range(b + 1, n):
+                    if (berlabel[a][1] == berlabel[b][1]
+                            == berlabel[c][1]):
+                        continue
+                    tripel.add(tuple(sorted(
+                        (berlabel[a][0], berlabel[b][0],
+                         berlabel[c][0]))))
+                    if len(tripel) > 20000:
+                        break
+                if len(tripel) > 20000:
+                    break
+            if len(tripel) > 20000:
+                break
+        if len(tripel) <= 20000 or lantai_t == 20:
+            break
+    for r1, r2, r3 in tripel:
+        if len(r1) + len(r2) + len(r3) < 48:
+            continue
+        for gabung in ((r1, r2, r3), (r1, r3, r2),
+                       (r2, r1, r3), (r2, r3, r1),
+                       (r3, r1, r2), (r3, r2, r1)):
+            if mengandung_token_pesan("".join(gabung)):
+                tuduh_terbelah()
+                return True
     return False
 
 
