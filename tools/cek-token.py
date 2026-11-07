@@ -659,6 +659,12 @@ def dekode_berkas(data):
         enc = _utf16_tanpa_bom(data)
         if enc:
             teks = data.decode(enc, errors="replace")
+            # Vonis gabungan (issue #1912): tebak endian yang SALAH
+            # atas byte terstruktur (biner campuran) bisa menang skor
+            # dan menghancurkan token ASCII polos sebelum dipindai.
+            # Bacaan UTF-8/replace ikut dinilai sebagai teks tambahan
+            # — tertuduh bila salah satu bacaan menuduh.
+            teks += "\n" + data.decode("utf-8", errors="replace")
         else:
             teks = data.decode("utf-8", errors="replace")
     # Nama anggota arsip ikut dinilai (issue #1827).

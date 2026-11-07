@@ -239,6 +239,18 @@ class UjiKanalBerkasTambahan(unittest.TestCase):
         self.assertFalse(cek_token.mengandung_token(
             cek_token.dekode_berkas("teks biasa saja".encode("utf-16"))))
 
+    def test_biner_campuran_tebak_utf16_salah(self):
+        # Issue #1912: tebak UTF-16 tanpa BOM yang salah atas byte
+        # terstruktur menghancurkan token polos; vonis gabungan
+        # (bacaan UTF-8/replace ikut dinilai) menuduhnya kembali.
+        for mentah in (
+                b"\x89PNG\x00\x01\x02" + TOKEN.encode() + b"\x00\xff\x03",
+                bytes(range(200)) + TOKEN.encode() + bytes(range(100))):
+            self.assertTrue(cek_token.mengandung_token(
+                cek_token.dekode_berkas(mentah)), mentah[:12])
+        self.assertFalse(cek_token.mengandung_token(
+            cek_token.dekode_berkas(b"\x89PNG\x00\x01\x02 halo \x00\xff\x03")))
+
     def test_encode_persen_dan_entitas(self):
         self.assertTrue(cek_token.mengandung_token(TOKEN.replace(":", "%3A")))
         self.assertTrue(cek_token.mengandung_token_pesan(TOKEN.replace(":", "%3A")))
