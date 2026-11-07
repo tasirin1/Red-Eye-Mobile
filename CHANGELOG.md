@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.662] - 2026-11-07
+
 ### Fixed
 
 - Parameter `data` yang tak terpakai pada helper tes `pencarian` di NumberHistorySearchTest dihapus beserta argumennya di keenam situs panggil — `KueriPalsu` sudah memegang daftar yang sama sehingga daftar sebelumnya dilewatkan dua kali (issue #1904).
