@@ -1005,9 +1005,16 @@ def _rakit_bytearray_inti(teks):
         # Minus juga menempel pada cabang hex/biner (issue
         # #1888): -0xCF dan -0b11001111 adalah ejaan negatif
         # sah yang byte-nya sama dengan pembungkus desimal.
+        # Sisipan sah antara angka dan .toByte() ikut
+        # dikenal (issue #1892): akhiran tipe L/u/uL, kurung
+        # pembungkus elemen, dan rantai konversi
+        # .toLong()/.toInt()/.toShort(). Tanpa itu elemen
+        # >255 terbaca telanjang, bytes() melempar
+        # ValueError, dan SELURUH rakitan dibuang — satu
+        # elemen beracun membunuh semua elemen sah.
         elemen = list(re.finditer(
-            r"(?P<angka>-?\s*0[xX][0-9A-Fa-f_]+|-?\s*0[bB][01_]+|-\s*[0-9][0-9_]*|[0-9][0-9_]*)"
-            r"(?P<sufiks>\s*\.\s*toByte\s*\(\s*\))?"
+            r"(?:\(\s*)*(?P<angka>-?\s*0[xX][0-9A-Fa-f_]+|-?\s*0[bB][01_]+|-\s*[0-9][0-9_]*|[0-9][0-9_]*)"
+            r"(?P<sufiks>\s*(?:[uU][lL]|[uU]|[lL])?(?:\s*\)|\s*\.\s*(?:toLong|toInt|toShort)\s*\(\s*\))*\s*\.\s*toByte\s*\(\s*\)(?:\s*\))*)?"
             r"|(?:\(\s*)*(?P<kar>'(?:\\u[0-9A-Fa-f]{4}|\\.|[^'\\])')"
             r"(?:\s*\))*\s*\.\s*code(?:\s*\))*"
             r"\s*\.\s*toByte\s*\(\s*\)(?:\s*\))*", dalam))

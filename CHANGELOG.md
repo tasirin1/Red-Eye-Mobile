@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Fixed
+
+- Pengurai `byteArrayOf` gerbang kini mengenali sisipan sah antara angka dan `.toByte()` — akhiran tipe (`305L`, `305u`, `305uL`), kurung pembungkus elemen (`(305).toByte()`), dan rantai konversi (`.toLong()`/`.toInt()`/`.toShort()`, termasuk di dalam kurung): sebelumnya elemen bernilai >255 dengan sisipan itu terbaca telanjang, `bytes()` melempar ValueError, dan seluruh rakitan dibuang sehingga satu elemen beracun membunuh semua elemen sah (issue #1892).
+
 ## [1.6.658] - 2026-11-07
 
 ### Fixed

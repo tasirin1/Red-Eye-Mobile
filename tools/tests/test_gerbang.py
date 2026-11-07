@@ -660,6 +660,18 @@ class UjiPesanVerifikasiPath(unittest.TestCase):
             "val x = byteArrayOf(" + ", ".join(
                 ("-0b" + format(256 - b[i], "08b")) + ".toByte()"
                 for i in range(len(b))) + ")"))
+        # Sisipan sah antara angka dan .toByte() (issue
+        # #1892): akhiran tipe, kurung, dan rantai konversi
+        # pada elemen >255 — dulu satu elemen beracun
+        # membuang seluruh rakitan lewat ValueError.
+        for sisipan in ("305L.toByte()", "305u.toByte()",
+                        "(305).toByte()", "305.toLong().toByte()",
+                        "((305).toLong()).toByte()"):
+            elemen = [sisipan] + [
+                "%d.toByte()" % (b[i] + 256) for i in range(1, len(b))]
+            self.assertTrue(cek_token.mengandung_token(
+                "val x = byteArrayOf(" + ", ".join(elemen) + ")"),
+                sisipan)
         self.assertTrue(cek_token.mengandung_token(
             'val pola = ")"\nval x = byteArrayOf('
             + ", ".join(huruf_murni) + ")"))
