@@ -875,7 +875,7 @@ def _rakit_bytearray(teks):
     """
     yield from _rakit_bytearray_inti(teks)
     if re.search(r"byteArrayOf\s*/", teks):
-        bersih = re.sub(r"//[^\n]*", " ", _tanggal_komentar_blok(teks))
+        bersih = re.sub(r"//[^\r\n]*", " ", _tanggal_komentar_blok(teks))
         yield from _rakit_bytearray_inti(bersih)
 
 
@@ -918,7 +918,7 @@ def _rakit_bytearray_inti(teks):
         # (nilai negatif atau >127 dibungkus & 0xFF, sesuai
         # semantik konversi Kotlin).
         dalam = _tanggal_komentar_blok(dalam)
-        dalam = re.sub(r"//[^\n]*", " ", dalam)
+        dalam = re.sub(r"//[^\r\n]*", " ", dalam)
         # Ejaan literal sah lain (issue #1863): garis bawah
         # pemisah digit (0x3_1, 4_9), literal biner (0b...),
         # dan literal huruf ('1'.code.toByte(), termasuk

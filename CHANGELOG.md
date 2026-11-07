@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Penanggalan komentar baris gerbang kini berhenti di CR juga, bukan hanya LF: pada berkas berakhiran baris CR-saja, pola lama menelan seluruh sisa berkas — termasuk kurung dan argumen literal bercelah komentar — sehingga lintasan kedua pengurai `byteArrayOf` tidak menemukan apa pun (issue #1886).
+
 - Pengurai `byteArrayOf` gerbang kini menerima celah sesudah tanda minus pada elemen negatif (`- 207.toByte()`, `-/*x*/207.toByte()`): sebelumnya minus terlepas dan angka terbaca telanjang sebagai byte yang salah, merusak seluruh rakitan. Celah hanya menempel pada cabang minus — celah pada cabang polos membuat kecocokan bisa mulai di spasi sebelum literal hex dan mencuri angka 0-nya (issue #1885).
 
 - Penanggal komentar blok gerbang kini sadar leksikal penuh (tumpukan keadaan: komentar baris, string biasa/mentah/bertemplat, literal huruf): urutan `/*` di dalam komentar baris atau string dulu dibuka sebagai komentar blok hantu yang menelan kode asli sampai `*/` berikutnya — literal `byteArrayOf` sesudahnya, termasuk yang dilindungi lintasan celah komentar, bisa lolos dari gerbang (issue #1884).

@@ -635,6 +635,13 @@ class UjiPesanVerifikasiPath(unittest.TestCase):
         bercelah[0] = "-/*x*/207.toByte()"
         self.assertTrue(cek_token.mengandung_token(
             "val x = byteArrayOf(" + ", ".join(bercelah) + ")"))
+        # Komentar baris berakhiran CR saja (issue #1886):
+        # penanggalan komentar baris wajib berhenti di \r
+        # juga, bukan hanya \n — berkas CR-saja dulu menelan
+        # seluruh sisa berkas pada lintasan kedua.
+        self.assertTrue(cek_token.mengandung_token(
+            "val x = byteArrayOf // celah\r("
+            + ", ".join(huruf_murni) + ")"))
         self.assertFalse(cek_token.mengandung_token(ba(
             ["'a'.code.toByte()"] * 48)))
         self.assertFalse(cek_token.mengandung_token(ba(
