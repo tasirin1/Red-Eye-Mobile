@@ -318,6 +318,30 @@ if [ -f tools/cek-token.py ]; then
     echo "GAGAL: kemungkinan token bot asli (belahan teks/biner) ikut staged (hanya via input SetupActivity)"; gagal=1;
   fi
 fi
+# 4d. Berkas staged yang git nilai biner lewat ATRIBUT
+# (issue #1914): diff teks langkah 4/4b buta padanya, pemicu
+# 4c hanya byte NUL, langkah 5/5d menilai pohon kerja —
+# token polos di berkas ber-atribut binary dengan pohon
+# kerja bersih lolos semuanya (rasa aman palsu lokal; CI
+# tetap menangkap). Nilai isi STAGED-nya apa adanya lewat
+# pemindai bersama; vonis gabungan dekode (#1912) menilai
+# isi campuran tanpa perlu ditelanjangi.
+if [ -f tools/cek-token.py ]; then
+  _daftar_ba=$(mktemp)
+  git diff --cached --name-only -z --diff-filter=d > "$_daftar_ba" 2>/dev/null
+  while IFS= read -r -d '' _f; do
+    if git diff --cached --numstat -- "$_f" 2>/dev/null | grep -q $'^-\t-\t'; then
+      _tmp=$(mktemp)
+      if git show ":$_f" > "$_tmp" 2>/dev/null; then
+        if printf '%s\0' "$_tmp" | python3 tools/cek-token.py --berkas 2>/dev/null | grep -q .; then
+          echo "GAGAL: kemungkinan token bot asli di berkas staged ber-atribut biner: $_f (hanya via input SetupActivity)"; gagal=1;
+        fi
+      fi
+      rm -f "$_tmp"
+    fi
+  done < "$_daftar_ba"
+  rm -f "$_daftar_ba"
+fi
 # 5. Pindai tracked tree selalu (bukan hanya saat index bersih).
 # Menangkap secret yang terlanjur ter-commit via --no-verify walau ada perubahan staged.
 if git ls-files -z | tr '\0' '\n' | sed 's/[. ]*$//' | grep -iE '\.(apk|aab|ap_|dex|jks|keystore|p12|pkcs12|pfx|pem|key)([._~ +-].*)?$|local\.properties([._~ +-].*)?$|((^|/)\.env(\.[^/]*)?|\.env|(^|/)\.envrc(\.[^/]*)?)$' >/dev/null; then

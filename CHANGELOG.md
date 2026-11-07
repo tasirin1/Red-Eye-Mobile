@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- cek-cepat kini juga menilai isi staged berkas yang git laporkan biner lewat atribut (langkah 4d) — token yang hanya ada di blob staged dengan salinan kerja bersih sebelumnya lolos semua langkah lokal (#1914).
 - Mode rentang verifikasi-path kini menilai pohon ujung rentang juga di `cek_import_mati` dan konfirmasi tuduhan token — keduanya masih membaca berkas kerja sehingga edit tak ter-commit bisa mengubah vonis dua arah (#1913).
 - Gerbang token: tebak UTF-16 tanpa BOM yang salah atas berkas biner campuran tidak lagi menghancurkan token polos sebelum dipindai — bacaan UTF-8 ikut dinilai sebagai vonis gabungan di kedua perkakas (#1912).
 
