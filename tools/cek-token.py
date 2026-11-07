@@ -1350,6 +1350,33 @@ def _simpan_cache_vonis(data):
         pass
 
 
+_POTONG = 1024 * 1024
+_TUMPANG = 256
+_AMBANG_POTONG = 2 * 1024 * 1024
+
+
+def _potong_mengandung_token(nama):
+    """Nilai berkas besar per potong (issue #1915): membaca
+    utuh melipatgandakan memori lewat dekode berlapis sampai
+    proses terbunuh OOM tanpa vonis — dan satu proses
+    --berkas menilai seluruh daftar, jadi sisa daftar ikut
+    tertelan diam-diam. Potongan 1 MiB + tumpang-tindih 256
+    byte (keduanya genap agar pelurusan UTF-16 terjaga)
+    membuat token yang terbelah di batas potong tetap utuh
+    di potong berikutnya; memori datar berapa pun ukuran
+    berkas."""
+    ekor = b""
+    with open(nama, "rb") as f:
+        while True:
+            mentah = f.read(_POTONG)
+            if not mentah:
+                return False
+            gabung = ekor + mentah
+            if mengandung_token(dekode_berkas(gabung)):
+                return True
+            ekor = gabung[-_TUMPANG:]
+
+
 def main():
     mode = sys.argv[1] if len(sys.argv) > 1 else ""
     if mode == "--teks":
@@ -1382,6 +1409,15 @@ def main():
                 continue
             nama = path.decode("utf-8", "replace")
             try:
+                if os.path.getsize(nama) > _AMBANG_POTONG:
+                    # Berkas besar dinilai per potong (issue
+                    # #1915), tanpa cache vonis isi utuh.
+                    if _potong_mengandung_token(nama):
+                        if kotor:
+                            _simpan_cache_vonis(cache)
+                        print(nama)
+                        return 0
+                    continue
                 with open(nama, "rb") as f:
                     isi = dekode_berkas(f.read())
             except OSError:

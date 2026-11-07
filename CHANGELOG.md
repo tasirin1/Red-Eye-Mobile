@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- cek-token `--berkas` kini menilai berkas besar per potong 1 MiB bertumpang-tindih — membaca utuh bisa membunuh proses kehabisan memori tanpa vonis dan menelan sisa daftar berkas yang dinilai (#1915).
+
 ## [1.6.665] - 2026-11-07
 
 ### Fixed

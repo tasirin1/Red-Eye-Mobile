@@ -251,6 +251,24 @@ class UjiKanalBerkasTambahan(unittest.TestCase):
         self.assertFalse(cek_token.mengandung_token(
             cek_token.dekode_berkas(b"\x89PNG\x00\x01\x02 halo \x00\xff\x03")))
 
+    def test_berkas_besar_per_potong(self):
+        # Issue #1915: penilaian per potong menangkap token
+        # yang terbelah tepat di batas potong dan tetap
+        # senyap untuk berkas besar bersih.
+        import tempfile
+        isi = bytearray(b"\x00" * (cek_token._AMBANG_POTONG + 1024))
+        pos = cek_token._POTONG - 20
+        isi[pos:pos + len(TOKEN)] = TOKEN.encode()
+        bersih = bytes(cek_token._AMBANG_POTONG + 1024)
+        with tempfile.TemporaryDirectory() as d:
+            for nama, data, harap in (("kotor", bytes(isi), True),
+                                      ("bersih", bersih, False)):
+                path = os.path.join(d, nama)
+                with open(path, "wb") as f:
+                    f.write(data)
+                self.assertEqual(
+                    cek_token._potong_mengandung_token(path), harap, nama)
+
     def test_encode_persen_dan_entitas(self):
         self.assertTrue(cek_token.mengandung_token(TOKEN.replace(":", "%3A")))
         self.assertTrue(cek_token.mengandung_token_pesan(TOKEN.replace(":", "%3A")))
