@@ -129,6 +129,11 @@
     <string name="setup_restore_pin_lost">PIN akses hasil restore tidak lagi tersedia karena aplikasi sempat dimulai ulang. Impor ulang backup sebelum menyimpan.</string>
     <string name="setup_start_missing_title">Monitoring dimulai, tetapi beberapa akses masih mati</string>
     <string name="setup_start_missing_body">Yang berikut ini masih mati, jadi fiturnya belum akan bekerja:\n%1$s\n\nBuka Izin untuk memberikannya.</string>
+    <string name="setup_access_a11y">Aksesibilitas</string>
+    <string name="setup_access_notif">Pendengar notifikasi</string>
+    <string name="setup_access_usage">Akses penggunaan</string>
+    <string name="setup_access_admin">Admin perangkat</string>
+    <string name="setup_access_shot">Tangkap layar</string>
     <string name="setup_open_settings">Izin ditolak permanen, buka Pengaturan untuk mengaktifkan manual</string>
     <string name="setup_testing">Memeriksa token bot &amp; chat…</string>
     <string name="setup_test_success">✅ Tes berhasil! Token bot &amp; chat ID valid.</string>

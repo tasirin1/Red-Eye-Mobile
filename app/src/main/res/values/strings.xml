@@ -129,6 +129,11 @@
     <string name="setup_restore_pin_lost">The restored access PIN is no longer available because the app was restarted. Import the backup again before saving.</string>
     <string name="setup_start_missing_title">Monitoring started, but some access is still off</string>
     <string name="setup_start_missing_body">These are still off, so their features will not work yet:\n%1$s\n\nOpen Permissions to grant them.</string>
+    <string name="setup_access_a11y">Accessibility</string>
+    <string name="setup_access_notif">Notification listener</string>
+    <string name="setup_access_usage">Usage access</string>
+    <string name="setup_access_admin">Device admin</string>
+    <string name="setup_access_shot">Screen capture</string>
     <string name="setup_open_settings">Permission denied permanently, opening Settings to enable manually</string>
     <string name="setup_testing">Checking bot token &amp; chat…</string>
     <string name="setup_test_success">✅ Test successful! Bot token &amp; chat ID are valid.</string>

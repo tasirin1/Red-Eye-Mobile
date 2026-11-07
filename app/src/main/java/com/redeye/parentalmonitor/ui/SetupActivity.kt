@@ -2009,12 +2009,12 @@ class SetupActivity : AppCompatActivity() {
                     var dialogAksesTampil = false
                     try {
                         val hilang = ArrayList<String>()
-                        if (!com.redeye.parentalmonitor.service.ShotAccessibilityService.isEnabled(this@SetupActivity)) hilang.add("Accessibility")
-                        if (!isNotificationAccessGranted()) hilang.add("Notification listener")
-                        if (!com.redeye.parentalmonitor.utils.UsageAccess.granted(this@SetupActivity)) hilang.add("Usage access")
+                        if (!com.redeye.parentalmonitor.service.ShotAccessibilityService.isEnabled(this@SetupActivity)) hilang.add(getString(R.string.setup_access_a11y))
+                        if (!isNotificationAccessGranted()) hilang.add(getString(R.string.setup_access_notif))
+                        if (!com.redeye.parentalmonitor.utils.UsageAccess.granted(this@SetupActivity)) hilang.add(getString(R.string.setup_access_usage))
                         val adminOn2 = try { (getSystemService(DEVICE_POLICY_SERVICE) as android.app.admin.DevicePolicyManager).isAdminActive(android.content.ComponentName(this@SetupActivity, com.redeye.parentalmonitor.receiver.AdminReceiver::class.java)) } catch (_: Exception) { false }
-                        if (!adminOn2) hilang.add("Device admin")
-                        if (!com.redeye.parentalmonitor.utils.ScreenCapture.granted()) hilang.add("Screen capture")
+                        if (!adminOn2) hilang.add(getString(R.string.setup_access_admin))
+                        if (!com.redeye.parentalmonitor.utils.ScreenCapture.granted()) hilang.add(getString(R.string.setup_access_shot))
                         if (hilang.isNotEmpty()) {
                             dialogAksesTampil = true
                             androidx.appcompat.app.AlertDialog.Builder(this@SetupActivity)
