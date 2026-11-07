@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Sapuan komentar XML di cek-cepat (`sapu_komentar_xml`, awk) kini sadar CDATA seperti cermin Python-nya (#1345) — sebelumnya `<!--` di dalam blok CDATA membuka "komentar hantu" yang menelan baris pathData asli berikutnya utuh (fail-open langkah pemeriksaan drawable); dibuktikan dengan fixture CDATA berkomentar jebakan, komentar multi-baris, dan CDATA multi-baris (issue #1858).
 - Sisa kerangka `if True:` di `cek_secret` gerbang dibuka bungkusnya — badan putaran kini selevel dengan sisa loopnya, tanpa tingkat indentasi semu yang memberi kesan ada syarat berlaku (issue #1857).
 - Konstanta mati `PENANDA_PUSTAKA_STYLE` + blok komentarnya dihapus dari gerbang — tepat satu sebutan di seluruh repo (deklarasinya sendiri); mekanismenya sudah lama digantikan `SEGMEN_PUSTAKA_STYLE` (#1449) tetapi komentarnya masih berbunyi seolah pencocokan substring yang berlaku (issue #1856).
 - Bendera sekali-jalan cek tag (`_cek_tag_sudah_jalan`) kini ikut ditolkan prolog reset `utama()` — sebelumnya ia tertinggal dari daftar reset #1528, jadi proses yang menjalankan gerbang dua kali (suite/fuzzer/pemakaian pustaka) melewatkan seluruh penilaian pesan/branch/tag pada lari kedua secara senyap; dibuktikan di titik masuk nyata: dua lari seproses kini sama-sama menjalankan enumerasi ref penuh (issue #1855).

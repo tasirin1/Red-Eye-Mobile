@@ -26,20 +26,28 @@ if rg --version >/dev/null 2>&1; then ADA_RG=1; else ADA_RG=0; fi
 # dulu (newline -> spasi) agar nilai multi-baris tertangkap,
 # dan pola menerima petik tunggal serta spasi di sekitar =
 # — tiga bentuk XML sah yang sebelumnya lolos senyap.
-# Komentar XML dibuang SEBELUM perataan (issue #1203):
+# Komentar XML dibuang SEBELUM perataan (issue #1203); sapuan
+# sadar CDATA sejak issue #1858 (paritas _tanpa_komentar_xml
+# #1345): "<!--" di dalam CDATA adalah isi, bukan pembuka.
 # teks komentar multi-baris yang berbentuk atribut pathData
 # palsu tak boleh membentuk pola utuh sesudah diratakan.
 sapu_komentar_xml() {
   awk '
     { baris = $0; hasil = ""
       while (length(baris) > 0) {
-        if (dalam) {
+        if (dcdata) {
+          e = index(baris, "]]>")
+          if (e == 0) { hasil = hasil baris; baris = "" }
+          else { hasil = hasil substr(baris, 1, e + 2); baris = substr(baris, e + 3); dcdata = 0 }
+        } else if (dalam) {
           e = index(baris, "-->")
           if (e == 0) { baris = "" }
           else { baris = substr(baris, e + 3); dalam = 0 }
         } else {
           b = index(baris, "<!--")
-          if (b == 0) { hasil = hasil baris; baris = "" }
+          c = index(baris, "<![CDATA[")
+          if (c > 0 && (b == 0 || c < b)) { hasil = hasil substr(baris, 1, c + 8); baris = substr(baris, c + 9); dcdata = 1 }
+          else if (b == 0) { hasil = hasil baris; baris = "" }
           else { hasil = hasil substr(baris, 1, b - 1); baris = substr(baris, b + 4); dalam = 1 }
         }
       }
