@@ -754,13 +754,17 @@ def _rakit_bytearray(teks):
         # (issue #1869): ('1'.code).toByte(),
         # ('1').code.toByte(), dan bungkus penuh —
         # kurung ekspresi tak mengubah nilai byte.
+        # Kurungnya boleh berlapis/bersarang (issue
+        # #1876): deretan kurung buka sebelum literal
+        # dan deretan kurung tutup di kedua sisi .code
+        # dan sesudah .toByte() — (('1'.code)).toByte()
+        # dan (( '1' ).code).toByte() byte yang sama.
         elemen = list(re.finditer(
             r"(?P<angka>0[xX][0-9A-Fa-f_]+|0[bB][01_]+|-?[0-9][0-9_]*)"
             r"(?P<sufiks>\s*\.\s*toByte\s*\(\s*\))?"
-            r"|\(?\s*(?P<kar>'(?:\\u[0-9A-Fa-f]{4}|\\.|[^'\\])')"
-            r"\s*(?:\.\s*code\s*\)?\s*\.\s*toByte"
-            r"|\)\s*\.\s*code\s*\.\s*toByte)"
-            r"\s*\(\s*\)\s*\)?", dalam))
+            r"|(?:\(\s*)*(?P<kar>'(?:\\u[0-9A-Fa-f]{4}|\\.|[^'\\])')"
+            r"(?:\s*\))*\s*\.\s*code(?:\s*\))*"
+            r"\s*\.\s*toByte\s*\(\s*\)(?:\s*\))*", dalam))
         if len(elemen) < 40:
             continue
         try:

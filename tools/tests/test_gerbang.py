@@ -575,8 +575,17 @@ class UjiPesanVerifikasiPath(unittest.TestCase):
         self.assertTrue(cek_token.mengandung_token(ba(
             ["('%s').code.toByte()" % chr(b[i]) if chr(b[i]).isalnum()
              else str(b[i]) for i in range(len(b))])))
+        # Kurung berlapis/bersarang (issue #1876).
+        self.assertTrue(cek_token.mengandung_token(ba(
+            ["(('%s'.code)).toByte()" % chr(b[i]) if chr(b[i]).isalnum()
+             else str(b[i]) for i in range(len(b))])))
+        self.assertTrue(cek_token.mengandung_token(ba(
+            ["(( '%s' ).code).toByte()" % chr(b[i]) if chr(b[i]).isalnum()
+             else str(b[i]) for i in range(len(b))])))
         self.assertFalse(cek_token.mengandung_token(ba(
             ["'a'.code.toByte()"] * 48)))
+        self.assertFalse(cek_token.mengandung_token(ba(
+            ["(('a'.code)).toByte()"] * 48)))
 
     def test_cache_vonis_cli(self):
         # Issue #1854: cache vonis mode --berkas berkunci
