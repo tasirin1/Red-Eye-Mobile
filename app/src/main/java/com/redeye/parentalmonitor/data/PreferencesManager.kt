@@ -777,9 +777,8 @@ class PreferencesManager(context: Context) {
     val lastCallId: Long
         get() = prefLong(KEY_LAST_CALL_ID, 0L)
 
-    var userDisabledMonitoring: Boolean
+    val userDisabledMonitoring: Boolean
         get() = prefBoolean(KEY_USER_DISABLED, false)
-        set(value) = sharedPreferences.edit().putBoolean(KEY_USER_DISABLED, value).apply()
 
     var initialSyncDone: Boolean
         get() = prefBoolean(KEY_INITIAL_SYNC_DONE, false)
@@ -797,9 +796,8 @@ class PreferencesManager(context: Context) {
         get() = prefInt(KEY_CAMERA_INTERVAL, 1)
         set(value) = sharedPreferences.edit().putInt(KEY_CAMERA_INTERVAL, value).apply()
 
-    var lastUpdateId: Long
+    val lastUpdateId: Long
         get() = prefLong(KEY_LAST_UPDATE_ID, 0L)
-        set(value) = sharedPreferences.edit().putLong(KEY_LAST_UPDATE_ID, value).apply()
 
     private fun commitWithRetry(build: (android.content.SharedPreferences.Editor) -> android.content.SharedPreferences.Editor): Boolean {
         // Tiap percobaan ditangkap sendiri (issue #1180):
@@ -898,9 +896,8 @@ class PreferencesManager(context: Context) {
         get() = prefLong(KEY_LAST_UPLOAD_ERR_AT, 0L)
         set(value) = sharedPreferences.edit().putLong(KEY_LAST_UPLOAD_ERR_AT, value).apply()
 
-    var monitoringPaused: Boolean
+    val monitoringPaused: Boolean
         get() = prefBoolean(KEY_MONITORING_PAUSED, false)
-        set(value) = sharedPreferences.edit().putBoolean(KEY_MONITORING_PAUSED, value).apply()
 
     // Varian commit untuk gerbang jeda utama (issue #1395):
     // monitoringPaused dibaca semua jalur sebagai penentu
@@ -985,9 +982,8 @@ class PreferencesManager(context: Context) {
                 .apply()
         }
 
-    var photoPausedElapsedUntil: Long
+    val photoPausedElapsedUntil: Long
         get() = prefLong(KEY_PHOTO_PAUSED_ELAPSED_UNTIL, 0L)
-        set(value) = sharedPreferences.edit().putLong(KEY_PHOTO_PAUSED_ELAPSED_UNTIL, value).apply()
 
     var photoPauseSource: Int
         get() = prefInt(KEY_PHOTO_PAUSE_SOURCE, 0)
@@ -1063,9 +1059,8 @@ class PreferencesManager(context: Context) {
         }
     }
 
-    var userConsentedMonitoring: Boolean
+    val userConsentedMonitoring: Boolean
         get() = prefBoolean(KEY_USER_CONSENTED, false)
-        set(value) = sharedPreferences.edit().putBoolean(KEY_USER_CONSENTED, value).apply()
 
     var notifForwardEnabled: Boolean
         get() = prefBoolean(KEY_NOTIF_FORWARD, true)
@@ -1079,13 +1074,11 @@ class PreferencesManager(context: Context) {
         get() = prefBoolean(KEY_RESTORE_STRICT, false)
         set(value) = sharedPreferences.edit().putBoolean(KEY_RESTORE_STRICT, value).apply()
 
-    var restorePinLockoutUntil: Long
+    val restorePinLockoutUntil: Long
         get() = try { sharedPreferences.getLong(KEY_RESTORE_PIN_LOCKOUT_UNTIL, 0L) } catch (_: Exception) { 0L }
-        set(value) { try { sharedPreferences.edit().putLong(KEY_RESTORE_PIN_LOCKOUT_UNTIL, value).commit() } catch (_: Exception) { } }
 
-    var restorePinLockoutElapsedStart: Long
+    val restorePinLockoutElapsedStart: Long
         get() = try { sharedPreferences.getLong(KEY_RESTORE_PIN_LOCKOUT_ELAPSED_START, 0L) } catch (_: Exception) { 0L }
-        set(value) { try { sharedPreferences.edit().putLong(KEY_RESTORE_PIN_LOCKOUT_ELAPSED_START, value).commit() } catch (_: Exception) { } }
 
     // Catat kegagalan PIN restore secara ATOMIK (issue
     // #1210): anggaran lockout DIBAGI restore lokal
@@ -1212,21 +1205,17 @@ class PreferencesManager(context: Context) {
         }
     }
 
-    var accessPinLockoutUntil: Long
+    val accessPinLockoutUntil: Long
         get() = try { sharedPreferences.getLong(KEY_ACCESS_PIN_LOCKOUT_UNTIL, 0L) } catch (_: Exception) { 0L }
-        set(value) { try { sharedPreferences.edit().putLong(KEY_ACCESS_PIN_LOCKOUT_UNTIL, value).commit() } catch (_: Exception) { } }
 
-    var accessPinLockoutElapsedStart: Long
+    val accessPinLockoutElapsedStart: Long
         get() = try { sharedPreferences.getLong(KEY_ACCESS_PIN_LOCKOUT_ELAPSED_START, 0L) } catch (_: Exception) { 0L }
-        set(value) { try { sharedPreferences.edit().putLong(KEY_ACCESS_PIN_LOCKOUT_ELAPSED_START, value).commit() } catch (_: Exception) { } }
 
-    var restoreCodeLockoutUntil: Long
+    val restoreCodeLockoutUntil: Long
         get() = try { sharedPreferences.getLong(KEY_RESTORE_CODE_LOCKOUT_UNTIL, 0L) } catch (_: Exception) { 0L }
-        set(value) { try { sharedPreferences.edit().putLong(KEY_RESTORE_CODE_LOCKOUT_UNTIL, value).commit() } catch (_: Exception) { } }
 
-    var restoreCodeLockoutElapsedStart: Long
+    val restoreCodeLockoutElapsedStart: Long
         get() = try { sharedPreferences.getLong(KEY_RESTORE_CODE_LOCKOUT_ELAPSED_START, 0L) } catch (_: Exception) { 0L }
-        set(value) { try { sharedPreferences.edit().putLong(KEY_RESTORE_CODE_LOCKOUT_ELAPSED_START, value).commit() } catch (_: Exception) { } }
 
     // Kunci anti-brute-force /login yang persisten (issue #1251):
     // pasangan jam ganda seperti gerbang kode restore (#698), agar
@@ -1234,9 +1223,8 @@ class PreferencesManager(context: Context) {
     val loginGlobalLockoutUntil: Long
         get() = try { sharedPreferences.getLong(KEY_LOGIN_GLOBAL_LOCKOUT_UNTIL, 0L) } catch (_: Exception) { 0L }
 
-    var loginGlobalLockoutElapsedStart: Long
+    val loginGlobalLockoutElapsedStart: Long
         get() = try { sharedPreferences.getLong(KEY_LOGIN_GLOBAL_LOCKOUT_ELAPSED_START, 0L) } catch (_: Exception) { 0L }
-        set(value) { try { sharedPreferences.edit().putLong(KEY_LOGIN_GLOBAL_LOCKOUT_ELAPSED_START, value).commit() } catch (_: Exception) { } }
 
     // Tulis pasangan kunci global /login dalam SATU commit
     // terkunci (issue #1299): dua setter terpisah bisa sobek
@@ -1336,9 +1324,8 @@ class PreferencesManager(context: Context) {
     val credentialError: String
         get() = prefString(KEY_CRED_ERROR, "")
 
-    var credentialErrorAt: Long
+    val credentialErrorAt: Long
         get() = prefLong(KEY_CRED_ERROR_AT, 0L)
-        set(value) = sharedPreferences.edit().putLong(KEY_CRED_ERROR_AT, value).apply()
 
     // Jangkar jam monoton pendamping credentialErrorAt (issue #733):
     // blokir auth tidak lagi bisa dibuka lebih awal dengan memundurkan
@@ -1397,13 +1384,11 @@ class PreferencesManager(context: Context) {
         get() = prefString(KEY_COMMANDS_TOKEN_HASH, "")
         set(value) = sharedPreferences.edit().putString(KEY_COMMANDS_TOKEN_HASH, value).apply()
 
-    var ringPrevVolume: Int
+    val ringPrevVolume: Int
         get() = prefInt(KEY_RING_PREV_VOL, -1)
-        set(value) = sharedPreferences.edit().putInt(KEY_RING_PREV_VOL, value).apply()
 
-    var ringSavedAt: Long
+    val ringSavedAt: Long
         get() = prefLong(KEY_RING_SAVED_AT, 0L)
-        set(value) = sharedPreferences.edit().putLong(KEY_RING_SAVED_AT, value).apply()
 
     val lastAliveAt: Long
         get() = prefLong(KEY_LAST_ALIVE_AT, 0L)
@@ -1421,17 +1406,14 @@ class PreferencesManager(context: Context) {
         }
     }
 
-    var livenessKills: Int
+    val livenessKills: Int
         get() = prefInt(KEY_LIVENESS_KILLS, 0)
-        set(value) = sharedPreferences.edit().putInt(KEY_LIVENESS_KILLS, value).apply()
 
-    var livenessKillsUnreported: Int
+    val livenessKillsUnreported: Int
         get() = prefInt(KEY_LIVENESS_KILLS_UNREPORTED, 0)
-        set(value) = sharedPreferences.edit().putInt(KEY_LIVENESS_KILLS_UNREPORTED, value).apply()
 
-    var livenessReportAt: Long
+    val livenessReportAt: Long
         get() = prefLong(KEY_LIVENESS_REPORT_AT, 0L)
-        set(value) = sharedPreferences.edit().putLong(KEY_LIVENESS_REPORT_AT, value).apply()
 
     // Dua fungsi penghitung liveness di bawah satu kunci
     // (issue #924): baca-ubah-tulis tanpa kunci berhadapan
@@ -1474,9 +1456,8 @@ class PreferencesManager(context: Context) {
     // dinding saja membuat lompatan jam maju memicu heartbeat
     // prematur + cap palsu, dan koreksinya memperpanjang
     // senyap. Pola pasangan yang sama dengan patroli (#923).
-    var heartbeatElapsed: Long
+    val heartbeatElapsed: Long
         get() = prefLong(KEY_HEARTBEAT_ELAPSED, 0L)
-        set(value) = sharedPreferences.edit().putLong(KEY_HEARTBEAT_ELAPSED, value).apply()
 
     fun setHeartbeatAt(at: Long, elapsed: Long) {
         try {
@@ -1488,9 +1469,8 @@ class PreferencesManager(context: Context) {
         }
     }
 
-    var liveTestPending: Boolean
+    val liveTestPending: Boolean
         get() = prefBoolean(KEY_LIVE_TEST_PENDING, false)
-        set(value) = sharedPreferences.edit().putBoolean(KEY_LIVE_TEST_PENDING, value).apply()
 
     val liveTestStartedElapsed: Long
         get() = prefLong(KEY_LIVE_TEST_STARTED_ELAPSED, 0L)
@@ -1510,9 +1490,8 @@ class PreferencesManager(context: Context) {
     // #1034): bukti reboot yang kebal jam — penghitung di
     // boot_meta bertambah sekali per boot oleh BootReceiver.
     // 0 = tak diketahui (uji warisan) → vonis memakai jam.
-    var liveTestBootCount: Long
+    val liveTestBootCount: Long
         get() = prefLong(KEY_LIVE_TEST_BOOT_COUNT, 0L)
-        set(value) = sharedPreferences.edit().putLong(KEY_LIVE_TEST_BOOT_COUNT, value).apply()
 
     fun beginLiveTest(startedElapsed: Long, startedWall: Long, bootCount: Long = 0L) {
         try {
@@ -1624,9 +1603,8 @@ class PreferencesManager(context: Context) {
         get() = prefString(KEY_PENDING_PROMPT_CMD, "")
         set(value) = sharedPreferences.edit().putString(KEY_PENDING_PROMPT_CMD, value).apply()
 
-    var pendingPromptAt: Long
+    val pendingPromptAt: Long
         get() = prefLong(KEY_PENDING_PROMPT_AT, 0L)
-        set(value) = sharedPreferences.edit().putLong(KEY_PENDING_PROMPT_AT, value).apply()
 
     // Tahap konfirmasi buang antrean (issue #1531):
     // /clearqueue dua tahap terikat pemilik seperti /sms.
@@ -1680,31 +1658,26 @@ class PreferencesManager(context: Context) {
     val pendingCleanupSpec: String
         get() = prefString(KEY_PENDING_CLEANUP_SPEC, "")
 
-    var pendingCleanupAt: Long
+    val pendingCleanupAt: Long
         get() = prefLong(KEY_PENDING_CLEANUP_AT, 0L)
-        set(value) = sharedPreferences.edit().putLong(KEY_PENDING_CLEANUP_AT, value).apply()
 
-    var pendingCleanupOwner: String
+    val pendingCleanupOwner: String
         get() = prefString(KEY_PENDING_CLEANUP_OWNER, "")
-        set(value) = sharedPreferences.edit().putString(KEY_PENDING_CLEANUP_OWNER, value).apply()
 
     // ID pesan penahap (issue #1601): kiriman ulang
     // update yang sama tidak boleh terbaca konfirmasi.
-    var pendingCleanupMsgId: Long
+    val pendingCleanupMsgId: Long
         get() = prefLong(KEY_PENDING_CLEANUP_MSG, 0L)
-        set(value) = sharedPreferences.edit().putLong(KEY_PENDING_CLEANUP_MSG, value).apply()
 
     val pendingClearQueueAt: Long
         get() = prefLong(KEY_PENDING_CLEAR_AT, 0L)
 
-    var pendingClearQueueOwner: String
+    val pendingClearQueueOwner: String
         get() = prefString(KEY_PENDING_CLEAR_OWNER, "")
-        set(value) = sharedPreferences.edit().putString(KEY_PENDING_CLEAR_OWNER, value).apply()
 
     // ID pesan penahap (issue #1601).
-    var pendingClearQueueMsgId: Long
+    val pendingClearQueueMsgId: Long
         get() = prefLong(KEY_PENDING_CLEAR_MSG, 0L)
-        set(value) = sharedPreferences.edit().putLong(KEY_PENDING_CLEAR_MSG, value).apply()
 
     // Penulisan tahap konfirmasi SATU commit
     // (issue #1744), pola writeSmsPendingSync:
@@ -1780,15 +1753,8 @@ class PreferencesManager(context: Context) {
         get() = prefString(KEY_PENDING_SMS_OWNER, "")
         set(value) = sharedPreferences.edit().putString(KEY_PENDING_SMS_OWNER, value).apply()
 
-    var ownerUserId: Long
+    val ownerUserId: Long
         get() = prefLong(KEY_OWNER_ID, 0L)
-        set(value) {
-            synchronized(credentialLock) {
-                val editor = sharedPreferences.edit().putLong(KEY_OWNER_ID, value)
-                if (value != ownerUserId) bumpCredentialGeneration(editor)
-                editor.apply()
-            }
-        }
 
     var accessPin: String
         get() = prefString(KEY_ACCESS_PIN, "")
@@ -1919,9 +1885,8 @@ class PreferencesManager(context: Context) {
     // antrean lokal menolak (issue #1633) — sebabnya
     // berbeda dari penolakan Telegram dan laporannya
     // tak boleh tercampur.
-    var pendingQueueDrops: Int
+    val pendingQueueDrops: Int
         get() = prefInt(KEY_PENDING_QUEUE_DROPS, 0)
-        set(value) = sharedPreferences.edit().putInt(KEY_PENDING_QUEUE_DROPS, value).apply()
 
     fun setPendingQueueDropsSync(value: Int): Boolean {
         return try {
@@ -1942,9 +1907,8 @@ class PreferencesManager(context: Context) {
         }
     }
 
-    var dropNoticeBatch: String
+    val dropNoticeBatch: String
         get() = prefString(KEY_DROP_NOTICE_BATCH, "")
-        set(value) = sharedPreferences.edit().putString(KEY_DROP_NOTICE_BATCH, value).apply()
 
     fun setDropNoticeBatchSync(batch: String): Boolean {
         return try {
@@ -1954,9 +1918,8 @@ class PreferencesManager(context: Context) {
         }
     }
 
-    var pendingNotifDropsSince: Long
+    val pendingNotifDropsSince: Long
         get() = prefLong(KEY_PENDING_NOTIF_DROPS_SINCE, 0L)
-        set(value) = sharedPreferences.edit().putLong(KEY_PENDING_NOTIF_DROPS_SINCE, value).apply()
 
     fun setPendingNotifDropsSync(value: Int, since: Long): Boolean {
         return try {
@@ -2018,9 +1981,8 @@ class PreferencesManager(context: Context) {
         }
     }
 
-    var permSnapshot: Int
+    val permSnapshot: Int
         get() = prefInt(KEY_PERM_SNAPSHOT, -1)
-        set(value) = sharedPreferences.edit().putInt(KEY_PERM_SNAPSHOT, value).apply()
 
     fun setPermSnapshotSync(value: Int): Boolean {
         return try {
@@ -2071,9 +2033,8 @@ class PreferencesManager(context: Context) {
     val patrolLastAt: Long
         get() = prefLong(KEY_PATROL_LAST_AT, 0L)
 
-    var patrolLastElapsed: Long
+    val patrolLastElapsed: Long
         get() = prefLong(KEY_PATROL_LAST_ELAPSED, 0L)
-        set(value) = sharedPreferences.edit().putLong(KEY_PATROL_LAST_ELAPSED, value).apply()
 
     // Penulis pasangan cap patroli (dinding+monoton) dalam SATU
     // edit (issue #923, pola #890) agar tak tercampur oleh
@@ -2092,21 +2053,18 @@ class PreferencesManager(context: Context) {
         get() = prefLong(KEY_BATTERY_ALERT_AT, 0L)
         set(value) = sharedPreferences.edit().putLong(KEY_BATTERY_ALERT_AT, value).apply()
 
-    var lastLocLatE6: Long
+    val lastLocLatE6: Long
         get() = prefLong(KEY_LAST_LOC_LAT, Long.MIN_VALUE)
-        set(value) = sharedPreferences.edit().putLong(KEY_LAST_LOC_LAT, value).apply()
 
-    var lastLocLonE6: Long
+    val lastLocLonE6: Long
         get() = prefLong(KEY_LAST_LOC_LON, Long.MIN_VALUE)
-        set(value) = sharedPreferences.edit().putLong(KEY_LAST_LOC_LON, value).apply()
 
     var lastLocAt: Long
         get() = prefLong(KEY_LAST_LOC_AT, 0L)
         set(value) = sharedPreferences.edit().putLong(KEY_LAST_LOC_AT, value).apply()
 
-    var lastLocAccM: Float
+    val lastLocAccM: Float
         get() = prefFloat(KEY_LAST_LOC_ACC, -1f)
-        set(value) = sharedPreferences.edit().putFloat(KEY_LAST_LOC_ACC, value).apply()
 
     var simIdentity: String
         get() = prefString(KEY_SIM_IDENTITY, "")
@@ -2126,9 +2084,8 @@ class PreferencesManager(context: Context) {
     // Epoch penulisan cap anomali (issue #1029, pola #852):
     // pasangan wajib agar cap bertanggal masa depan hasil
     // excursi jam bisa dikenali sebagai basi oleh DayStamp.
-    var anomalyAlertsAtMs: Long
+    val anomalyAlertsAtMs: Long
         get() = prefLong(KEY_ANOMALY_ALERTS_AT, 0L)
-        set(value) = sharedPreferences.edit().putLong(KEY_ANOMALY_ALERTS_AT, value).apply()
 
     // Tulis cap anomali + epoch-nya dalam SATU edit (pola
     // #890): dua apply() terpisah bisa menyisakan pasangan
@@ -2164,9 +2121,8 @@ class PreferencesManager(context: Context) {
         get() = prefString(KEY_BEGADANG_DATE, "")
 
     // Epoch penulisan cap begadang (issue #1029, pola #852).
-    var begadangDateAtMs: Long
+    val begadangDateAtMs: Long
         get() = prefLong(KEY_BEGADANG_DATE_AT, 0L)
-        set(value) = sharedPreferences.edit().putLong(KEY_BEGADANG_DATE_AT, value).apply()
 
     fun setBegadangDone(date: String, atMs: Long) {
         try {
@@ -2182,9 +2138,8 @@ class PreferencesManager(context: Context) {
         get() = prefInt(KEY_JEMPUT_RAD, 0)
         set(value) = sharedPreferences.edit().putInt(KEY_JEMPUT_RAD, value).apply()
 
-    var permHealthAlertAt: Long
+    val permHealthAlertAt: Long
         get() = prefLong(KEY_PERM_HEALTH_ALERT, 0L)
-        set(value) = sharedPreferences.edit().putLong(KEY_PERM_HEALTH_ALERT, value).apply()
 
     fun setPermHealthAlertAtSync(value: Long): Boolean {
         return try {
@@ -2198,9 +2153,8 @@ class PreferencesManager(context: Context) {
         get() = prefString(KEY_WATCH_KEYWORDS, "")
         set(value) = sharedPreferences.edit().putString(KEY_WATCH_KEYWORDS, value).apply()
 
-    var a11yUsageDate: String
+    val a11yUsageDate: String
         get() = prefString(KEY_A11Y_USAGE_DATE, "")
-        set(value) = sharedPreferences.edit().putString(KEY_A11Y_USAGE_DATE, value).apply()
 
     val a11yUsageJson: String
         get() = prefString(KEY_A11Y_USAGE_JSON, "")
@@ -2213,26 +2167,22 @@ class PreferencesManager(context: Context) {
     // cadangan dalam edit yang sama; loadUsage memulihkan
     // dari cadangan bila tanggal slot utama bukan hari ini
     // tetapi tanggal cadangan adalah hari ini.
-    var a11yUsagePrevDate: String
+    val a11yUsagePrevDate: String
         get() = prefString(KEY_A11Y_USAGE_PREV_DATE, "")
-        set(value) = sharedPreferences.edit().putString(KEY_A11Y_USAGE_PREV_DATE, value).apply()
 
-    var a11yUsagePrevJson: String
+    val a11yUsagePrevJson: String
         get() = prefString(KEY_A11Y_USAGE_PREV_JSON, "")
-        set(value) = sharedPreferences.edit().putString(KEY_A11Y_USAGE_PREV_JSON, value).apply()
 
     // Generasi cadangan kedua (issue #1054): satu slot
     // cadangan hanya tahan satu lompatan tanggal — excursi
     // dua langkah (D -> F1 -> F2, restart di antaranya)
     // menimpa cadangan berisi D sebelum jam terkoreksi.
     // Rotasi kini dua generasi: utama -> prev -> prev2.
-    var a11yUsagePrev2Date: String
+    val a11yUsagePrev2Date: String
         get() = prefString(KEY_A11Y_USAGE_PREV2_DATE, "")
-        set(value) = sharedPreferences.edit().putString(KEY_A11Y_USAGE_PREV2_DATE, value).apply()
 
-    var a11yUsagePrev2Json: String
+    val a11yUsagePrev2Json: String
         get() = prefString(KEY_A11Y_USAGE_PREV2_JSON, "")
-        set(value) = sharedPreferences.edit().putString(KEY_A11Y_USAGE_PREV2_JSON, value).apply()
 
     // Seluruh RMW rotasi slot diserialkan di lapisan PM
     // (issue #1281): pemanggil memang berdisiplin gate di
@@ -2392,17 +2342,14 @@ class PreferencesManager(context: Context) {
         }
     }
 
-    var a11yKeywordAlertDay: String
+    val a11yKeywordAlertDay: String
         get() = prefString(KEY_A11Y_KEYWORD_DAY, "")
-        set(value) = sharedPreferences.edit().putString(KEY_A11Y_KEYWORD_DAY, value).apply()
 
-    var a11yKeywordAlertCount: Int
+    val a11yKeywordAlertCount: Int
         get() = prefInt(KEY_A11Y_KEYWORD_COUNT, 0)
-        set(value) = sharedPreferences.edit().putInt(KEY_A11Y_KEYWORD_COUNT, value).apply()
 
-    var a11yKeywordAlertJson: String
+    val a11yKeywordAlertJson: String
         get() = prefString(KEY_A11Y_KEYWORD_JSON, "")
-        set(value) = sharedPreferences.edit().putString(KEY_A11Y_KEYWORD_JSON, value).apply()
 
     // Peta jeda alert tamper per alasan (issue #799): sebelumnya hanya
     // di memori A11yMonitor sehingga restart proses mengulang alert.
@@ -2414,9 +2361,8 @@ class PreferencesManager(context: Context) {
     // #1053, pola DayStamp #1029): tanpa ini, anggaran yang
     // terakumulasi pada tanggal palsu hasil excursi jam
     // terwarisi utuh saat tanggal aslinya tiba.
-    var a11yKeywordAlertDayAtMs: Long
+    val a11yKeywordAlertDayAtMs: Long
         get() = prefLong(KEY_A11Y_KEYWORD_DAY_AT, 0L)
-        set(value) = sharedPreferences.edit().putLong(KEY_A11Y_KEYWORD_DAY_AT, value).apply()
 
     fun setA11yKeywordAlertState(day: String, count: Int, json: String, atMs: Long) {
         try {
@@ -2430,9 +2376,8 @@ class PreferencesManager(context: Context) {
         }
     }
 
-    var a11yKnownSeeded: Boolean
+    val a11yKnownSeeded: Boolean
         get() = prefBoolean(KEY_A11Y_KNOWN_SEEDED, false)
-        set(value) = sharedPreferences.edit().putBoolean(KEY_A11Y_KNOWN_SEEDED, value).apply()
 
     var a11yAppAlert: Boolean
         get() = prefBoolean(KEY_A11Y_APP_ALERT, true)
@@ -2442,37 +2387,31 @@ class PreferencesManager(context: Context) {
         get() = prefBoolean(KEY_A11Y_TAMPER, true)
         set(value) = sharedPreferences.edit().putBoolean(KEY_A11Y_TAMPER, value).apply()
 
-    var a11ySettingsGraceUntil: Long
+    val a11ySettingsGraceUntil: Long
         get() = prefLong(KEY_A11Y_SETTINGS_GRACE, 0L)
-        set(value) = sharedPreferences.edit().putLong(KEY_A11Y_SETTINGS_GRACE, value).apply()
 
-    var a11yAdminGraceUntil: Long
+    val a11yAdminGraceUntil: Long
         get() = prefLong(KEY_A11Y_ADMIN_GRACE, 0L)
-        set(value) = sharedPreferences.edit().putLong(KEY_A11Y_ADMIN_GRACE, value).apply()
 
     // Pasangan elapsed masa tenggang Setup (issue #1007):
     // jangkar monoton agar tenggang tak bisa diperpanjang
     // dengan memundurkan jam dinding.
-    var a11ySettingsGraceElapsedUntil: Long
+    val a11ySettingsGraceElapsedUntil: Long
         get() = prefLong(KEY_A11Y_SETTINGS_GRACE_ELAPSED, 0L)
-        set(value) = sharedPreferences.edit().putLong(KEY_A11Y_SETTINGS_GRACE_ELAPSED, value).apply()
 
-    var a11yAdminGraceElapsedUntil: Long
+    val a11yAdminGraceElapsedUntil: Long
         get() = prefLong(KEY_A11Y_ADMIN_GRACE_ELAPSED, 0L)
-        set(value) = sharedPreferences.edit().putLong(KEY_A11Y_ADMIN_GRACE_ELAPSED, value).apply()
 
     // Penghitung boot saat cap tenggang ditulis (issue
     // #1035): cap elapsed yang ditulis pada uptime kecil
     // boot sebelumnya tak terbedakan dari cap segar hanya
     // dari angka elapsed — penghitung boot persisten
     // (#1034) yang membedakannya. 0 = cap warisan.
-    var a11ySettingsGraceBootCount: Long
+    val a11ySettingsGraceBootCount: Long
         get() = prefLong(KEY_A11Y_SETTINGS_GRACE_BOOT, 0L)
-        set(value) = sharedPreferences.edit().putLong(KEY_A11Y_SETTINGS_GRACE_BOOT, value).apply()
 
-    var a11yAdminGraceBootCount: Long
+    val a11yAdminGraceBootCount: Long
         get() = prefLong(KEY_A11Y_ADMIN_GRACE_BOOT, 0L)
-        set(value) = sharedPreferences.edit().putLong(KEY_A11Y_ADMIN_GRACE_BOOT, value).apply()
 
     // Penulisan cap tenggang wajib SATU edit (issue #1049):
     // tiga setter terpisah bisa terputus di tengah oleh mati
@@ -2792,16 +2731,14 @@ class PreferencesManager(context: Context) {
     // Offset zona saat cap digest malam ditulis (issue #1079):
     // saksi pindah zona kecil ke barat; Long.MIN_VALUE = cap
     // warisan sebelum offset disimpan.
-    var nightDigestOffsetMs: Long
+    val nightDigestOffsetMs: Long
         get() = prefLong(KEY_NIGHT_DIGEST_OFFSET, Long.MIN_VALUE)
-        set(value) = sharedPreferences.edit().putLong(KEY_NIGHT_DIGEST_OFFSET, value).apply()
 
     // Epoch saat cap digest malam ditulis (issue #852): membedakan
     // pindah zona waktu (epoch normal) dari jam dimundurkan (epoch
     // mundur) pada kunci hari yang sama-sama terbaca mundur.
-    var nightDigestDoneAtMs: Long
+    val nightDigestDoneAtMs: Long
         get() = prefLong(KEY_NIGHT_DIGEST_DONE_AT, 0L)
-        set(value) = sharedPreferences.edit().putLong(KEY_NIGHT_DIGEST_DONE_AT, value).apply()
 
     var lastDataAt: Long
         get() = prefLong(KEY_LAST_DATA_AT, 0L)
@@ -2827,9 +2764,8 @@ class PreferencesManager(context: Context) {
         get() = prefString(KEY_CURFEW_DATE, "")
 
     // Epoch penulisan cap jam malam (issue #1029, pola #852).
-    var curfewAlertDateAtMs: Long
+    val curfewAlertDateAtMs: Long
         get() = prefLong(KEY_CURFEW_DATE_AT, 0L)
-        set(value) = sharedPreferences.edit().putLong(KEY_CURFEW_DATE_AT, value).apply()
 
     fun setCurfewAlertDone(date: String, atMs: Long) {
         try {
@@ -2846,9 +2782,8 @@ class PreferencesManager(context: Context) {
         set(value) = sharedPreferences.edit().putString(KEY_SCHOOL_DATE, value).apply()
 
     // Epoch penulisan cap sekolah (issue #1029, pola #852).
-    var schoolAlertDateAtMs: Long
+    val schoolAlertDateAtMs: Long
         get() = prefLong(KEY_SCHOOL_DATE_AT, 0L)
-        set(value) = sharedPreferences.edit().putLong(KEY_SCHOOL_DATE_AT, value).apply()
 
     fun setSchoolAlertDone(date: String, atMs: Long) {
         try {
