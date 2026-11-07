@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.661] - 2026-11-07
+
 ### Fixed
 
 - Cabang video terlalu besar kini membersihkan jurnal tujuan media sesudah membuang berkasnya — entri yatimnya sebelumnya menetap di peta tujuan dan bisa mengusir entri tujuan media antre lain lewat plafon 50 entri (issue #1902).
