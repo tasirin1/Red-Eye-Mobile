@@ -2015,13 +2015,12 @@ def cek_secret(gagal, diff):
             path = token[2:] if token.startswith("b/") else token
         else:
             continue
-        if True:
-            isi = baca(path)
-            if isi is not None and mengandung_token(isi):
-                gagal.append("Kemungkinan token bot asli di berkas berubah %s "
-                             "(termasuk biner/base64/terbelah) — kredensial "
-                             "hanya via input manual SetupActivity" % path)
-                break
+        isi = baca(path)
+        if isi is not None and mengandung_token(isi):
+            gagal.append("Kemungkinan token bot asli di berkas berubah %s "
+                         "(termasuk biner/base64/terbelah) — kredensial "
+                         "hanya via input manual SetupActivity" % path)
+            break
 
 
 def cek_secret_pohon(gagal):
