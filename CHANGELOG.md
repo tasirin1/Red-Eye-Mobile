@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.660] - 2026-11-07
+
 ### Fixed
 
 - Komentar salah hitung di `PreferencesManager` diperbarui dari "Tiga penulis" menjadi "Lima penulis": penanda blokir kredensial ditulis lima fungsi (set/clear/setIfMatch penanda, adoptOwnerChatSync, putCredentialState), bukan tiga — perilaku commit-guard #1370 tidak berubah, hanya komentarnya yang kini sesuai kode (issue #1899).
