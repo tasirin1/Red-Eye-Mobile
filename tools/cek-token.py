@@ -714,40 +714,124 @@ def mengandung_fragmen_pesan(teks):
             celah += 1
     return bool(blok) and tutup(blok)
 def _tanggal_komentar_blok(teks):
-    """Tanggalkan komentar blok Kotlin (issue #1879).
+    """Tanggalkan komentar blok Kotlin (issue #1879), sadar leksikal (issue #1884).
 
     Komentar blok Kotlin boleh BERSARANG, jadi regex
     non-greedy berhenti di */ pertama dan menyisakan ekor
-    komentar di tengah kode. Pemindai ini menghitung
-    kedalaman /* */ dan mengganti isi komentar dengan
-    spasi (baris baru dipertahankan agar penanggalan
-    komentar baris sesudahnya tetap per-baris).
+    komentar di tengah kode. Pemindai ini satu lintasan
+    dengan tumpukan keadaan: komentar blok (bersarang)
+    diganti spasi dengan baris baru dipertahankan, sedangkan
+    komentar baris, string (biasa, mentah, dan templat
+    ${...}), serta literal huruf disalin apa adanya — urutan
+    /* di dalamnya BUKAN pembuka komentar, dan membukanya
+    sebagai blok hantu menelan kode asli sampai */ berikutnya.
     """
     hasil = []
     i = 0
-    kedalaman = 0
     n = len(teks)
+    # Keadaan: "kode", "baris", "huruf", ("blok", dalam),
+    # ("string", mentah), ("templat", dalam kurung).
+    tumpukan = ["kode"]
     while i < n:
+        keadaan = tumpukan[-1]
+        c = teks[i]
         dua = teks[i:i + 2]
-        if kedalaman == 0:
+        if keadaan == "kode" or (isinstance(keadaan, tuple)
+                                 and keadaan[0] == "templat"):
             if dua == "/*":
-                kedalaman = 1
+                tumpukan.append(("blok", 1))
+                hasil.append(" ")
+                i += 2
+            elif dua == "//":
+                tumpukan.append("baris")
+                hasil.append(dua)
+                i += 2
+            elif teks[i:i + 3] == '"""':
+                tumpukan.append(("string", True))
+                hasil.append('"""')
+                i += 3
+            elif c == '"':
+                tumpukan.append(("string", False))
+                hasil.append(c)
+                i += 1
+            elif c == "'":
+                tumpukan.append("huruf")
+                hasil.append(c)
+                i += 1
+            elif keadaan != "kode" and c == "{":
+                tumpukan[-1] = ("templat", keadaan[1] + 1)
+                hasil.append(c)
+                i += 1
+            elif keadaan != "kode" and c == "}":
+                if keadaan[1] == 0:
+                    tumpukan.pop()
+                else:
+                    tumpukan[-1] = ("templat", keadaan[1] - 1)
+                hasil.append(c)
+                i += 1
+            else:
+                hasil.append(c)
+                i += 1
+        elif keadaan == "baris":
+            hasil.append(c)
+            i += 1
+            if c in "\r\n":
+                tumpukan.pop()
+        elif isinstance(keadaan, tuple) and keadaan[0] == "blok":
+            if dua == "/*":
+                tumpukan[-1] = ("blok", keadaan[1] + 1)
+                hasil.append(" ")
+                i += 2
+            elif dua == "*/":
+                if keadaan[1] == 1:
+                    tumpukan.pop()
+                else:
+                    tumpukan[-1] = ("blok", keadaan[1] - 1)
                 hasil.append(" ")
                 i += 2
             else:
-                hasil.append(teks[i])
+                hasil.append("\n" if c == "\n" else " ")
                 i += 1
-        elif dua == "/*":
-            kedalaman += 1
-            hasil.append(" ")
-            i += 2
-        elif dua == "*/":
-            kedalaman -= 1
-            hasil.append(" ")
-            i += 2
-        else:
-            hasil.append("\n" if teks[i] == "\n" else " ")
-            i += 1
+        elif isinstance(keadaan, tuple) and keadaan[0] == "string":
+            if c == "\\" and not keadaan[1]:
+                hasil.append(teks[i:i + 2])
+                i += 2
+            elif dua == "${":
+                tumpukan.append(("templat", 0))
+                hasil.append(dua)
+                i += 2
+            elif keadaan[1] and teks[i:i + 3] == '"""':
+                tumpukan.pop()
+                hasil.append('"""')
+                i += 3
+            elif not keadaan[1] and c == '"':
+                tumpukan.pop()
+                hasil.append(c)
+                i += 1
+            elif not keadaan[1] and c == "\n":
+                # String tak tertutup (teks bukan Kotlin sah):
+                # tutup paksa agar keadaan tidak bocor.
+                tumpukan.pop()
+                hasil.append(c)
+                i += 1
+            else:
+                hasil.append(c)
+                i += 1
+        elif keadaan == "huruf":
+            if c == "\\":
+                hasil.append(teks[i:i + 2])
+                i += 2
+            elif c == "'":
+                tumpukan.pop()
+                hasil.append(c)
+                i += 1
+            elif c == "\n":
+                tumpukan.pop()
+                hasil.append(c)
+                i += 1
+            else:
+                hasil.append(c)
+                i += 1
     return "".join(hasil)
 
 

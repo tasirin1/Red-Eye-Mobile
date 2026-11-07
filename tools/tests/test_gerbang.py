@@ -608,6 +608,20 @@ class UjiPesanVerifikasiPath(unittest.TestCase):
             + huruf_murni[20:]
         self.assertTrue(cek_token.mengandung_token(
             "val x = byteArrayOf(\n" + ",\n".join(tengah) + "\n)"))
+        # /* di dalam komentar baris atau string bukan
+        # pembuka komentar blok (issue #1884): penanggal
+        # yang membukanya sebagai blok hantu menelan kode
+        # asli sampai */ berikutnya.
+        celah = "val x = byteArrayOf/*k*/(" \
+            + ", ".join(huruf_murni) + ")"
+        self.assertTrue(cek_token.mengandung_token(
+            "// catatan /* belum selesai\n" + celah))
+        self.assertTrue(cek_token.mengandung_token(
+            'val pola = "/*"\n' + celah))
+        tengah = huruf_murni[:20] + ["// jeda /* di sini"] \
+            + huruf_murni[20:]
+        self.assertTrue(cek_token.mengandung_token(
+            "val x = byteArrayOf(\n" + ",\n".join(tengah) + "\n)"))
         self.assertFalse(cek_token.mengandung_token(ba(
             ["'a'.code.toByte()"] * 48)))
         self.assertFalse(cek_token.mengandung_token(ba(

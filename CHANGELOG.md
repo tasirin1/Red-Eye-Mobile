@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Penanggal komentar blok gerbang kini sadar leksikal penuh (tumpukan keadaan: komentar baris, string biasa/mentah/bertemplat, literal huruf): urutan `/*` di dalam komentar baris atau string dulu dibuka sebagai komentar blok hantu yang menelan kode asli sampai `*/` berikutnya — literal `byteArrayOf` sesudahnya, termasuk yang dilindungi lintasan celah komentar, bisa lolos dari gerbang (issue #1884).
+
 - Pemindaian kedalaman kurung pengurai `byteArrayOf` di gerbang kini melewati komentar secara utuh: kurung di dalam komentar blok/baris di tengah argumen dulu ikut terhitung — kurung tutup memotong isi argumen (elemen ekor hilang) dan kurung buka membuat literal terlewat seluruhnya, sehingga token ejaan huruf/campuran bisa lolos dari gerbang (issue #1883).
 
 - Impor mati `android.os.Build` di `MainActivity` dihapus: berkas itu hanya memakai nama-penuh `android.os.Build.VERSION.SDK_INT` dan `BuildConfig` (kelas berbeda), jadi impornya tak pernah terpakai (issue #1882).
