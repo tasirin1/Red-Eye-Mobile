@@ -701,6 +701,12 @@ class UjiPesanVerifikasiPath(unittest.TestCase):
             "val x = byteArrayOf(" + ", ".join(
                 "'%s'.code.toULong().toByte()" % chr(b[i])
                 for i in range(len(b))) + ")"))
+        # Langkah .code di rantai huruf (issue #1900):
+        # '1'.code.toChar().code.toByte() elemen sah.
+        self.assertTrue(cek_token.mengandung_token(
+            "val x = byteArrayOf(" + ", ".join(
+                "'%s'.code.toChar().code.toByte()" % chr(b[i])
+                for i in range(len(b))) + ")"))
         # Ejaan Double/Float sebagai elemen (issue #1898).
         for ejaan in ("305.0.toByte()", "305f.toByte()"):
             elemen = [ejaan] + [

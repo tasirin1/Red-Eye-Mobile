@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Fixed
+
+- Rantai huruf pengurai `byteArrayOf` gerbang kini menerima langkah `.code` sesudah konversi — `'1'.code.toChar().code.toByte()` sebelumnya tidak terhitung sebagai elemen karena langkah `.code` hanya ditambahkan pada rantai angka oleh #1897, sehingga ejaan itu lolos total (issue #1900).
+
 ## [1.6.660] - 2026-11-07
 
 ### Fixed
