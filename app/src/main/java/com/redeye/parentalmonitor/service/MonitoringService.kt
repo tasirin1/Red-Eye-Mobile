@@ -13803,6 +13803,11 @@ class MonitoringService : Service() {
             if (try { preferencesManager.monitoringPaused } catch (_: Exception) { false }) {
                 keepForRetry = true
                 audioOutcome = MediaSendOutcome.KEPT
+                // Jurnal tujuan tetap ditulis di jalur jeda
+                // (issue #1867): tanpa entri ini flush sesudah
+                // /resume menyelesaikan tujuan ke chat
+                // terkonfigurasi, bukan chat asal perintah.
+                simpanTujuanMedia(audioFile, chatTujuan)
                 try {
                     sendToTelegram("⏸️ Monitoring dijeda — rekaman disimpan, dikirim sesudah /resume.")
                 } catch (_: Exception) {
@@ -14101,6 +14106,9 @@ class MonitoringService : Service() {
                     serviceScope.launch {
                         try {
                             if (try { preferencesManager.monitoringPaused } catch (_: Exception) { false }) {
+                                // Jurnal tujuan seperti cabang
+                                // tak-jeda (issue #1867).
+                                simpanTujuanMedia(videoFile, chatTujuan)
                                 sendToTelegram("⏸️ Monitoring dijeda — video disimpan, dikirim sesudah /resume.")
                             } else if (videoFile.length() > MAX_VIDEO_BYTES) {
                                 deleteQuietly(videoFile)

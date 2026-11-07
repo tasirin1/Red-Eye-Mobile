@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Fixed
+
+- Jalur jeda kini menulis jurnal tujuan media untuk audio dan video: cabang `monitoringPaused` dulu return/mengabari sebelum `simpanTujuanMedia`, jadi media tertahan yang diminta dari chat asal lain meluncur ke chat terkonfigurasi sesudah /resume karena flush menyelesaikan tujuan dari jurnal dan entri yang hilang jatuh ke chat terkonfigurasi. Foto dan screenshot sudah menjurnal normal; penemuan berkas tertahan memang dari pindaian direktori antrean, jadi entri jurnal adalah satu-satunya keping yang hilang (issue #1867).
+
 ## [1.6.653] - 2026-11-07
 
 ### Fixed
