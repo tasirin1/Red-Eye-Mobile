@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.657] - 2026-11-07
+
 ### Fixed
 
 - Pemindaian kurung pengurai `byteArrayOf` gerbang kini memakai peta pasangan kurung satu lintasan yang sadar leksikal (komentar, string, dan literal huruf tidak dihitung; ekspresi templat dihitung sebagai kode): pemindaian kedalaman ulang per literal dulu bersifat kuadratik pada literal tak tertutup — terukur 800 literal tak tertutup 1,37 detik menjadi 0,01 detik, dan skala kini linear (issue #1887).
