@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Fixed
+
+- Daftar nama konversi perantara pengurai `byteArrayOf` gerbang dilengkapi — `toChar`, `toDouble`, `toFloat`, `toULong`, `toUInt`, `toUShort`, `toUByte` kini dikenal pada rantai angka maupun huruf (dan langkah `.code` diterima di rantai angka untuk `toChar().code`): sebelumnya elemen yang melewati konversi itu tak dikenal dan literalnya lolos total (issue #1897).
+
 ## [1.6.659] - 2026-11-07
 
 ### Fixed

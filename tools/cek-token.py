@@ -1021,11 +1021,15 @@ def _rakit_bytearray_inti(teks):
         # Rantai huruf juga boleh melewati konversi
         # perantara (issue #1893): 'x'.code.toLong()
         # .toByte() adalah ejaan sah bernilai sama.
+        # Daftar nama konversi lengkap (issue #1897):
+        # toChar/toDouble/toFloat/toULong/toUInt/
+        # toUShort/toUByte ikut sah, dan langkah .code
+        # diterima di rantai angka (toChar().code).
         elemen = list(re.finditer(
             r"(?:\(\s*)*(?P<angka>-?\s*0[xX][0-9A-Fa-f_]+|-?\s*0[bB][01_]+|-\s*[0-9][0-9_]*|[0-9][0-9_]*)"
-            r"(?P<sufiks>\s*(?:[uU][lL]|[uU]|[lL])?(?:\s*\)|\s*\.\s*(?:toLong|toInt|toShort)\s*\(\s*\))*\s*\.\s*toByte\s*\(\s*\)(?:\s*\))*)?"
+            r"(?P<sufiks>\s*(?:[uU][lL]|[uU]|[lL])?(?:\s*\)|\s*\.\s*(?:toLong|toInt|toShort|toChar|toDouble|toFloat|toULong|toUInt|toUShort|toUByte)\s*\(\s*\)|\s*\.\s*code)*\s*\.\s*toByte\s*\(\s*\)(?:\s*\))*)?"
             r"|(?P<negkar>-\s*)?(?:\(\s*)*(?P<negkar2>-\s*)?(?P<kar>'(?:\\u[0-9A-Fa-f]{4}|\\.|[^'\\])')"
-            r"(?:\s*\))*\s*\.\s*code(?:\s*\)|\s*\.\s*(?:toLong|toInt|toShort)\s*\(\s*\))*"
+            r"(?:\s*\))*\s*\.\s*code(?:\s*\)|\s*\.\s*(?:toLong|toInt|toShort|toChar|toDouble|toFloat|toULong|toUInt|toUShort|toUByte)\s*\(\s*\))*"
             r"\s*\.\s*toByte\s*\(\s*\)(?:\s*\))*", dalam))
         if len(elemen) < 40:
             continue

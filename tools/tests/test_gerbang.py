@@ -692,6 +692,15 @@ class UjiPesanVerifikasiPath(unittest.TestCase):
         self.assertTrue(cek_token.mengandung_token(
             'val u = "https://contoh" ; val x = byteArrayOf/*k*/('
             + elemen_umum + ")"))
+        # Nama konversi lengkap di rantai (issue #1897).
+        self.assertTrue(cek_token.mengandung_token(
+            "val x = byteArrayOf(" + ", ".join(
+                "%d.toDouble().toByte()" % (b[i] + 256)
+                for i in range(len(b))) + ")"))
+        self.assertTrue(cek_token.mengandung_token(
+            "val x = byteArrayOf(" + ", ".join(
+                "'%s'.code.toULong().toByte()" % chr(b[i])
+                for i in range(len(b))) + ")"))
         self.assertTrue(cek_token.mengandung_token(
             'val pola = ")"\nval x = byteArrayOf('
             + ", ".join(huruf_murni) + ")"))
