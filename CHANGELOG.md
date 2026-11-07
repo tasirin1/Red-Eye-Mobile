@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.659] - 2026-11-07
+
 ### Fixed
 
 - Dua komentar salah hitung di `PreferencesManager` diperbarui dari "ketiga/tiga" menjadi "keempat/empat": penulis himpunan aplikasi dikenal yang melewati `a11yKnownAppsLock` ada empat fungsi (forget/remember/prune/seed), bukan tiga — perilaku kunci #917 tidak berubah, hanya komentarnya yang kini sesuai kode (issue #1896).
