@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.656] - 2026-11-07
+
 ### Fixed
 
 - Pencari literal `byteArrayOf` gerbang kini toleran komentar di antara nama dan kurung buka: `byteArrayOf/*k*/(...)` sebelumnya tak pernah ditemukan karena pola pencari hanya toleran whitespace, padahal komentar adalah whitespace sah di Kotlin — pengurai kini berjalan dua lintasan, lintasan kedua atas salinan berkomentar tertanggal (termasuk komentar bersarang dan komentar baris di celah) hanya bila celah komentar terdeteksi; dibuktikan baterai sembilan kasus dan uji suite diperluas (issue #1880).
