@@ -1467,6 +1467,16 @@ def _lewati_interpolasi(isi, i):
                 if isi[j] == chr(92):
                     j += 2
                     continue
+                if kutip == chr(34) and isi[j] == "$" \
+                        and isi[j + 1:j + 2] == "{":
+                    # Interpolasi bersarang di dalam string
+                    # bersarang (issue #1906): lewati utuh
+                    # secara rekursif — petik pembuka string
+                    # yang lebih dalam bukan penutup string
+                    # ini, dan membacanya begitu mengacaukan
+                    # hitungan kurung pada templat 3 lapis.
+                    j = _lewati_interpolasi(isi, j)
+                    continue
                 if isi[j] == kutip:
                     j += 1
                     break

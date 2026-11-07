@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Fixed
+
+- Lintasan string `_lewati_interpolasi` di verifikasi-path kini melewati interpolasi bersarang di dalam string bersarang secara rekursif — templat 3 lapis seperti `"${ f("${ "{" }") }"` sebelumnya salah dibaca sehingga `cek_kurung_kode` memvonis kurung tak seimbang +1 atas Kotlin yang sah (issue #1906).
+
 ## [1.6.662] - 2026-11-07
 
 ### Fixed

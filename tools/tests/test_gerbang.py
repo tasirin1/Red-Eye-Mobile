@@ -1126,6 +1126,22 @@ class UjiPesanVerifikasiPath(unittest.TestCase):
             self.assertFalse(
                 cek_token.mengandung_token_pesan("teks jinak pengulangan"))
 
+class UjiKupasKodeTemplat(unittest.TestCase):
+    def test_templat_bersarang_tiga_lapis_seimbang(self):
+        # Issue #1906: petik pembuka string terdalam di
+        # templat 3 lapis bukan penutup string tengah —
+        # kurung sesudah kupas_kode wajib tetap seimbang.
+        for sumber in (
+            'fun a() { val s = "${ f("${ "{" }") }"\n}',
+            'fun a() { val s = "${ f("}") }"\n}',
+            'fun a() { val s = "halo $nama ${x + 1}"\n}',
+        ):
+            hasil = verifikasi.kupas_kode(sumber, bersarang=True)
+            for buka, tutup in (("{", "}"), ("(", ")"), ("[", "]")):
+                self.assertEqual(
+                    hasil.count(buka), hasil.count(tutup), sumber)
+
+
 class UjiFuzzGerbang(unittest.TestCase):
     def test_fuzz_gerbang_doktrin(self):
         # Fuzzer uji-diri (perintah owner 2026-11-07):
