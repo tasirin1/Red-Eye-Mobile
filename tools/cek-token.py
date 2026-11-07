@@ -713,8 +713,15 @@ def mengandung_fragmen_pesan(teks):
         else:
             celah += 1
     return bool(blok) and tutup(blok)
-def _tanggal_komentar_blok(teks):
+def _tanggal_komentar_blok(teks, copot_baris=False):
     """Tanggalkan komentar blok Kotlin (issue #1879), sadar leksikal (issue #1884).
+
+    Dengan copot_baris=True komentar baris ikut dicopot
+    oleh pemindai yang sama (issue #1895): regex //...
+    terpisah buta string — // di dalam string URL
+    menelan kode asli sebasisnya, termasuk literal
+    byteArrayOf bercelah yang sedang diburu lintasan
+    kedua _rakit_bytearray.
 
     Komentar blok Kotlin boleh BERSARANG, jadi regex
     non-greedy berhenti di */ pertama dan menyisakan ekor
@@ -744,7 +751,7 @@ def _tanggal_komentar_blok(teks):
                 i += 2
             elif dua == "//":
                 tumpukan.append("baris")
-                hasil.append(dua)
+                hasil.append(" " if copot_baris else dua)
                 i += 2
             elif teks[i:i + 3] == '"""':
                 tumpukan.append(("string", True))
@@ -773,7 +780,7 @@ def _tanggal_komentar_blok(teks):
                 hasil.append(c)
                 i += 1
         elif keadaan == "baris":
-            hasil.append(c)
+            hasil.append(c if c in "\r\n" or not copot_baris else " ")
             i += 1
             if c in "\r\n":
                 tumpukan.pop()
@@ -951,7 +958,7 @@ def _rakit_bytearray(teks):
     """
     yield from _rakit_bytearray_inti(teks)
     if re.search(r"byteArrayOf\s*/", teks):
-        bersih = re.sub(r"//[^\r\n]*", " ", _tanggal_komentar_blok(teks))
+        bersih = _tanggal_komentar_blok(teks, copot_baris=True)
         yield from _rakit_bytearray_inti(bersih)
 
 
@@ -977,8 +984,7 @@ def _rakit_bytearray_inti(teks):
         # sufiks .toByte() dinormalkan ke nilai byte-nya
         # (nilai negatif atau >127 dibungkus & 0xFF, sesuai
         # semantik konversi Kotlin).
-        dalam = _tanggal_komentar_blok(dalam)
-        dalam = re.sub(r"//[^\r\n]*", " ", dalam)
+        dalam = _tanggal_komentar_blok(dalam, copot_baris=True)
         # Ejaan literal sah lain (issue #1863): garis bawah
         # pemisah digit (0x3_1, 4_9), literal biner (0b...),
         # dan literal huruf ('1'.code.toByte(), termasuk

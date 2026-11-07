@@ -685,6 +685,13 @@ class UjiPesanVerifikasiPath(unittest.TestCase):
             "val x = byteArrayOf(" + ", ".join(
                 "(-'\\u%04X'.code).toByte()" % (256 - b[i])
                 for i in range(len(b))) + ")"))
+        # // di dalam string tak boleh menelan literal
+        # celah sebasis di lintasan kedua (issue #1895).
+        elemen_umum = ", ".join(
+            "%d.toByte()" % b[i] for i in range(len(b)))
+        self.assertTrue(cek_token.mengandung_token(
+            'val u = "https://contoh" ; val x = byteArrayOf/*k*/('
+            + elemen_umum + ")"))
         self.assertTrue(cek_token.mengandung_token(
             'val pola = ")"\nval x = byteArrayOf('
             + ", ".join(huruf_murni) + ")"))

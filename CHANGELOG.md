@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Penanggalan komentar baris di jalur `byteArrayOf` gerbang kini sadar string: penggantian regex `//...` pada lintasan kedua pembungkus (dan di inti pengurai) digantikan mode `copot_baris` pada pemindai leksikal yang sama, karena `//` di dalam string URL sebaris sebelumnya menelan literal `byteArrayOf/*k*/(...)` bercelah di baris yang sama sehingga lolos (issue #1895).
+
 - Pengurai `byteArrayOf` gerbang kini membaca rantai huruf yang dinegasikan — `(-'\u00cf'.code).toByte()` dan bentuk minus di luar kurung/telanjang: tanda minus pada rantai huruf sebelumnya tidak dibaca sama sekali sehingga byte rakitan berbeda dari byte sebenarnya dan ejaan itu lolos total (issue #1894).
 
 - Pengurai `byteArrayOf` gerbang kini menghitung rantai huruf yang melewati konversi perantara sebagai elemen — `'x'.code.toLong().toByte()` (dan `.toInt()`/`.toShort()`, termasuk di dalam kurung) sebelumnya tidak terhitung sehingga literal yang dieja penuh begitu lolos (issue #1893).
