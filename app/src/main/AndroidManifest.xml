@@ -66,7 +66,7 @@
         android:roundIcon="${appRoundIcon}"
         android:supportsRtl="true"
         android:theme="@style/Theme.ParentalMonitor"
-        tools:targetApi="35">
+        tools:targetApi="36">
 
         <!-- Activity utama -->
         <activity
