@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- `_kupas_komentar_kode` di verifikasi-path kini melewati interpolasi templat secara utuh saat memindai string — penanda `/*` di dalam string bersarang templat seperti `"${ "/*" }"` sebelumnya membuka komentar hantu yang menelan definisi dan pemanggil asli dari keluaran yang memberi makan cek acuan yatim, metode hilang, dan cakupan uji (issue #1907).
 - Lintasan string `_lewati_interpolasi` di verifikasi-path kini melewati interpolasi bersarang di dalam string bersarang secara rekursif — templat 3 lapis seperti `"${ f("${ "{" }") }"` sebelumnya salah dibaca sehingga `cek_kurung_kode` memvonis kurung tak seimbang +1 atas Kotlin yang sah (issue #1906).
 
 ## [1.6.662] - 2026-11-07

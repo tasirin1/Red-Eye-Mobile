@@ -1141,6 +1141,20 @@ class UjiKupasKodeTemplat(unittest.TestCase):
                 self.assertEqual(
                     hasil.count(buka), hasil.count(tutup), sumber)
 
+    def test_komentar_di_string_templat_bukan_komentar(self):
+        # Issue #1907: /* di dalam string bersarang templat
+        # adalah isi string — kode sesudahnya tak boleh
+        # tertelan komentar hantu; komentar asli tetap
+        # terkupas.
+        sumber = ('val s = "${ "/*" }"\n'
+                  'fun target() { val y = 1 } // komentar asli\n'
+                  'val z = 2')
+        hasil = verifikasi._kupas_komentar_kode(
+            sumber, bersarang=True)
+        self.assertIn("fun target", hasil)
+        self.assertIn("val z", hasil)
+        self.assertNotIn("komentar asli", hasil)
+
 
 class UjiFuzzGerbang(unittest.TestCase):
     def test_fuzz_gerbang_doktrin(self):

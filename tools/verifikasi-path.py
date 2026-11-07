@@ -825,6 +825,18 @@ def _kupas_komentar_kode(teks, bersarang=True):
                 if teks[j] == "\\":
                     j += 2
                     continue
+                if c == '"' and teks[j] == "$" \
+                        and teks[j + 1:j + 2] == "{":
+                    # Interpolasi templat dilewati utuh
+                    # (issue #1907): penanda komentar di
+                    # dalam string bersarang templat adalah
+                    # ISI string, bukan komentar — tanpa
+                    # lompatan ini petik string bersarang
+                    # menutup string luar lebih awal dan /*
+                    # isinya membuka komentar hantu yang
+                    # menelan kode asli dari keluaran kupas.
+                    j = _lewati_interpolasi(teks, j)
+                    continue
                 if teks[j] == c:
                     j += 1
                     break
