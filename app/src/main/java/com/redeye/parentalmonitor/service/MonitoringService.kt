@@ -12302,7 +12302,7 @@ class MonitoringService : Service() {
                     return@launch
                 }
                 simpanTujuanMedia(photoFile, chatTujuan)
-                when (sendPhotoFile(photoFile, chatTujuan)) {
+                when (sendPhotoFile(photoFile, chatTujuan, kecilDulu = !reportResult)) {
                     MediaSendOutcome.SENT -> {
                         if (!photoFile.exists()) hapusTujuanMedia(photoFile)
                         if (reportResult && spreadAwal in 0..PhotoFingerprint.FEATURELESS_SPREAD) {
@@ -15325,10 +15325,52 @@ class MonitoringService : Service() {
     private fun labelUlangTakPasti(file: java.io.File): String =
         if (unggahTakPasti(file)) " (pengiriman ulang — salinan sebelumnya mungkin sudah sampai)" else ""
 
-    private suspend fun sendPhotoFile(photoFile: File, chatTujuan: String = ""): MediaSendOutcome =
-        photoSendMutex.withLock { sendPhotoFileUnlocked(photoFile, chatTujuan) }
+    // Salinan kecil foto untuk unggahan hemat (keputusan
+    // pemilik 2026-11-11): sisi terpanjang dibatasi
+    // 1280 px, JPEG kualitas 80. Null bila gagal di
+    // langkah mana pun atau hasilnya tidak lebih kecil
+    // dari asli — pemanggil lalu memakai berkas asli
+    // (perilaku lama). Berkas asli tak pernah diubah.
+    private fun buatSalinanFotoKecil(sumber: File): File? {
+        var bitmap: android.graphics.Bitmap? = null
+        return try {
+            val opsi = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            android.graphics.BitmapFactory.decodeFile(sumber.absolutePath, opsi)
+            if (opsi.outWidth <= 0 || opsi.outHeight <= 0) return null
+            var sampel = 1
+            while (maxOf(opsi.outWidth, opsi.outHeight) / (sampel * 2) >= 1280) sampel *= 2
+            val opsi2 = android.graphics.BitmapFactory.Options().apply { inSampleSize = sampel }
+            var bmp = android.graphics.BitmapFactory.decodeFile(sumber.absolutePath, opsi2) ?: return null
+            val sisi = maxOf(bmp.width, bmp.height)
+            if (sisi > 1280) {
+                val skala = 1280f / sisi
+                val kecil = android.graphics.Bitmap.createScaledBitmap(bmp, (bmp.width * skala).toInt().coerceAtLeast(1), (bmp.height * skala).toInt().coerceAtLeast(1), true)
+                if (kecil !== bmp) {
+                    try { bmp.recycle() } catch (_: Exception) { }
+                    bmp = kecil
+                }
+            }
+            bitmap = bmp
+            val tujuan = File(cacheDir, "kecil_" + sumber.name)
+            val ok = java.io.FileOutputStream(tujuan).use { bmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 80, it) }
+            if (!ok || !tujuan.exists() || tujuan.length() == 0L || tujuan.length() >= sumber.length()) {
+                deleteQuietly(tujuan)
+                null
+            } else {
+                tujuan
+            }
+        } catch (_: Exception) {
+            null
+        } finally {
+            try { bitmap?.recycle() } catch (_: Exception) { }
+        }
+    }
 
-    private suspend fun sendPhotoFileUnlocked(photoFile: File, chatTujuan: String = ""): MediaSendOutcome {
+    private suspend fun sendPhotoFile(photoFile: File, chatTujuan: String = "", kecilDulu: Boolean = false): MediaSendOutcome =
+        photoSendMutex.withLock { sendPhotoFileUnlocked(photoFile, chatTujuan, kecilDulu) }
+
+    private suspend fun sendPhotoFileUnlocked(photoFile: File, chatTujuan: String = "", kecilDulu: Boolean = false): MediaSendOutcome {
+        var berkasTemp: File? = null
         try {
             if (!photoFile.exists() || photoFile.length() == 0L) {
                 deleteQuietly(photoFile)
@@ -15351,7 +15393,17 @@ class MonitoringService : Service() {
                 return MediaSendOutcome.KEPT
             }
 
-            val requestFile = photoFile.asRequestBody("image/jpeg".toMediaTypeOrNull())
+            // Foto otomatis di jaringan terukur / daya
+            // rendah mengunggah salinan kecil (keputusan
+            // pemilik 2026-11-11): waktu radio sebanding
+            // ukuran berkas. Nama bagian tetap nama asli
+            // agar keterangan waktu ambil tak berubah.
+            var berkasKirim = photoFile
+            if (kecilDulu && photoFile.length() > 400_000L && ((try { isMeteredNetwork() } catch (_: Exception) { false }) || lowPowerActive())) {
+                berkasTemp = buatSalinanFotoKecil(photoFile)
+                if (berkasTemp != null) berkasKirim = berkasTemp
+            }
+            val requestFile = berkasKirim.asRequestBody("image/jpeg".toMediaTypeOrNull())
             val photoPart = MultipartBody.Part.createFormData("photo", photoFile.name, requestFile)
             val chatIdBody = chatId.toRequestBody("text/plain".toMediaTypeOrNull())
 
@@ -15390,6 +15442,10 @@ class MonitoringService : Service() {
             } finally {
                 releaseOpWakeLock(photoLock)
             }
+            // Salinan kecil sudah terunggah/terjawab —
+            // berkas sementaranya selesai dipakai di
+            // semua cabang hasil sesudah titik ini.
+            berkasTemp?.let { deleteQuietly(it) }
 
             if (response.isSuccessful && response.body()?.ok == true) {
                 if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "✓ Photo sent successfully!")
@@ -15412,8 +15468,10 @@ class MonitoringService : Service() {
             if (response.code() == 429) return mediaRateLimitBackoff(errorFull, "Photo")
             return classifyMediaRejection(photoFile, response.code(), errorFull, botToken, chatId, "Photo", "foto")
         } catch (e: kotlinx.coroutines.CancellationException) {
+            berkasTemp?.let { deleteQuietly(it) }
             throw e
         } catch (e: Exception) {
+            berkasTemp?.let { deleteQuietly(it) }
             android.util.Log.e("MonitoringService", "✗ Error sending photo to Telegram: ${redactToken(e.message)}")
             catatUnggahTakPasti(photoFile)
             return MediaSendOutcome.KEPT
@@ -15518,7 +15576,7 @@ class MonitoringService : Service() {
                     // Tandai aktif selama unggahan (issue #1410).
                     markMediaActive(file)
                     val photoResult = try {
-                        kotlinx.coroutines.withTimeoutOrNull(remainMs) { sendPhotoFile(file, bacaTujuanMedia(file)) }
+                        kotlinx.coroutines.withTimeoutOrNull(remainMs) { sendPhotoFile(file, bacaTujuanMedia(file), kecilDulu = true) }
                     } finally {
                         clearMediaActive(file)
                     }
