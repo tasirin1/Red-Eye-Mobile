@@ -2934,7 +2934,17 @@ class MonitoringService : Service() {
                 if (android.os.SystemClock.elapsedRealtime() < commandBackoffUntil) {
                     try {
                         val remaining = commandBackoffUntil - android.os.SystemClock.elapsedRealtime()
-                        kotlinx.coroutines.delay(remaining.coerceIn(1L, 60_000L))
+                        // Irisan tunggu mundur 5 menit
+                        // (keputusan pemilik 2026-11-12,
+                        // desain hemat baterai babak
+                        // keempat): masa mundur konflik/
+                        // rate-limit bisa 1 jam dan irisan
+                        // 60 detik lama berarti puluhan
+                        // bangun kosong hanya untuk cek
+                        // jam; harga yang disadari: poll
+                        // aktif lagi bisa telat s.d. 5
+                        // menit sesudah masa mundur habis.
+                        kotlinx.coroutines.delay(remaining.coerceIn(1L, 300_000L))
                     } catch (e: kotlinx.coroutines.CancellationException) {
                         throw e
                     } catch (_: Exception) {

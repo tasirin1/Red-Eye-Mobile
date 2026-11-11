@@ -2,6 +2,7 @@
 
 ### Changed
 
+- Irisan tunggu gelung poll selama masa mundur konflik (409) atau rate-limit (429) diregangkan dari 60 detik menjadi 5 menit (keputusan pemilik, desain hemat baterai babak keempat): masa mundur bisa sampai 1 jam dan irisan lama berarti puluhan kali bangun hanya untuk memeriksa jam; harga yang disadari adalah poll bisa aktif lagi sampai 5 menit sesudah masa mundur berakhir.
 - Putaran patroli yang memakai ulang posisi cache gerak kini melewati foto putarannya juga (keputusan pemilik, desain hemat baterai babak keempat): perangkat terbukti tidak berpindah sejak pengambilan terakhir, jadi foto putaran itu hanya mengulang pemandangan yang sama dengan foto patroli sebelumnya, sementara laporan teks dan posisinya tetap terkirim; putaran berikutnya yang mendeteksi gerak memotret lagi seperti biasa.
 
 ## [1.6.675] - 2026-11-11
