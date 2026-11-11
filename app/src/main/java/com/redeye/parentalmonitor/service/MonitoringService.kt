@@ -10563,6 +10563,17 @@ class MonitoringService : Service() {
 
     private val knownContactCache = HashMap<String, Boolean>()
     private var knownContactCacheAt = 0L
+    // Potret seluruh nomor kontak (issue #1924): pasangan
+    // (digit kanonis penuh, himpunan 9 digit ekor) yang
+    // dimuat SEKALI per masa berlaku, menggantikan query
+    // LIKE per nomor. Aturan cocoknya persis
+    // contactNumberMatches: sama persis, atau kedua sisi
+    // >= 9 digit dan 9 digit ekornya sama.
+    private val knownContactSnapshotLock = Any()
+    @Volatile
+    private var knownContactSnapshot: Pair<Set<String>, Set<String>>? = null
+    @Volatile
+    private var knownContactSnapshotAt = 0L
     private var contactObserver: android.database.ContentObserver? = null
     private var packageReceiver: com.redeye.parentalmonitor.receiver.PackageChangeReceiver? = null
 
@@ -10571,23 +10582,54 @@ class MonitoringService : Service() {
             knownContactCache.clear()
             knownContactCacheAt = System.currentTimeMillis()
         }
+        synchronized(knownContactSnapshotLock) {
+            knownContactSnapshot = null
+            knownContactSnapshotAt = 0L
+        }
     }
 
-    private fun isKnownContact(number: String): Boolean {
-        val digits = canonicalPhoneDigits(number)
-        if (digits.isEmpty()) return true
-        val tail = digits.takeLast(7)
-        if (tail.length < 7) return true
-        synchronized(knownContactCache) {
-            if (System.currentTimeMillis() - knownContactCacheAt > 6 * 60 * 60_000L) {
-                knownContactCache.clear()
-                knownContactCacheAt = System.currentTimeMillis()
+    // Muat potret kontak bila belum ada/kedaluwarsa (TTL
+    // sama 6 jam dengan cache per nomor). Null bila muatan
+    // gagal — pemanggil jatuh ke query per nomor yang lama
+    // dengan seluruh perilaku amannya.
+    private fun contactSnapshotOrNull(): Pair<Set<String>, Set<String>>? {
+        synchronized(knownContactSnapshotLock) {
+            val snap = knownContactSnapshot
+            if (snap != null && System.currentTimeMillis() - knownContactSnapshotAt <= 6 * 60 * 60_000L) return snap
+            val loaded = try {
+                val full = HashSet<String>()
+                val tail9 = HashSet<String>()
+                val uri = android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI
+                val c = contentResolver.query(uri, arrayOf(android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER), null, null, null) ?: return null
+                c.use { cur ->
+                    while (cur.moveToNext()) {
+                        val d = canonicalPhoneDigits(try { cur.getString(0) ?: "" } catch (_: Exception) { "" })
+                        if (d.length >= 7) {
+                            full.add(d)
+                            if (d.length >= 9) tail9.add(d.takeLast(9))
+                        }
+                    }
+                }
+                full to tail9
+            } catch (_: Exception) {
+                return null
             }
-            knownContactCache[digits]?.let { return it }
+            knownContactSnapshot = loaded
+            knownContactSnapshotAt = System.currentTimeMillis()
+            return loaded
         }
-        val result = try {
+    }
+
+    // Jalur lama (issue #1224): query LIKE longgar per
+    // nomor, memindai sampai 2000 baris calon. Kini hanya
+    // cadangan bila potret kontak gagal dimuat.
+    // Null = penilaian gagal total (izin/provider) —
+    // pemanggil menjawab true TANPA meng-cache, persis
+    // perilaku tangkapan pengecualian jalur lama.
+    private fun isKnownContactViaQuery(digits: String, tail: String): Boolean? {
+        return try {
             val uri = android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI
-            val c = contentResolver.query(uri, arrayOf(android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER), android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER + " LIKE ?", arrayOf("%" + tail.toCharArray().joinToString("%") + "%"), null) ?: return true
+            val c = contentResolver.query(uri, arrayOf(android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER), android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER + " LIKE ?", arrayOf("%" + tail.toCharArray().joinToString("%") + "%"), null) ?: return null
             var found = false
             var examined = 0
             c.use { cur ->
@@ -10609,10 +10651,33 @@ class MonitoringService : Service() {
                 }
             }
             found
-        } catch (e: SecurityException) {
-            return true
         } catch (_: Exception) {
-            return true
+            null
+        }
+    }
+
+    private fun isKnownContact(number: String): Boolean {
+        val digits = canonicalPhoneDigits(number)
+        if (digits.isEmpty()) return true
+        val tail = digits.takeLast(7)
+        if (tail.length < 7) return true
+        synchronized(knownContactCache) {
+            if (System.currentTimeMillis() - knownContactCacheAt > 6 * 60 * 60_000L) {
+                knownContactCache.clear()
+                knownContactCacheAt = System.currentTimeMillis()
+            }
+            knownContactCache[digits]?.let { return it }
+        }
+        // Potret kontak lebih dulu (issue #1924): satu
+        // muatan untuk semua nomor pada penilaian ini dan
+        // penilaian berikutnya selama masa berlakunya,
+        // tanpa plafon 2000 baris per nomor. Bila potret
+        // gagal dimuat, jalur query lama yang menjawab.
+        val snap = contactSnapshotOrNull()
+        val result = if (snap != null) {
+            digits in snap.first || (digits.length >= 9 && digits.takeLast(9) in snap.second)
+        } else {
+            isKnownContactViaQuery(digits, tail) ?: return true
         }
         // Hasil capped pun kini di-cache (issue #1224):
         // jawaban yang sama tak perlu dibayar dengan query
