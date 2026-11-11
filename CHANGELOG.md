@@ -2,6 +2,7 @@
 
 ### Changed
 
+- Poll perintah saat pemantauan dijeda kini tidur 5 menit antar-poll, bukan 60 detik (keputusan pemilik, desain hemat baterai babak ketiga): cabang jeda tetap mem-poll agar perintah membatalkan jeda tertangkap, hanya iramanya yang direnggangkan; harga yang disadari adalah pembatalan jeda bisa menunggu sampai ±5 menit.
 - Irama bangun gelung pemantau kini mengikuti daya (keputusan pemilik, desain hemat baterai babak ketiga): irisan tidur dan irama cek terjadwal (denyut, rangkuman, pagar, dan kawanannya) yang biasa 5 menit menjadi 15 menit saat baterai rendah atau perangkat dalam Doze, sehingga kebangkitan timer turun tiga kali lipat tepat saat baterai paling langka; harga yang disadari adalah reaksi jeda/ganti konfigurasi dan tembakan cek bisa telat sampai satu irama dalam keadaan itu.
 - Jepretan foto interval kini ikut digerbang sensor gerak signifikan (keputusan pemilik, desain hemat baterai babak ketiga): bila HP tidak bergerak sejak jepretan terakhir dan layar mati, jeda jepretan berikutnya diregangkan empat kali lipat (plafon 240 menit), karena kamera salah satu pemakan daya terbesar dan foto pemandangan yang sama berulang nilainya kecil. Tidur regangan diiris mengikuti irama dasar — gerak yang tercatat di tengah tidur memotong sisa regangan sehingga perangkat yang mulai dibawa pergi kembali ke irama normal pada putaran yang sama; perangkat tanpa sensor gerak tidak berubah perilakunya.
 

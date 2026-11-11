@@ -2898,7 +2898,7 @@ class MonitoringService : Service() {
             val self = coroutineContext[Job]
             while (isActive && (commandJob == null || commandJob === self)) {
                 commandBeatAt = android.os.SystemClock.elapsedRealtime()
-                commandCycleMs = if (cachedMonitoringPaused) 60_000L else 15_000L
+                commandCycleMs = if (cachedMonitoringPaused) 300_000L else 15_000L
                 if (cachedMonitoringPaused) {
                     try {
                         pollTelegramCommands()
@@ -2909,7 +2909,16 @@ class MonitoringService : Service() {
                     } catch (_: Throwable) {
                         android.util.Log.e("MonitoringService", "Fatal polling error while paused, loop survives")
                     }
-                    delay(60_000)
+                    // Tidur antar-poll saat dijeda
+                    // diregangkan 60 dtk menjadi 5 menit
+                    // (keputusan pemilik 2026-11-11,
+                    // desain hemat baterai babak ketiga):
+                    // cabang ini tetap mem-poll supaya
+                    // perintah membatalkan jeda tertangkap,
+                    // hanya iramanya yang direnggangkan —
+                    // harga yang disadari: pembatalan
+                    // jeda bisa menunggu s.d. ±5 menit.
+                    delay(300_000)
                     continue
                 }
                 if (android.os.SystemClock.elapsedRealtime() < commandBackoffUntil) {
