@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.676] - 2026-11-12
+
 ### Changed
 
 - Irisan tunggu gelung poll selama masa mundur konflik (409) atau rate-limit (429) diregangkan dari 60 detik menjadi 5 menit (keputusan pemilik, desain hemat baterai babak keempat): masa mundur bisa sampai 1 jam dan irisan lama berarti puluhan kali bangun hanya untuk memeriksa jam; harga yang disadari adalah poll bisa aktif lagi sampai 5 menit sesudah masa mundur berakhir.
