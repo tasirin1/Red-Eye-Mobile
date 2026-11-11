@@ -14926,7 +14926,16 @@ class MonitoringService : Service() {
                 val nameIdx = c.getColumnIndex(android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
                 val numIdx = c.getColumnIndex(android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER)
                 if (nameIdx >= 0 && numIdx >= 0) {
-                    while (c.moveToNext() && out.size < 11) {
+                    // Plafon baris diperiksa 500 (issue #1932):
+                    // jalur API 29 dan jalur cadangan tak punya
+                    // QUERY_ARG_LIMIT, jadi tanpa plafon ini
+                    // kursor menelusuri SEMUA baris cocok walau
+                    // yang diterima berhenti di 11. Di API 30+
+                    // batas provider (50/11) mengikat lebih
+                    // dulu, jadi plafon ini tak mengubah hasil.
+                    var examined = 0
+                    while (c.moveToNext() && out.size < 11 && examined < 500) {
+                        examined++
                         try {
                             val nm = c.getString(nameIdx) ?: ""
                             val nb = c.getString(numIdx) ?: ""

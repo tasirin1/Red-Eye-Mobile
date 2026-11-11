@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Pencarian kontak kini membatasi baris kursor yang diperiksa sampai 500 (issue #1932): jalur API 29 dan jalur cadangan tidak punya batas limit provider, jadi kursor lama bisa menelusuri semua baris yang cocok padahal hasil yang diterima berhenti di 11; di API 30+ batas provider tetap mengikat lebih dulu sehingga hasil tidak berubah.
+
 - Plafon pindai berhalaman /history diturunkan dari 4 halaman menjadi 2 halaman per repositori (issue #1931): kasus terburuk turun dari sekitar 4.000 baris kursor (dua repositori) menjadi sekitar 2.000, dan teks batas yang diumumkan di balasan disesuaikan dari 2.000 menjadi 1.000 entri per repositori agar tetap jujur; kontrak plafon baru dikunci uji.
 
 - Pindai pasangan aplikasi launcher untuk resolusi nama (/appwatch, /open) kini bercache TTL 10 menit dengan disiplin yang sama seperti daftar aplikasinya (issue #1930): sebelumnya tiap resolusi membayar pindai PackageManager penuh tanpa cache sama sekali; cache lama menjadi cadangan bila pindai segar gagal, dan invalidasi label aplikasi membuang cache ini juga.
