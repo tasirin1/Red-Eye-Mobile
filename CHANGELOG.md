@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.670] - 2026-11-11
+
 ### Fixed
 - Aliran jembatan penilaian berkas besar per potong di cek-token kini hanya memancarkan padatan wilayah segar dan dinilai dengan kecocokan pola mentah — berkas bersih tak lagi tertuduh palsu oleh salinan ganda wilayah tumpang-tindih dan penanggalan ulang isi string yang selamat sebagai pembatas komentar (#1920).
 - Penilaian berkas besar per potong di cek-token kini menilai tiap potong dari potret keadaan di awal potong itu sendiri dan hanya menyambung padatan wilayah segar — pembuka komentar di wilayah tumpang-tindih jahitan tak lagi terhitung ganda oleh awalan sintetis sampai menelan belahan token sesudah penutupnya (#1919).
