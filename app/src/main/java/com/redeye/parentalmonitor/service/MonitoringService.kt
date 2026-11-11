@@ -207,6 +207,14 @@ class MonitoringService : Service() {
     private var geofenceFailStreak = 0
     private var patrolLocFailStreak = 0
     private var patrolLocBackoffUntilElapsed = 0L
+    // Gerbang gerak patroli (keputusan pemilik
+    // 2026-11-11): stempel picu sensor gerak signifikan
+    // terakhir, stempel pengambilan posisi patroli
+    // terakhir, dan kesiapan sensornya.
+    @Volatile private var gerakTerakhirElapsed = 0L
+    @Volatile private var ambilPosisiTerakhirElapsed = 0L
+    @Volatile private var motionSensorSiap = false
+    private var gerakListenerTerdaftar = false
     @Volatile
     private var idleDataCycles = 0
     @Volatile
@@ -1601,6 +1609,7 @@ class MonitoringService : Service() {
         }
         monitoringJob = monitoring
         monitoring.start()
+        daftarSensorGerak()
         startCameraLoop()
         startPatrolLoop()
     }
@@ -1821,6 +1830,44 @@ class MonitoringService : Service() {
         patrol.start()
     }
 
+    // Sensor gerak signifikan untuk gerbang patroli
+    // (keputusan pemilik 2026-11-11): pemicu perangkat
+    // keras satu-tembak berdaya nyaris nol; tiap picu
+    // mencatat waktunya lalu mendaftar ulang. Tak ada
+    // sensor di perangkat = gerbang mati dan patroli
+    // berjalan seperti biasa.
+    private fun daftarSensorGerak() {
+        if (gerakListenerTerdaftar) return
+        gerakListenerTerdaftar = true
+        try {
+            val sm = getSystemService(android.hardware.SensorManager::class.java) ?: return
+            val sensor = sm.getDefaultSensor(android.hardware.Sensor.TYPE_SIGNIFICANT_MOTION) ?: return
+            val listener = object : android.hardware.TriggerEventListener() {
+                override fun onTrigger(event: android.hardware.TriggerEvent?) {
+                    gerakTerakhirElapsed = android.os.SystemClock.elapsedRealtime()
+                    try { sm.requestTriggerSensor(this, sensor) } catch (_: Exception) { }
+                }
+            }
+            motionSensorSiap = sm.requestTriggerSensor(listener, sensor)
+        } catch (_: Exception) { }
+    }
+
+    // Posisi cache untuk gerbang gerak patroli: null
+    // bila syarat PowerSave.patrolPakaiCache tak penuh
+    // atau belum ada posisi tersimpan sama sekali.
+    private fun posisiCachePatroli(): android.location.Location? {
+        val capWaktu = try { preferencesManager.lastLocAt } catch (_: Exception) { 0L }
+        val umurCacheMs = System.currentTimeMillis() - capWaktu
+        if (!com.redeye.parentalmonitor.utils.PowerSave.patrolPakaiCache(motionSensorSiap, gerakTerakhirElapsed, ambilPosisiTerakhirElapsed, umurCacheMs)) return null
+        val pasangan = lastSentLatLon() ?: return null
+        val loc = android.location.Location("cache-gerak")
+        loc.latitude = pasangan.first
+        loc.longitude = pasangan.second
+        loc.accuracy = try { preferencesManager.lastLocAccM } catch (_: Exception) { -1f }
+        loc.time = capWaktu
+        return loc
+    }
+
     private suspend fun patrolRound() {
         if (NetworkUtils.isAuthBlocked(preferencesManager)) return
         if (android.os.SystemClock.elapsedRealtime() < mediaBackoffUntil) return
@@ -1832,12 +1879,24 @@ class MonitoringService : Service() {
         // berjalan (laporan + foto), hanya pengambilan
         // lokasinya yang dilewati selama masa mundur.
         val locBackoff = android.os.SystemClock.elapsedRealtime() < patrolLocBackoffUntilElapsed
-        val location = if (locBackoff) null else try {
-            fetchLocation(coarseOk = true)
-        } catch (e: kotlinx.coroutines.CancellationException) {
-            throw e
-        } catch (_: Exception) {
-            null
+        // Gerbang gerak (keputusan pemilik 2026-11-11):
+        // bila sensor menyatakan perangkat tak berpindah
+        // sejak pengambilan terakhir dan cache belum
+        // basi, posisi cache dipakai ulang — sesi lokasi
+        // putaran ini dilewati sama sekali.
+        var dariCacheGerak = false
+        val location = if (locBackoff) null else {
+            val cache = posisiCachePatroli()
+            if (cache != null) {
+                dariCacheGerak = true
+                cache
+            } else try {
+                fetchLocation(coarseOk = true)
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                null
+            }
         }
         val level = batteryLevel()
         val body = buildString {
@@ -1846,7 +1905,15 @@ class MonitoringService : Service() {
                 patrolLocFailStreak = 0
                 patrolLocBackoffUntilElapsed = 0L
                 resetLocFailCount()
-                try { preferencesManager.lastLocAt = System.currentTimeMillis() } catch (_: Exception) { }
+                // Cache gerak TIDAK menyegarkan stempel
+                // posisi: konsumen lain (fallback pagar)
+                // menilai kebasian dari stempel itu, dan
+                // pengambilan sungguhan mencatat stempel
+                // gerbangnya sendiri.
+                if (!dariCacheGerak) {
+                    ambilPosisiTerakhirElapsed = android.os.SystemClock.elapsedRealtime()
+                    try { preferencesManager.lastLocAt = System.currentTimeMillis() } catch (_: Exception) { }
+                }
                 try { checkGeofence(location.latitude, location.longitude, location.accuracy, fixAtMs = location.time) } catch (_: Exception) { }
                 val prev = lastSentLatLon()
                 val dist = if (prev == null) -1f else ReportFormat.distanceMeters(prev.first, prev.second, location.latitude, location.longitude)

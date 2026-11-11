@@ -33,6 +33,17 @@ class PowerSaveTest {
     }
 
     @Test
+    fun patrolPakaiCacheHanyaTanpaGerakDanCacheSegar() {
+        assertTrue(PowerSave.patrolPakaiCache(true, 0L, 100_000L, 60_000L))
+        assertTrue(PowerSave.patrolPakaiCache(true, 90_000L, 100_000L, 90 * 60_000L))
+        assertFalse(PowerSave.patrolPakaiCache(false, 0L, 100_000L, 60_000L))
+        assertFalse(PowerSave.patrolPakaiCache(true, 0L, 0L, 60_000L))
+        assertFalse(PowerSave.patrolPakaiCache(true, 100_001L, 100_000L, 60_000L))
+        assertFalse(PowerSave.patrolPakaiCache(true, 0L, 100_000L, 90 * 60_000L + 1L))
+        assertFalse(PowerSave.patrolPakaiCache(true, 0L, 100_000L, -1L))
+    }
+
+    @Test
     fun slowedFlagsAtCaps() {
         assertFalse(PowerSave.cameraSlowed(60))
         assertTrue(PowerSave.cameraSlowed(59))

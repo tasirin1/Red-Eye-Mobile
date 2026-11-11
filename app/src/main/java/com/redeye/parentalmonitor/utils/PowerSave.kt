@@ -24,4 +24,20 @@ object PowerSave {
     fun patrolSlowed(rawMinutes: Int): Boolean {
         return patrolIntervalEff(rawMinutes, true) > rawMinutes.coerceIn(5, 180)
     }
+
+    // Gerbang gerak patroli (keputusan pemilik 2026-11-11):
+    // putaran patroli boleh memakai ulang posisi cache
+    // TANPA sesi lokasi baru hanya bila sensor gerak
+    // signifikan terpasang, pernah ada pengambilan posisi,
+    // tidak ada gerak tercatat sesudah pengambilan itu,
+    // dan umur cache <= 90 menit. Sensor pemicunya berdaya
+    // nyaris nol (perangkat keras), jadi vonis "perangkat
+    // tidak berpindah" hampir gratis; di luar syarat ini
+    // patroli mengambil posisi seperti biasa.
+    fun patrolPakaiCache(sensorSiap: Boolean, gerakTerakhirElapsed: Long, ambilTerakhirElapsed: Long, umurCacheMs: Long): Boolean {
+        if (!sensorSiap) return false
+        if (ambilTerakhirElapsed <= 0L) return false
+        if (gerakTerakhirElapsed > ambilTerakhirElapsed) return false
+        return umurCacheMs in 0L..90 * 60_000L
+    }
 }
