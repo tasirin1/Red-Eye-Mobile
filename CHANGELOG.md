@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Plafon pindai berhalaman /history diturunkan dari 4 halaman menjadi 2 halaman per repositori (issue #1931): kasus terburuk turun dari sekitar 4.000 baris kursor (dua repositori) menjadi sekitar 2.000, dan teks batas yang diumumkan di balasan disesuaikan dari 2.000 menjadi 1.000 entri per repositori agar tetap jujur; kontrak plafon baru dikunci uji.
+
 - Pindai pasangan aplikasi launcher untuk resolusi nama (/appwatch, /open) kini bercache TTL 10 menit dengan disiplin yang sama seperti daftar aplikasinya (issue #1930): sebelumnya tiap resolusi membayar pindai PackageManager penuh tanpa cache sama sekali; cache lama menjadi cadangan bila pindai segar gagal, dan invalidasi label aplikasi membuang cache ini juga.
 
 - appendAudit tidak lagi membaca ulang seluruh log audit dari prefs terenkripsi pada tiap perintah yang mengubah keadaan (issue #1929): log kini dicerminkan di memori (dimuat sekali, dijaga kunci yang sama), sementara tiap entri tetap ditulis tembus ke prefs seperti sebelumnya sehingga daya tahan tak berubah; menghapus log membuang cerminnya juga.

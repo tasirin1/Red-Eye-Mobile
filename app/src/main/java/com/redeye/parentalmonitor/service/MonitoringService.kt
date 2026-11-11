@@ -5967,14 +5967,14 @@ class MonitoringService : Service() {
                     val sisiKosong = if (callsFailed) "SMS" else "panggilan"
                     val kosongTruncated = if (callsFailed) smsResult.truncated else callsResult.truncated
                     val pesan = if (kosongTruncated) {
-                        "\uD83D\uDD0E Tak ada riwayat $sisiKosong untuk $digits dalam 2.000 entri terbaru (pencarian dibatasi; riwayat lain mungkin belum diperiksa), tetapi riwayat $sisiGagal gagal dicari. Coba lagi."
+                        "\uD83D\uDD0E Tak ada riwayat $sisiKosong untuk $digits dalam 1.000 entri terbaru (pencarian dibatasi; riwayat lain mungkin belum diperiksa), tetapi riwayat $sisiGagal gagal dicari. Coba lagi."
                     } else {
                         "\uD83D\uDD0E Tak ada riwayat $sisiKosong untuk $digits, tetapi riwayat $sisiGagal gagal dicari. Coba lagi."
                     }
                     sendToTelegram(pesan)
                 } else {
                     val message = if (callsResult.truncated || smsResult.truncated) {
-                        "⚠️ Nomor $digits tidak ditemukan dalam 2.000 entri terbaru. Pencarian dibatasi; riwayat lain mungkin belum diperiksa."
+                        "⚠️ Nomor $digits tidak ditemukan dalam 1.000 entri terbaru. Pencarian dibatasi; riwayat lain mungkin belum diperiksa."
                     } else {
                         "\uD83D\uDD0E Tak ada riwayat untuk $digits (pencarian sekitar 12 bulan terakhir)."
                     }
@@ -5991,7 +5991,7 @@ class MonitoringService : Service() {
                     sendToTelegram("⚠️ Hanya 5 riwayat terbaru per jenis yang ditampilkan; pada pencarian ini ditemukan $callsLabel panggilan dan $smsLabel SMS untuk nomor ini.")
                 }
                 if ((callsResult.truncated && callsResult.items.isEmpty()) || (smsResult.truncated && smsResult.items.isEmpty())) {
-                    sendToTelegram("⚠️ Pencarian berhenti setelah 2.000 entri terbaru; mungkin masih ada riwayat yang lebih lama.")
+                    sendToTelegram("⚠️ Pencarian berhenti setelah 1.000 entri terbaru; mungkin masih ada riwayat yang lebih lama.")
                 }
                 if (callsFailed) sendToTelegram("⚠️ Riwayat panggilan gagal dicari.")
                 if (smsFailed) sendToTelegram("⚠️ Riwayat SMS gagal dicari.")

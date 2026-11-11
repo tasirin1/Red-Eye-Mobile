@@ -164,4 +164,25 @@ class NumberHistorySearchTest {
         assertFalse(hasil.truncated)
         assertEquals(listOf("persis", "fuzzy", "halaman", "halaman"), kueri.panggilan)
     }
+
+    @Test
+    fun pindaiHalamanBerhentiPadaPlafonDuaHalaman() {
+        // Plafon issue #1931: 2 halaman x 500 per repositori.
+        // Satu baris cocok terperangkap saringan halaman di
+        // halaman pertama, diikuti dua halaman penuh tak
+        // cocok dan sisa 2 baris. Di bawah plafon lama
+        // (4 halaman) pindai berlanjut ke halaman ketiga,
+        // tuntas, dan truncated=false; di bawah plafon baru
+        // pindai berhenti sesudah halaman kedua sehingga
+        // hasilnya terpotong. Jalur Log.w tak terpanggil
+        // karena kecocokan tidak kosong.
+        val cocok = Baris("+62 812-3456-7890", kini - 1_000L, 9_999L)
+        val takCocok = (1..1_001).map { Baris("087777777777", kini - (it + 1) * 1_000L, 9_000L - it) }
+        val data = listOf(cocok) + takCocok
+        val kueri = KueriPalsu(data)
+        val hasil = pencarian(kueri).search("081234567890")
+        assertEquals(1, hasil.items.size)
+        assertTrue(hasil.truncated)
+        assertEquals(listOf("persis", "fuzzy", "halaman", "halaman"), kueri.panggilan)
+    }
 }

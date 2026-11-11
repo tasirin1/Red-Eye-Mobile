@@ -46,7 +46,12 @@ class NumberHistorySearch<T>(
         // halaman tampil sebagian saja tanpa tanda.
         val acc = ArrayList<T>()
         var scanComplete = false
-        for (pageIndex in 0 until 4) {
+        // Plafon pindai 2 halaman x 500 = 1.000 baris per
+        // repositori (issue #1931): dulu 4 halaman (2.000)
+        // dan /history membayar kasus terburuk dua kali
+        // lipat itu dari dua repositori. Angka yang sama
+        // diumumkan di teks balasan /history.
+        for (pageIndex in 0 until 2) {
             val page = query("${dateColumn} >= ? AND (${dateColumn} < ? OR (${dateColumn} = ? AND ${idColumn} < ?))", arrayOf(cutoff.toString(), upperDate.toString(), upperDate.toString(), upperId.toString()), "${dateColumn} DESC, ${idColumn} DESC", 500)
             if (page.isEmpty()) {
                 scanComplete = true
