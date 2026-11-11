@@ -87,6 +87,12 @@ class MessageQueue private constructor(context: Context) {
     // salinan ini kosong (tulis pertama sesudah proses mulai /
     // reset penyimpanan). Dijaga persistMutex.
     private var lastWrittenJson: String? = null
+    // Himpunan id milik lastWrittenJson (issue #1928):
+    // disimpan bersama agar rotasi cadangan tak mem-parse
+    // ulang seluruh JSON lama hanya untuk daftar id-nya.
+    // Selalu diganti/dibuang berbarengan dengan
+    // lastWrittenJson.
+    private var lastWrittenIds: Set<String>? = null
     private var pendingSnapshot: Pair<Long, List<QueuedMessage>>? = null
     private var drainFailCount = 0
     private val generationCounter = java.util.concurrent.atomic.AtomicLong(0L)
@@ -170,7 +176,7 @@ class MessageQueue private constructor(context: Context) {
                 // reopenAfterStorageReset — writeSnapshot
                 // berikutnya membaca isi utama yang sebenarnya
                 // untuk rotasi cadangan, bukan salinan basi.
-                synchronized(persistMutex) { lastWrittenJson = null }
+                synchronized(persistMutex) { lastWrittenJson = null; lastWrittenIds = null }
                 persistVersion++
                 pendingSnapshot = null
                 persistDirty = false
@@ -234,7 +240,7 @@ class MessageQueue private constructor(context: Context) {
     fun reopenAfterStorageReset() {
         synchronized(lock) {
             cached = null
-            synchronized(persistMutex) { lastWrittenJson = null }
+            synchronized(persistMutex) { lastWrittenJson = null; lastWrittenIds = null }
             volatileQueue.clear()
             dropsDirty = false
             persistVersion++
@@ -784,6 +790,7 @@ class MessageQueue private constructor(context: Context) {
             val cleared = synchronized(persistMutex) {
                 jsonCache.clear()
                 lastWrittenJson = null
+                lastWrittenIds = null
                 persistVersion++
                 pendingSnapshot = null
                 val removed = try {
@@ -1190,10 +1197,18 @@ class MessageQueue private constructor(context: Context) {
                     // terhapus tetap hidup di cadangan
                     // dan bangkit lewat gabungan salvage
                     // #1728 sebagai duplikat.
-                    val idLama = try {
-                        gson.fromJson(old, arrayType)?.map { it.id }?.toHashSet()
-                    } catch (_: Exception) {
-                        null
+                    // Id isi lama tanpa parse ulang bila
+                    // isi lama adalah tulisan kita sendiri
+                    // (issue #1928); parse hanya untuk isi
+                    // yang dibaca dari cakram (awal dingin).
+                    val idLama = if (lastWrittenJson != null) {
+                        lastWrittenIds
+                    } else {
+                        try {
+                            gson.fromJson(old, arrayType)?.map { it.id }?.toHashSet()
+                        } catch (_: Exception) {
+                            null
+                        }
                     }
                     val hapusMurni = idLama != null &&
                         snapshot.all { it.id in idLama }
@@ -1213,7 +1228,10 @@ class MessageQueue private constructor(context: Context) {
             } catch (_: Exception) {
                 false
             }
-            if (saved) lastWrittenJson = json
+            if (saved) {
+                lastWrittenJson = json
+                lastWrittenIds = snapshot.mapTo(HashSet()) { it.id }
+            }
             if (!saved && persistVersion == version) persistDirty = true
             return saved
         }
