@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.671] - 2026-11-11
+
 ### Fixed
 
 - Pencarian kontak kini membatasi baris kursor yang diperiksa sampai 500 (issue #1932): jalur API 29 dan jalur cadangan tidak punya batas limit provider, jadi kursor lama bisa menelusuri semua baris yang cocok padahal hasil yang diterima berhenti di 11; di API 30+ batas provider tetap mengikat lebih dulu sehingga hasil tidak berubah.
