@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Kirim Telegram yang sukses tidak lagi membayar dua panggilan IPC pembatalan notifikasi setiap kali (issue #1926): pembatalan peringatan auth/penyimpanan kini hanya dilakukan bila notifikasi itu memang sedang terpajang menurut penanda di memori (penanda mulai dari "mungkin terpajang" agar sisa proses sebelumnya tetap dibersihkan pada kirim sukses pertama, dan dipasang ulang setiap peringatan diterbitkan). Bacaan penjaga kredensial per kirim dinilai ulang dan dipertahankan: pemeriksaan blokir-auth membaca keadaan terkini yang memang harus segar, dan perbandingan atomik di setCredentialErrorIfCredentialsMatch adalah penjaga terhadap rotasi kredensial di tengah kirim.
+
 - Rakitan /status kini membaca tiap nilai setelan yang tampil lebih dari sekali hanya satu kali (issue #1925): interval kamera, interval sync, dan waktu foto terakhir diambil sekali di awal, bukan didekripsi berulang di tengah rakitan (sekalian menghilangkan peluang tampil tak konsisten bila setelan berubah di sela).
 
 - Penilaian nomor dikenal (/alertness dan laporan berkala) kini memuat potret seluruh nomor kontak sekali per 6 jam (issue #1924) dan mencocokkan di memori dengan aturan yang persis sama, menggantikan satu query LIKE per nomor yang memindai sampai 2.000 baris calon; bila potret gagal dimuat, jalur query lama tetap menjadi cadangan dengan perilaku gagal-aman yang sama.

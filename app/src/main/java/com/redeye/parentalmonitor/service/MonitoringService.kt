@@ -3932,6 +3932,7 @@ class MonitoringService : Service() {
                 .build()
             val manager = getSystemService(NOTIFICATION_SERVICE) as android.app.NotificationManager
             manager.notify(if (slotTerpisah) STORAGE_LOSS_NOTIF_ID else AUTH_NOTIF_ID, notification)
+            if (slotTerpisah) storageNotifPosted = true else authNotifPosted = true
             // Cap throttle SESUDAH notify() berhasil
             // (issue #1558): dulu dicap sebelum pasang —
             // kegagalan pasang menelan jendela 6 jam
@@ -11401,6 +11402,16 @@ class MonitoringService : Service() {
 
     @Volatile
     private var lastSendOkNoteAt = 0L
+    // Penanda notifikasi peringatan sedang terpajang
+    // (issue #1926): noteSendOk hanya membayar IPC cancel
+    // bila memang ada yang terpajang. Nilai awal true —
+    // sisa proses sebelumnya bisa masih terpajang dan
+    // kirim sukses pertama wajib membersihkannya seperti
+    // perilaku lama (#1556).
+    @Volatile
+    private var authNotifPosted = true
+    @Volatile
+    private var storageNotifPosted = true
 
     private fun noteSendOk() {
         // Keadaan pulih = peringatan lokal dibatalkan
@@ -11412,8 +11423,14 @@ class MonitoringService : Service() {
         // mengabaikannya.
         try {
             val managerNotif = getSystemService(NOTIFICATION_SERVICE) as android.app.NotificationManager
-            managerNotif.cancel(AUTH_NOTIF_ID)
-            managerNotif.cancel(STORAGE_LOSS_NOTIF_ID)
+            if (authNotifPosted) {
+                managerNotif.cancel(AUTH_NOTIF_ID)
+                authNotifPosted = false
+            }
+            if (storageNotifPosted) {
+                managerNotif.cancel(STORAGE_LOSS_NOTIF_ID)
+                storageNotifPosted = false
+            }
         } catch (_: Exception) {
         }
         val nowElapsed = android.os.SystemClock.elapsedRealtime()
