@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- appendAudit tidak lagi membaca ulang seluruh log audit dari prefs terenkripsi pada tiap perintah yang mengubah keadaan (issue #1929): log kini dicerminkan di memori (dimuat sekali, dijaga kunci yang sama), sementara tiap entri tetap ditulis tembus ke prefs seperti sebelumnya sehingga daya tahan tak berubah; menghapus log membuang cerminnya juga.
+
 - Persist antrean pesan tidak lagi mem-parse ulang seluruh JSON antrean lama pada tiap tulis yang berubah (issue #1928): himpunan id tulisan terakhir kini disimpan bersama JSON-nya dan dipakai langsung untuk keputusan rotasi cadangan; parse hanya terjadi untuk isi yang dibaca dari cakram saat awal dingin.
 
 - Kirim Telegram yang sukses tidak lagi membayar dua panggilan IPC pembatalan notifikasi setiap kali (issue #1926): pembatalan peringatan auth/penyimpanan kini hanya dilakukan bila notifikasi itu memang sedang terpajang menurut penanda di memori (penanda mulai dari "mungkin terpajang" agar sisa proses sebelumnya tetap dibersihkan pada kirim sukses pertama, dan dipasang ulang setiap peringatan diterbitkan). Bacaan penjaga kredensial per kirim dinilai ulang dan dipertahankan: pemeriksaan blokir-auth membaca keadaan terkini yang memang harus segar, dan perbandingan atomik di setCredentialErrorIfCredentialsMatch adalah penjaga terhadap rotasi kredensial di tengah kirim.

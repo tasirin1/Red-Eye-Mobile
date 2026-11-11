@@ -59,6 +59,14 @@ class PreferencesManager(context: Context) {
     private val auditLock = Any()
     private val restoreSecretLock = Any()
 
+    // Cermin memori log audit (issue #1929): appendAudit dulu membaca
+    // ulang seluruh string log dari prefs terenkripsi pada tiap
+    // panggilan. Cermin dimuat sekali dari prefs, lalu tiap append
+    // tetap ditulis tembus (putString + apply) sehingga daya tahan
+    // tak berubah. Semua akses dijaga auditLock; clearAuditLog
+    // membuang cermin agar muat ulang dari prefs yang sudah kosong.
+    private var auditMirror: MutableList<String>? = null
+
     private enum class UpgradeResult { SUCCESS, UNSTABLE, FAILED }
 
     fun upgradeToPersistent(): Boolean {
@@ -1284,6 +1292,7 @@ class PreferencesManager(context: Context) {
 
     fun clearAuditLog() {
         synchronized(auditLock) {
+            auditMirror = null
             try {
                 sharedPreferences.edit().remove(KEY_AUDIT_LOG).apply()
             } catch (_: Exception) {
@@ -1297,8 +1306,24 @@ class PreferencesManager(context: Context) {
                 val safeEvent = event.replace('\t', ' ').replace('\n', ' ').take(80)
                 val safeSource = source.replace('\t', ' ').replace('\n', ' ').take(40)
                 val line = System.currentTimeMillis().toString() + "\t" + safeEvent + "\t" + safeSource
-                val current = try { sharedPreferences.getString(KEY_AUDIT_LOG, "") ?: "" } catch (_: Exception) { "" }
-                val lines = if (current.isEmpty()) mutableListOf<String>() else current.split('\n').toMutableList()
+                val lines = auditMirror ?: run {
+                    val current = try { sharedPreferences.getString(KEY_AUDIT_LOG, "") ?: "" } catch (_: Exception) { "" }
+                    // Pecah manual setara split('\n') (aturan gerbang:
+                    // tanpa .split di baris baru).
+                    val loaded = mutableListOf<String>()
+                    var awal = 0
+                    while (current.isNotEmpty()) {
+                        val idx = current.indexOf('\n', awal)
+                        if (idx < 0) {
+                            loaded.add(current.substring(awal))
+                            break
+                        }
+                        loaded.add(current.substring(awal, idx))
+                        awal = idx + 1
+                    }
+                    auditMirror = loaded
+                    loaded
+                }
                 lines.add(line)
                 while (lines.size > 50) lines.removeAt(0)
                 sharedPreferences.edit().putString(KEY_AUDIT_LOG, lines.joinToString("\n")).apply()
