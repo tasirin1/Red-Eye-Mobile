@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Changed
+
+- Jeda poll perintah Telegram dipersingkat atas keputusan pemilik, membalik trade-off hemat baterai sebelumnya (#1573): jeda antarcek kini mulai 3 detik dan naik sampai 10 detik, menjadi 20 detik sesudah 5 menit diam, dan maksimal 30 detik sesudah 30 menit diam (sebelumnya 10–30 detik, 60 detik, dan 120 detik). Perintah dan tombol pertama sesudah HP diam lama kini menunggu paling lama ±30 detik, bukan ±120 detik; harga yang disadari pemilik adalah baterai lebih boros.
+
 ## [1.6.671] - 2026-11-11
 
 ### Fixed
