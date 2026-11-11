@@ -7036,13 +7036,20 @@ class MonitoringService : Service() {
 
         val lastSync = preferencesManager.lastSyncTime
         val lastSyncStr = if (lastSync > 0) formatDate(lastSync) else "belum pernah"
+        // Nilai yang tampil lebih dari sekali dibaca SEKALI
+        // (issue #1925): tiap getter prefs adalah putaran
+        // dekripsi, dan bacaan ganda dalam satu rakitan juga
+        // bisa tak konsisten bila setelan berubah di sela.
+        val intervalKamera = preferencesManager.cameraInterval
+        val intervalSync = preferencesManager.syncInterval
+        val fotoTerakhir = preferencesManager.lastPhotoTime
         val photoState = if (isPhotoPaused()) {
             val leftMin = ((photoPausedElapsed() - System.currentTimeMillis()) / 60_000L).coerceAtLeast(1L)
             "jeda ($leftMin mnt lagi)"
-        } else if (preferencesManager.cameraInterval <= 0) {
+        } else if (intervalKamera <= 0) {
             "manual saja (/photo)"
         } else {
-            "tiap ${preferencesManager.cameraInterval} mnt"
+            "tiap $intervalKamera mnt"
         }
         sendToTelegram(
             buildString {
@@ -7052,7 +7059,7 @@ class MonitoringService : Service() {
                 appendLine("Antrean: ${messageQueue.getQueueSize()}")
                 if (try { messageQueue.isVolatileOnly() } catch (_: Exception) { false }) appendLine("⚠️ Antrean di memori saja (penyimpanan terenkripsi tak tersedia) — pesan tertunda bisa hilang bila aplikasi mati.")
                 val effMin = effectiveSyncMillis() / 60_000L
-                appendLine("Interval data: tiap ${preferencesManager.syncInterval} mnt" + if (idleDataCycles > 0 && effMin > preferencesManager.syncInterval) " (sepi adaptif, kini tiap $effMin mnt)" else "")
+                appendLine("Interval data: tiap $intervalSync mnt" + if (idleDataCycles > 0 && effMin > intervalSync) " (sepi adaptif, kini tiap $effMin mnt)" else "")
                 appendLine("Foto: $photoState")
                 appendLine("Patroli: ${if (preferencesManager.patrolEnabled) "JALAN tiap ${preferencesManager.patrolInterval} mnt" else "mati"}")
                 appendLine("Kamera: ${preferencesManager.cameraFacing}")
@@ -7088,7 +7095,7 @@ class MonitoringService : Service() {
                     " · proteksi: " + (if (preferencesManager.a11yTamperEnabled) "nyala" else "mati"))
                 appendLine("Pantau app: " + (if (preferencesManager.a11yAppWatchEnabled) "nyala (" + preferencesManager.a11yAppWatchPackageSet().size + " app)" else "mati"))
                 appendLine("Sekarang: " + Html.escape(A11yMonitor.currentAppLabel().ifEmpty { "-" }))
-                appendLine("Foto terakhir: ${if (preferencesManager.lastPhotoTime > 0) formatDate(preferencesManager.lastPhotoTime) else "belum pernah"}")
+                appendLine("Foto terakhir: ${if (fotoTerakhir > 0) formatDate(fotoTerakhir) else "belum pernah"}")
                 appendLine("Jam malam: ${try { preferencesManager.curfewTime.takeIf { it.isNotEmpty() } ?: "mati" } catch (_: Exception) { "?" }}")
             },
             mainMenu()

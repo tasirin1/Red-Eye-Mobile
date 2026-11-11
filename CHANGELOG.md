@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Rakitan /status kini membaca tiap nilai setelan yang tampil lebih dari sekali hanya satu kali (issue #1925): interval kamera, interval sync, dan waktu foto terakhir diambil sekali di awal, bukan didekripsi berulang di tengah rakitan (sekalian menghilangkan peluang tampil tak konsisten bila setelan berubah di sela).
+
 - Penilaian nomor dikenal (/alertness dan laporan berkala) kini memuat potret seluruh nomor kontak sekali per 6 jam (issue #1924) dan mencocokkan di memori dengan aturan yang persis sama, menggantikan satu query LIKE per nomor yang memindai sampai 2.000 baris calon; bila potret gagal dimuat, jalur query lama tetap menjadi cadangan dengan perilaku gagal-aman yang sama.
 
 - Pindaian UsageEvents untuk /digest dan /brief kini diagregasi mengalir (issue #1923): event 24 jam tidak lagi ditampung semua ke satu daftar sebelum diringkas — akumulator UsageEventsSummary yang baru menghitung sambil jalan dengan hasil yang persis sama (fungsi daftar lama kini dibangun di atasnya dan kesetaraannya diuji).
