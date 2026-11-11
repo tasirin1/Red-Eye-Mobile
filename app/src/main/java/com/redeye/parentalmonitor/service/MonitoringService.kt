@@ -10301,15 +10301,22 @@ class MonitoringService : Service() {
                     topLabel = top.first
                     topMs = top.second
                 }
-                val rowsY = try { usageRowsBetween(com.redeye.parentalmonitor.utils.A11yUsageMath.previousDayStartWallMillis(now, java.util.TimeZone.getDefault()), dayStart) } catch (_: Exception) { null }
-                if (rowsY != null) {
+                // Jendela kemarin PENUH ditanyakan SEKALI
+                // sebagai baris paket (issue #1922): baris
+                // label kemarin (rowsY) adalah petanya persis
+                // (usageRowsBetween memang memetakan hasil
+                // fungsi ini), jadi query agregat yang sama
+                // tak lagi dibayar dua kali per digest.
+                val awalKemarin = com.redeye.parentalmonitor.utils.A11yUsageMath.previousDayStartWallMillis(now, java.util.TimeZone.getDefault())
+                val rowsPkgY = try { usagePkgRowsBetween(awalKemarin, dayStart) } catch (_: Exception) { null }
+                if (rowsPkgY != null) {
+                    val rowsY = rowsPkgY.map { it.second to it.third }
                     // Jendela yang sama kemarin (issue #1426):
                     // persen sorotan dulu membandingkan hari ini
                     // yang PARSIAl (00:00-sekarang) melawan
                     // kemarin PENUH — digest pagi/susulan selalu
                     // mengklaim turun besar palsu. Kini kemarin
                     // dipotong pada jam yang sama.
-                    val awalKemarin = com.redeye.parentalmonitor.utils.A11yUsageMath.previousDayStartWallMillis(now, java.util.TimeZone.getDefault())
                     val rowsYW = try { usageRowsBetween(awalKemarin, awalKemarin + (now - dayStart)) } catch (_: Exception) { null }
                     yesterdayWindowMs = rowsYW?.sumOf { it.second } ?: 0L
                     if (topLabel.isNotEmpty()) {
@@ -10317,11 +10324,10 @@ class MonitoringService : Service() {
                         // (issue #1431): dua paket bisa berlabel
                         // sama (kloning/profil kerja) dan nilai
                         // kemarinnya tertukar.
-                        val rowsPkgY = try { usagePkgRowsBetween(awalKemarin, dayStart) } catch (_: Exception) { null }
                         val rowsPkgT = try { usagePkgRowsBetween(dayStart, now) } catch (_: Exception) { null }
                         val paketTop = rowsPkgT?.firstOrNull()?.takeIf { it.second == topLabel }?.first
                         topYesterdayMs = if (paketTop != null) {
-                            rowsPkgY?.firstOrNull { it.first == paketTop }?.third ?: 0L
+                            rowsPkgY.firstOrNull { it.first == paketTop }?.third ?: 0L
                         } else {
                             rowsY.firstOrNull { it.first == topLabel }?.second ?: 0L
                         }
