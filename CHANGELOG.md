@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.674] - 2026-11-11
+
 ### Changed
 
 - Foto otomatis (jepretan interval, patroli, dan antrean flush) yang berukuran >400 KB kini mengunggah salinan kecil (sisi terpanjang 1280 px, JPEG kualitas 80) saat berada di jaringan terukur atau mode hemat daya (keputusan pemilik, desain hemat baterai): waktu radio — pemakan daya terbesar sesudah layar — sebanding dengan ukuran berkas. Berkas asli di perangkat tidak diubah, foto yang diminta manual lewat perintah tetap terkirim ukuran penuh, dan kegagalan membuat salinan mengembalikan kiriman asli seperti sebelumnya.
