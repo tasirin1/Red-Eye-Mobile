@@ -2019,22 +2019,32 @@ class MonitoringService : Service() {
         val genAtStart = loopConfigGen
         var remaining = totalMs.coerceAtLeast(0L)
         var sejakCek = 0L
+        // Irama irisan + cek: 5 menit dalam keadaan
+        // biasa; 15 menit saat daya rendah atau Doze
+        // (keputusan pemilik 2026-11-11, desain hemat
+        // baterai babak ketiga) — kebangkitan timer
+        // turun tiga kali lipat tepat saat baterai
+        // paling langka. Harga yang disadari: reaksi
+        // jeda/ganti konfigurasi gelung dan tembakan
+        // cek terjadwal bisa telat s.d. satu irama itu
+        // dalam keadaan tersebut.
+        val iramaMs = if (lowPowerActive() || dozeAktif()) 15 * 60_000L else 5 * 60_000L
         while (remaining > 0L) {
             // Irisan sejajar irama cek berkala (issue
             // #1630): dulu 30 detik, sehingga tidur idle
             // 20 menit terbangun s.d. 40 kali hanya untuk
             // membaca dua bendera memori, padahal cek
             // sungguhan berirama 5 menit. Kini irisan
-            // dibatasi 5 menit — reaksi jeda/ganti interval
+            // dibatasi satu irama cek — reaksi jeda/ganti interval
             // paling lambat satu irama cek, kebangkitan
             // timer turun sepuluh kali lipat.
-            val slice = remaining.coerceAtMost(5 * 60_000L)
+            val slice = remaining.coerceAtMost(iramaMs)
             delay(slice)
             remaining -= slice
             if (cachedMonitoringPaused != pausedAtStart || loopConfigGen != genAtStart) return
             if (betweenChecks != null && remaining > 0L) {
                 sejakCek += slice
-                if (sejakCek >= 5 * 60_000L) {
+                if (sejakCek >= iramaMs) {
                     sejakCek = 0L
                     betweenChecks.invoke()
                     if (cachedMonitoringPaused != pausedAtStart || loopConfigGen != genAtStart) return
