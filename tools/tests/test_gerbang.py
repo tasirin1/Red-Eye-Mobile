@@ -305,6 +305,16 @@ class UjiKanalBerkasTambahan(unittest.TestCase):
         potret += b"/" + b"*" + b"\n" * 500000 + b"*/ "
         potret += TOKEN[24:].encode()
         potret += b"B" * (400 * 1024)
+        # Issue #1920: berkas bersih TIDAK tertuduh palsu —
+        # pembuka string mentah terbelah 1+2 di jahitan
+        # pertama, isi string menyeberangi jahitan, dan
+        # aksara isi string yang selamat tak boleh
+        # tersambung ulang oleh aliran jembatan.
+        palsu = bytearray(b"A" * (cek_token._POTONG - 26))
+        palsu += TOKEN[:24].encode()
+        palsu += b'"' + b'""' + b"\n" * (cek_token._POTONG + 1000)
+        palsu += b"/*ACAU*/" + TOKEN[24:].encode() + b'"""'
+        palsu += b"B" * (200 * 1024)
         with tempfile.TemporaryDirectory() as d:
             for nama, data, harap in (("kotor", bytes(isi), True),
                                       ("belah", bytes(belah), True),
@@ -312,6 +322,7 @@ class UjiKanalBerkasTambahan(unittest.TestCase):
                                       ("jahit", bytes(jahit), True),
                                       ("tumpang", bytes(tumpang), True),
                                       ("potret", bytes(potret), True),
+                                      ("palsu", bytes(palsu), False),
                                       ("bersih", bersih, False)):
                 path = os.path.join(d, nama)
                 with open(path, "wb") as f:
