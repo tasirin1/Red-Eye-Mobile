@@ -604,6 +604,16 @@ class MonitoringService : Service() {
         @Volatile
         private var allAppsCacheAt = 0L
         private var allAppsCacheWriteSeq = 0L
+        // Cache pasangan (label, paket) pindai launcher
+        // untuk resolusi nama aplikasi (issue #1930):
+        // disiplin yang sama dengan dua cache di atas —
+        // daftar terpisah karena bentuknya pasangan,
+        // bukan string jadi.
+        @Volatile
+        private var launchablePairsCache: List<Pair<String, String>> = emptyList()
+        @Volatile
+        private var launchablePairsCacheAt = 0L
+        private var launchablePairsWriteSeq = 0L
 
         fun invalidateAppLabel(pkg: String) {
             synchronized(appsCacheLock) {
@@ -613,6 +623,8 @@ class MonitoringService : Service() {
                     appsCacheAt = 0L
                     allAppsCache = emptyList()
                     allAppsCacheAt = 0L
+                    launchablePairsCache = emptyList()
+                    launchablePairsCacheAt = 0L
                 } catch (_: Exception) {
                 }
             }
@@ -6280,6 +6292,37 @@ class MonitoringService : Service() {
     }
 
     private fun scanLaunchableAppPairs(): List<Pair<String, String>>? {
+        // Cache baca-tembus (issue #1930): dulu tiap
+        // resolusi nama aplikasi (/appwatch, /open, dan
+        // listLaunchableAppsFresh) membayar pindai
+        // PackageManager penuh tanpa cache, padahal
+        // daftar saudaranya sudah bercache sejak #1648.
+        // Pola yang sama persis: TTL 10 menit di bawah
+        // appsCacheLock, tulis dijaga generasi + nomor
+        // urut tulis, cache lama jadi cadangan bila
+        // pindai segar gagal/kosong; tanpa cadangan,
+        // hasil segar (termasuk null) diteruskan apa
+        // adanya seperti perilaku lama.
+        val snapshot = synchronized(appsCacheLock) { launchablePairsCache to launchablePairsCacheAt }
+        val cached = snapshot.first
+        if (cached.isNotEmpty() && android.os.SystemClock.elapsedRealtime() - snapshot.second < 10 * 60_000L) return cached
+        val startStamp = synchronized(appsCacheLock) { appsCacheGen.get() to launchablePairsWriteSeq }
+        val fresh = scanLaunchableAppPairsFresh()
+        if (!fresh.isNullOrEmpty()) {
+            synchronized(appsCacheLock) {
+                if (appsCacheGen.get() == startStamp.first && launchablePairsWriteSeq == startStamp.second) {
+                    launchablePairsCache = fresh
+                    launchablePairsCacheAt = android.os.SystemClock.elapsedRealtime()
+                    launchablePairsWriteSeq++
+                }
+            }
+            return fresh
+        }
+        if (cached.isNotEmpty()) return cached
+        return fresh
+    }
+
+    private fun scanLaunchableAppPairsFresh(): List<Pair<String, String>>? {
         return try {
             val intent = android.content.Intent(android.content.Intent.ACTION_MAIN).addCategory(android.content.Intent.CATEGORY_LAUNCHER)
             val infos = if (android.os.Build.VERSION.SDK_INT >= 33) {

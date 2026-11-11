@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Pindai pasangan aplikasi launcher untuk resolusi nama (/appwatch, /open) kini bercache TTL 10 menit dengan disiplin yang sama seperti daftar aplikasinya (issue #1930): sebelumnya tiap resolusi membayar pindai PackageManager penuh tanpa cache sama sekali; cache lama menjadi cadangan bila pindai segar gagal, dan invalidasi label aplikasi membuang cache ini juga.
+
 - appendAudit tidak lagi membaca ulang seluruh log audit dari prefs terenkripsi pada tiap perintah yang mengubah keadaan (issue #1929): log kini dicerminkan di memori (dimuat sekali, dijaga kunci yang sama), sementara tiap entri tetap ditulis tembus ke prefs seperti sebelumnya sehingga daya tahan tak berubah; menghapus log membuang cerminnya juga.
 
 - Persist antrean pesan tidak lagi mem-parse ulang seluruh JSON antrean lama pada tiap tulis yang berubah (issue #1928): himpunan id tulisan terakhir kini disimpan bersama JSON-nya dan dipakai langsung untuk keputusan rotasi cadangan; parse hanya terjadi untuk isi yang dibaca dari cakram saat awal dingin.
