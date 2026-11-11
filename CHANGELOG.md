@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Changed
+
+- Jepretan foto interval kini ikut digerbang sensor gerak signifikan (keputusan pemilik, desain hemat baterai babak ketiga): bila HP tidak bergerak sejak jepretan terakhir dan layar mati, jeda jepretan berikutnya diregangkan empat kali lipat (plafon 240 menit), karena kamera salah satu pemakan daya terbesar dan foto pemandangan yang sama berulang nilainya kecil. Tidur regangan diiris mengikuti irama dasar — gerak yang tercatat di tengah tidur memotong sisa regangan sehingga perangkat yang mulai dibawa pergi kembali ke irama normal pada putaran yang sama; perangkat tanpa sensor gerak tidak berubah perilakunya.
+
 ## [1.6.674] - 2026-11-11
 
 ### Changed

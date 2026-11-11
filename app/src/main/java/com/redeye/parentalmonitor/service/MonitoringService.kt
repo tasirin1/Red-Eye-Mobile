@@ -212,6 +212,7 @@ class MonitoringService : Service() {
     // terakhir, stempel pengambilan posisi patroli
     // terakhir, dan kesiapan sensornya.
     @Volatile private var gerakTerakhirElapsed = 0L
+    @Volatile private var jepretTerakhirElapsed = 0L
     @Volatile private var ambilPosisiTerakhirElapsed = 0L
     @Volatile private var motionSensorSiap = false
     private var gerakListenerTerdaftar = false
@@ -1688,9 +1689,38 @@ class MonitoringService : Service() {
                             if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Camera idle-skip (quiet device, screen off)")
                         } else {
                             captureAndSendPhoto()
+                            jepretTerakhirElapsed = android.os.SystemClock.elapsedRealtime()
                         }
-                        cameraCycleMs = effMinutes * 60_000L
-                        delayMs(effMinutes * 60_000L)
+                        // Gerbang gerak (keputusan pemilik
+                        // 2026-11-11): perangkat diam tak
+                        // bergerak + layar mati meregangkan
+                        // jeda jepretan berikutnya x4 —
+                        // kamera pemakan daya besar, foto
+                        // pemandangan yang sama berulang
+                        // nilainya kecil. Gerak berikutnya
+                        // mengembalikan irama normal.
+                        val longgarGerak = com.redeye.parentalmonitor.utils.PowerSave.kameraLonggarGerak(motionSensorSiap, gerakTerakhirElapsed, jepretTerakhirElapsed, !isScreenOn())
+                        val effFinal = com.redeye.parentalmonitor.utils.PowerSave.cameraIntervalGerakEff(effMinutes, longgarGerak)
+                        cameraCycleMs = effFinal * 60_000L
+                        if (effFinal > effMinutes) {
+                            // Tidur regangan diiris irama
+                            // dasar: gerak yang tercatat di
+                            // tengah tidur memotong sisa
+                            // regangan, jadi perangkat yang
+                            // mulai dibawa pergi kembali ke
+                            // irama normal pada putaran ini
+                            // juga — bukan menunggu regangan
+                            // habis dulu.
+                            var sisaRegang = (effFinal - effMinutes) * 60_000L
+                            delayMs(effMinutes * 60_000L)
+                            while (sisaRegang > 0L && gerakTerakhirElapsed <= jepretTerakhirElapsed) {
+                                val irisan = sisaRegang.coerceAtMost(effMinutes * 60_000L)
+                                delayMs(irisan)
+                                sisaRegang -= irisan
+                            }
+                        } else {
+                            delayMs(effFinal * 60_000L)
+                        }
                     } else if (cachedMonitoringPaused) {
                         cameraCycleMs = 5 * 60_000L
                         delayMs(5 * 60_000L)

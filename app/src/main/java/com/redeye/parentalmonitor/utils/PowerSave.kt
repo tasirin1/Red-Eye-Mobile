@@ -40,4 +40,28 @@ object PowerSave {
         if (gerakTerakhirElapsed > ambilTerakhirElapsed) return false
         return umurCacheMs in 0L..90 * 60_000L
     }
+
+    // Gerbang gerak kamera interval (keputusan pemilik
+    // 2026-11-11): interval jepretan otomatis boleh
+    // diregangkan hanya bila sensor gerak signifikan
+    // terpasang, pernah ada jepretan, tidak ada gerak
+    // tercatat sesudah jepretan terakhir, dan layar
+    // mati. Perangkat yang diangkat/bergerak memicu
+    // sensor sehingga irama normal kembali sendiri
+    // pada putaran berikutnya.
+    fun kameraLonggarGerak(sensorSiap: Boolean, gerakTerakhirElapsed: Long, jepretTerakhirElapsed: Long, layarMati: Boolean): Boolean {
+        if (!sensorSiap) return false
+        if (jepretTerakhirElapsed <= 0L) return false
+        if (gerakTerakhirElapsed > jepretTerakhirElapsed) return false
+        return layarMati
+    }
+
+    // Interval kamera efektif sesudah gerbang gerak:
+    // empat kali lipat saat longgar (masukan sudah
+    // hasil cameraIntervalEff yang berplafon 60, jadi
+    // hasil di sini berplafon 240 menit).
+    fun cameraIntervalGerakEff(effMinutes: Int, longgar: Boolean): Int {
+        if (!longgar || effMinutes <= 0) return effMinutes
+        return effMinutes * 4
+    }
 }

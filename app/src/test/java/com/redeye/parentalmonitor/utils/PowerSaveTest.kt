@@ -44,6 +44,20 @@ class PowerSaveTest {
     }
 
     @Test
+    fun kameraLonggarGerakHanyaSaatDiamDanLayarMati() {
+        assertTrue(PowerSave.kameraLonggarGerak(true, 0L, 100_000L, true))
+        assertTrue(PowerSave.kameraLonggarGerak(true, 90_000L, 100_000L, true))
+        assertFalse(PowerSave.kameraLonggarGerak(false, 0L, 100_000L, true))
+        assertFalse(PowerSave.kameraLonggarGerak(true, 0L, 0L, true))
+        assertFalse(PowerSave.kameraLonggarGerak(true, 100_001L, 100_000L, true))
+        assertFalse(PowerSave.kameraLonggarGerak(true, 0L, 100_000L, false))
+        assertEquals(40, PowerSave.cameraIntervalGerakEff(10, true))
+        assertEquals(240, PowerSave.cameraIntervalGerakEff(60, true))
+        assertEquals(10, PowerSave.cameraIntervalGerakEff(10, false))
+        assertEquals(0, PowerSave.cameraIntervalGerakEff(0, true))
+    }
+
+    @Test
     fun slowedFlagsAtCaps() {
         assertFalse(PowerSave.cameraSlowed(60))
         assertTrue(PowerSave.cameraSlowed(59))
