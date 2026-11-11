@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Changed
+
+- Putaran patroli yang memakai ulang posisi cache gerak kini melewati foto putarannya juga (keputusan pemilik, desain hemat baterai babak keempat): perangkat terbukti tidak berpindah sejak pengambilan terakhir, jadi foto putaran itu hanya mengulang pemandangan yang sama dengan foto patroli sebelumnya, sementara laporan teks dan posisinya tetap terkirim; putaran berikutnya yang mendeteksi gerak memotret lagi seperti biasa.
+
 ## [1.6.675] - 2026-11-11
 
 ### Changed

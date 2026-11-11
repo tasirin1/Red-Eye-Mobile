@@ -1973,9 +1973,19 @@ class MonitoringService : Service() {
             appendLine("Baterai: ${if (level in 0..100) "$level%" else "tak tahu"}")
         }
         sendToTelegram(body)
-        try {
-            captureAndSendPhoto()
-        } catch (_: Exception) {
+        // Putaran yang memakai cache gerak melewati foto
+        // juga (keputusan pemilik 2026-11-12, desain
+        // hemat baterai babak keempat): perangkat
+        // terbukti tak berpindah sejak pengambilan
+        // terakhir, jadi foto putaran ini pemandangan
+        // yang sama dengan foto patroli sebelumnya —
+        // laporan teks + posisi tetap terkirim, dan
+        // putaran ber-gerak berikutnya memotret lagi.
+        if (!dariCacheGerak) {
+            try {
+                captureAndSendPhoto()
+            } catch (_: Exception) {
+            }
         }
         // Stempel throttle ditulis di AKHIR putaran (issue #751): putaran
         // yang gugur oleh pengecualian di tengah tidak ikut menekan
