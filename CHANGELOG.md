@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Penilaian berkas besar per potong di cek-token kini menilai tiap potong dari potret keadaan di awal potong itu sendiri dan hanya menyambung padatan wilayah segar — pembuka komentar di wilayah tumpang-tindih jahitan tak lagi terhitung ganda oleh awalan sintetis sampai menelan belahan token sesudah penutupnya (#1919).
+
 ## [1.6.669] - 2026-11-07
 
 ### Fixed

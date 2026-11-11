@@ -287,11 +287,31 @@ class UjiKanalBerkasTambahan(unittest.TestCase):
         jahit += b"*" + b"\n" * (2 * cek_token._POTONG) + b"*/ "
         jahit += TOKEN[24:].encode()
         jahit += b"B" * (100 * 1024)
+        # Issue #1919: pembuka komentar di dalam wilayah
+        # tumpang-tindih (100 byte sebelum jahitan kedua)
+        # tak lagi terhitung ganda oleh awalan sintetis —
+        # belahan berkomentar tetap tertuduh.
+        tumpang = bytearray(b"A" * (2 * cek_token._POTONG - 126))
+        tumpang += TOKEN[:24].encode()
+        tumpang += b"/*" + b"\n" * 500000 + b"*/ "
+        tumpang += TOKEN[24:].encode()
+        tumpang += b"B" * (400 * 1024)
+        # Issue #1919 (titik potret): pembuka terbelah
+        # persis di titik potret keadaan ("/" byte terakhir
+        # pangkal, "*" byte pertama gabung berikutnya)
+        # ikut tertuduh lewat sisa belahan yang dibawa.
+        potret = bytearray(b"A" * (2 * cek_token._POTONG - 281))
+        potret += TOKEN[:24].encode()
+        potret += b"/" + b"*" + b"\n" * 500000 + b"*/ "
+        potret += TOKEN[24:].encode()
+        potret += b"B" * (400 * 1024)
         with tempfile.TemporaryDirectory() as d:
             for nama, data, harap in (("kotor", bytes(isi), True),
                                       ("belah", bytes(belah), True),
                                       ("komentar", bytes(komentar), True),
                                       ("jahit", bytes(jahit), True),
+                                      ("tumpang", bytes(tumpang), True),
+                                      ("potret", bytes(potret), True),
                                       ("bersih", bersih, False)):
                 path = os.path.join(d, nama)
                 with open(path, "wb") as f:

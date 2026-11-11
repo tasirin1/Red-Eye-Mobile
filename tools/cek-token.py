@@ -386,6 +386,16 @@ def _padatkan(teks):
     # kode). Pemindai yang sama seperti kanal byteArrayOf
     # (sadar string: // di dalam string URL utuh).
     teks = _tanggal_komentar_blok(teks, copot_baris=True)
+    return _rapatkan(teks)
+
+
+def _rapatkan(teks):
+    """Tahap pemadatan sesudah penanggalan komentar:
+    buang aksara format, interpolasi, dan pemisah belah
+    yang lazim. Dipisah dari _padatkan agar penilaian per
+    potong dapat memadatkan HANYA wilayah segar potong
+    berjalan dari teks yang sudah ditanggalkan dengan
+    keadaan awal yang benar (issue #1919/#1920)."""
     # Aksara format dibuang lebih dulu (issue #1800),
     # sebelum pemisah lain dirapatkan.
     rapat = POLA_FORMAT.sub("", teks)
@@ -1393,11 +1403,24 @@ def _potong_mengandung_token(nama):
     awal wilayah tumpang-tindih (issue #1918): memindai byte
     segar saja melewatkan pembuka dua-aksara yang terbelah
     persis di jahitan (`/` di ujung potong, `*` di awal
-    potong berikutnya)."""
+    potong berikutnya). Penilaian potong memakai potret di
+    AWAL teks gabungannya sendiri, bukan keadaan jahitan
+    (issue #1919/#1920): awalan dari keadaan jahitan menilai
+    wilayah tumpang-tindih dua kali di bawah dua keadaan —
+    pembuka di dalamnya terhitung ganda sampai menelan
+    paruh token, dan pemadatan ulangnya membuang pembatas
+    string sampai mensintesis token yang tak ada. Belahan
+    multi-aksara tepat di titik potret dibawa sebagai sisa
+    tekstual ke potong berikutnya (_potret_keadaan). Aliran
+    jembatan pun hanya memancarkan padatan wilayah SEGAR
+    tiap potong: memancarkan seluruh gabung menggandakan
+    wilayah tumpang-tindih di aliran, dan salinan gandanya
+    bisa menyambung fragmen yang di jalur utuh terpisah."""
     ekor = b""
     jembatan = ""
-    tumpukan = ["kode"]
     tumpukan_mundur = ["kode"]
+    sisa = ""
+    akhir_segar_sebelumnya = None
     with open(nama, "rb") as f:
         while True:
             mentah = f.read(_POTONG)
@@ -1405,20 +1428,58 @@ def _potong_mengandung_token(nama):
                 return False
             gabung = ekor + mentah
             dasar = dekode_berkas(gabung)
-            teks = _awalan_keadaan(tumpukan) + dasar
+            teks = _awalan_keadaan(tumpukan_mundur) + sisa + dasar
             if mengandung_token(teks):
                 return True
-            calon = jembatan + _padatkan(teks)
-            if mengandung_token(calon):
+            # Jembatan hanya menyambung padatan wilayah
+            # SEGAR potong ini (issue #1919/#1920): padatan
+            # seluruh gabung akan memancarkan wilayah
+            # tumpang-tindih dua kali di aliran jembatan —
+            # salinan keduanya berpindah ke belakang belahan
+            # dan bisa mensintesis pola yang di jalur utuh
+            # terputus. Wilayah segar ditanggalkan dari
+            # keadaan tepat di jahitan (keadaan sesudah
+            # wilayah tumpang-tindih dipindai dari potret
+            # awal gabung), lalu dirapatkan.
+            j = len(dasar) - len(dekode_berkas(mentah))
+            j = min(max(j, 0), len(dasar))
+            keadaan_jahitan, sisa_jahitan = _potret_keadaan(
+                tumpukan_mundur, sisa + dasar[:j])
+            segar, akhir_segar = _pindai_komentar(
+                sisa_jahitan + dekode_berkas(mentah), copot_baris=True,
+                tumpukan=keadaan_jahitan)
+            # Belahan yang dinyatakan sisa_jahitan sudah
+            # terpancar di ekor jembatan oleh potong
+            # sebelumnya sebagai aksara polos; potong ini
+            # memancarkannya ulang di kepala wilayah segar
+            # sebagai bagian konstruksi — cabut salinan
+            # lamanya dari ekor jembatan (hanya aksara yang
+            # selamat dari pemadatan, dan hanya bila potong
+            # sebelumnya tidak mengakhiri di dalam komentar,
+            # tempat aksara itu tak terpancar).
+            jem = jembatan
+            atas_lama = akhir_segar_sebelumnya
+            di_komentar = atas_lama == "baris" or (
+                isinstance(atas_lama, tuple) and atas_lama[0] == "blok")
+            if sisa_jahitan and atas_lama is not None and not di_komentar:
+                cabut = sum(1 for c in sisa_jahitan if c in "/*$")
+                if cabut:
+                    jem = jem[:-cabut] if cabut <= len(jem) else ""
+            calon = jem + _rapatkan(segar)
+            # Aliran jembatan dinilai dengan kecocokan pola
+            # mentah saja: ia sudah terpadatkan, dan vonis
+            # penuh akan menanggalkan ulang aksara isi
+            # string yang selamat sebagai pembatas (isi
+            # string "/*...*/" terbaca komentar) — di jalur
+            # utuh aksara itu terlindung keadaan string.
+            if _pola_mentah_cocok(calon):
                 return True
+            akhir_segar_sebelumnya = akhir_segar[-1] if akhir_segar else None
             jembatan = calon[-512:]
             ekor = gabung[-_TUMPANG:]
-            _, tumpukan = _pindai_komentar(
-                dasar, copot_baris=True, tumpukan=tumpukan_mundur)
             pangkal = gabung[:-_TUMPANG] if len(gabung) > _TUMPANG else b""
-            _, tumpukan_mundur = _pindai_komentar(
-                dekode_berkas(pangkal), copot_baris=True,
-                tumpukan=tumpukan_mundur)
+            tumpukan_mundur, sisa = _potret_keadaan(
+                tumpukan_mundur, sisa + dekode_berkas(pangkal))
 
 
 def _awalan_keadaan(tumpukan):
@@ -1439,6 +1500,75 @@ def _awalan_keadaan(tumpukan):
         elif isinstance(keadaan, tuple) and keadaan[0] == "templat":
             bagian.append("${" + "{" * keadaan[1])
     return "".join(bagian)
+
+
+def _potret_keadaan(tumpukan, teks):
+    """Potret keadaan leksikal di ujung teks (issue
+    #1919/#1920). Mengembalikan (tumpukan, sisa): tumpukan
+    penanggal komentar sesudah teks, dan sisa = belahan
+    multi-aksara di ujung teks yang maknanya baru ditentukan
+    aksara pertama potong berikutnya (pembuka/penutup yang
+    terbelah tepat di titik potret, atau escape ganjil yang
+    pasangannya menyeberang). Bila ada sisa, tumpukan
+    dipotret SEBELUM belahannya dan sisa didahulukan ke
+    teks penilaian potong berikutnya."""
+    _, akhir = _pindai_komentar(teks, copot_baris=True, tumpukan=tumpukan)
+    if not teks or not akhir:
+        return akhir, ""
+    atas = akhir[-1]
+    calon = ""
+    if atas == "kode" or (isinstance(atas, tuple) and atas[0] == "templat"):
+        for belah in ('""', "/", '"', "$"):
+            if teks.endswith(belah):
+                calon = belah
+                break
+    elif isinstance(atas, tuple) and atas[0] == "blok":
+        for belah in ("*", "/"):
+            if teks.endswith(belah):
+                calon = belah
+                break
+    elif isinstance(atas, tuple) and atas[0] == "string":
+        if atas[1]:
+            for belah in ('""', '"', "$"):
+                if teks.endswith(belah):
+                    calon = belah
+                    break
+        elif teks.endswith('"') or teks.endswith("$"):
+            calon = teks[-1]
+        elif _escape_ganjil(teks):
+            calon = "\\"
+    elif atas == "huruf" and _escape_ganjil(teks):
+        calon = "\\"
+    if not calon:
+        return akhir, ""
+    _, sebelum = _pindai_komentar(
+        teks[:-len(calon)], copot_baris=True, tumpukan=tumpukan)
+    # Sahkan belahan ambigu dari potret sebelumnya: petikan
+    # penutup string mentah hanya belahan bila stringnya
+    # memang masih terbuka sebelumnya (bila tidak, petikan
+    # itu ekor pembuka yang rampung tepat di ujung dan
+    # keadaannya sudah benar di akhir); petikan string biasa
+    # hanya belahan bila ia pembuka string itu.
+    if isinstance(atas, tuple) and atas[0] == "string" and calon in ('"', '""'):
+        if atas[1]:
+            if not sebelum or sebelum[-1] != atas:
+                return akhir, ""
+        elif sebelum and isinstance(sebelum[-1], tuple) \
+                and sebelum[-1][0] == "string":
+            return akhir, ""
+    return sebelum, calon
+
+
+def _escape_ganjil(teks):
+    """True bila teks berakhir dengan rentetan backslash
+    ganjil — escape yang aksara lolosnya menyeberang ke
+    potong berikutnya."""
+    n = 0
+    for c in reversed(teks):
+        if c != "\\":
+            break
+        n += 1
+    return n % 2 == 1
 
 
 def main():
