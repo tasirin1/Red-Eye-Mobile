@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Changed
+
+- Jeda poll perintah Telegram kini adaptif baterai (keputusan pemilik): saat baterai rendah (≤15%) atau penghemat baterai sistem aktif dan HP tidak sedang mengisi daya — vonis yang sama yang melambatkan interval kamera dan patroli — jeda kembali ke jadwal longgar (rampa 10–30 detik, 60 detik sesudah 5 menit diam, 120 detik sesudah 30 menit diam); saat daya aman atau sedang mengisi daya, jadwal tanggap v1.6.672 berlaku (maksimal 30 detik). Pemilik tidak perlu mengatur apa pun; mode berpindah sendiri mengikuti keadaan baterai.
+
 ## [1.6.672] - 2026-11-11
 
 ### Changed

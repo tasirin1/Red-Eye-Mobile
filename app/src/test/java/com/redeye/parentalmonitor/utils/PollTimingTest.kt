@@ -23,4 +23,14 @@ class PollTimingTest {
         assertEquals(30_000L, PollTiming.idleGapMs(4, 1_800_000L))
         assertEquals(30_000L, PollTiming.idleGapMs(0, 7_200_000L))
     }
+
+    @Test fun modeHematMengikutiJadwalLonggar() {
+        assertEquals(10_000L, PollTiming.idleGapMs(0, 0L, hematDaya = true))
+        assertEquals(15_000L, PollTiming.idleGapMs(1, 20_000L, hematDaya = true))
+        assertEquals(30_000L, PollTiming.idleGapMs(4, 299_999L, hematDaya = true))
+        assertEquals(60_000L, PollTiming.idleGapMs(4, 300_000L, hematDaya = true))
+        assertEquals(60_000L, PollTiming.idleGapMs(4, 1_799_999L, hematDaya = true))
+        assertEquals(120_000L, PollTiming.idleGapMs(4, 1_800_000L, hematDaya = true))
+        assertEquals(120_000L, PollTiming.idleGapMs(0, 7_200_000L, hematDaya = true))
+    }
 }

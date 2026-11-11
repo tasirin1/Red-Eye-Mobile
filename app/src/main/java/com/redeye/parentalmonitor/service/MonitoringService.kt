@@ -2851,7 +2851,7 @@ class MonitoringService : Service() {
                     delay(300_000)
                 } else {
                     val idleForMs = if (idleSinceElapsed > 0L) android.os.SystemClock.elapsedRealtime() - idleSinceElapsed else 0L
-                    delay(PollTiming.idleGapMs(idlePolls, idleForMs))
+                    delay(PollTiming.idleGapMs(idlePolls, idleForMs, lowPowerActive()))
                 }
             }
         }
