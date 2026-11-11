@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.675] - 2026-11-11
+
 ### Changed
 
 - Poll perintah saat pemantauan dijeda kini tidur 5 menit antar-poll, bukan 60 detik (keputusan pemilik, desain hemat baterai babak ketiga): cabang jeda tetap mem-poll agar perintah membatalkan jeda tertangkap, hanya iramanya yang direnggangkan; harga yang disadari adalah pembatalan jeda bisa menunggu sampai ±5 menit.
