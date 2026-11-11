@@ -97,6 +97,41 @@ class UsageEventsSummaryTest {
     }
 
     @Test
+    fun akumulatorMengalirSetaraDaftar() {
+        // Issue #1923: akumulator yang diberi event satu-satu
+        // wajib menghasilkan persis build()/firstUnlockToday()/
+        // unlocksToday() atas daftar yang sama, termasuk kasus
+        // tepi #1662 dan reset lastResumed oleh paket kosong.
+        val events = listOf(
+            UsageEventsSummary.Event(UsageEventsSummary.TYPE_KEYGUARD_HIDDEN, -500L),
+            UsageEventsSummary.Event(UsageEventsSummary.TYPE_RESUMED, 900L, "com.a"),
+            UsageEventsSummary.Event(UsageEventsSummary.TYPE_KEYGUARD_HIDDEN, 1_000L),
+            UsageEventsSummary.Event(UsageEventsSummary.TYPE_RESUMED, 1_500L, "com.a"),
+            UsageEventsSummary.Event(UsageEventsSummary.TYPE_RESUMED, 1_600L, null),
+            UsageEventsSummary.Event(UsageEventsSummary.TYPE_RESUMED, 1_700L, "com.a"),
+            UsageEventsSummary.Event(UsageEventsSummary.TYPE_RESUMED, 1_800L, "com.b"),
+            UsageEventsSummary.Event(UsageEventsSummary.TYPE_KEYGUARD_HIDDEN, 5_000L),
+            UsageEventsSummary.Event(UsageEventsSummary.TYPE_KEYGUARD_HIDDEN, 3_000L)
+        )
+        val dariDaftar = UsageEventsSummary.build(events, topCount = 2)
+        val ak = UsageEventsSummary.Akumulator(2_000L)
+        for (e in events) ak.terima(e)
+        val dariAliran = ak.ringkasan(topCount = 2)
+        assertEquals(dariDaftar.unlocks, dariAliran.unlocks)
+        assertEquals(dariDaftar.firstUnlockAt, dariAliran.firstUnlockAt)
+        assertEquals(dariDaftar.topOpens, dariAliran.topOpens)
+        assertEquals(UsageEventsSummary.firstUnlockToday(events, 2_000L), ak.firstUnlockToday())
+        assertEquals(UsageEventsSummary.unlocksToday(events, 2_000L), ak.unlocksToday())
+        assertEquals(3_000L, ak.firstUnlockToday())
+        assertEquals(2, ak.unlocksToday())
+        // Tanpa batas hari: penanda hari ini selalu 0.
+        val akTanpaBatas = UsageEventsSummary.Akumulator()
+        for (e in events) akTanpaBatas.terima(e)
+        assertEquals(0L, akTanpaBatas.firstUnlockToday())
+        assertEquals(0, akTanpaBatas.unlocksToday())
+    }
+
+    @Test
     fun pertamaDiambilTimestampTerkecil() {
         val events = listOf(
             UsageEventsSummary.Event(UsageEventsSummary.TYPE_KEYGUARD_HIDDEN, 8_000L),

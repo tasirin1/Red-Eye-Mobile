@@ -9,12 +9,24 @@ object UsageEventsSummary {
 
     data class Summary(val unlocks: Int, val firstUnlockAt: Long, val topOpens: List<Pair<String, Int>>)
 
-    fun build(events: List<Event>, topCount: Int = 3): Summary {
-        var unlocks = 0
-        var first = 0L
-        var lastResumed = ""
-        val opens = HashMap<String, Int>()
-        for (e in events) {
+    // Akumulator mengalir (issue #1923): agregasi yang
+    // sama persis dengan build()/firstUnlockToday()/
+    // unlocksToday(), tetapi event diberi satu-satu tanpa
+    // ditampung semua lebih dulu — untuk pindaian
+    // UsageEvents jendela panjang (24 jam) di layanan,
+    // yang tadinya mematerialisasi puluhan ribu event ke
+    // satu daftar. Ketiga fungsi daftar di bawah DIBANGUN
+    // di atas kelas ini agar hanya ada satu sumber
+    // kebenaran untuk aturan agregasinya.
+    class Akumulator(private val dayStartMs: Long = 0L) {
+        private var unlocks = 0
+        private var first = 0L
+        private var lastResumed = ""
+        private val opens = HashMap<String, Int>()
+        private var firstToday = 0L
+        private var unlocksTodayCount = 0
+
+        fun terima(e: Event) {
             when (e.type) {
                 TYPE_KEYGUARD_HIDDEN -> {
                     unlocks++
@@ -26,6 +38,10 @@ object UsageEventsSummary {
                     // kecil dari negatif), selaras saringan
                     // firstUnlockToday di bawah.
                     if (e.at > 0L && (first == 0L || e.at < first)) first = e.at
+                    if (dayStartMs > 0L && e.at >= dayStartMs) {
+                        unlocksTodayCount++
+                        if (firstToday == 0L || e.at < firstToday) firstToday = e.at
+                    }
                 }
                 TYPE_RESUMED -> {
                     val pkg = e.pkg
@@ -39,30 +55,35 @@ object UsageEventsSummary {
                 else -> lastResumed = ""
             }
         }
-        val top = opens.entries
-            .sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key })
-            .take(topCount.coerceAtLeast(1))
-            .map { it.key to it.value }
-        return Summary(unlocks, first, top)
+
+        fun ringkasan(topCount: Int = 3): Summary {
+            val top = opens.entries
+                .sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key })
+                .take(topCount.coerceAtLeast(1))
+                .map { it.key to it.value }
+            return Summary(unlocks, first, top)
+        }
+
+        fun firstUnlockToday(): Long = if (dayStartMs <= 0L) 0L else firstToday
+
+        fun unlocksToday(): Int = if (dayStartMs <= 0L) 0 else unlocksTodayCount
+    }
+
+    fun build(events: List<Event>, topCount: Int = 3): Summary {
+        val ak = Akumulator()
+        for (e in events) ak.terima(e)
+        return ak.ringkasan(topCount)
     }
 
     fun firstUnlockToday(events: List<Event>, dayStartMs: Long): Long {
-        if (dayStartMs <= 0L) return 0L
-        var first = 0L
-        for (e in events) {
-            if (e.type != TYPE_KEYGUARD_HIDDEN) continue
-            if (e.at >= dayStartMs && (first == 0L || e.at < first)) first = e.at
-        }
-        return first
+        val ak = Akumulator(dayStartMs)
+        for (e in events) ak.terima(e)
+        return ak.firstUnlockToday()
     }
 
     fun unlocksToday(events: List<Event>, dayStartMs: Long): Int {
-        if (dayStartMs <= 0L) return 0
-        var count = 0
-        for (e in events) {
-            if (e.type != TYPE_KEYGUARD_HIDDEN) continue
-            if (e.at >= dayStartMs) count++
-        }
-        return count
+        val ak = Akumulator(dayStartMs)
+        for (e in events) ak.terima(e)
+        return ak.unlocksToday()
     }
 }

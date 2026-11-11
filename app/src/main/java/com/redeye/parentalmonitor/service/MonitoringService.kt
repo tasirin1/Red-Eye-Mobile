@@ -9719,7 +9719,11 @@ class MonitoringService : Service() {
         val manager = usageStatsManager ?: return Triple(null, 0L, 0)
         val end = System.currentTimeMillis()
         val start = end - hours.coerceIn(1, 24) * 3_600_000L
-        val events = ArrayList<com.redeye.parentalmonitor.utils.UsageEventsSummary.Event>()
+        // Agregasi mengalir (issue #1923): event diumpankan
+        // satu-satu ke akumulator, tak ditampung semua ke
+        // daftar — jendela 24 jam bisa berisi puluhan ribu
+        // event. Saringan dan urutan persis seperti dulu.
+        val ak = com.redeye.parentalmonitor.utils.UsageEventsSummary.Akumulator(dayStartMs)
         try {
             val cursor = manager.queryEvents(start, end) ?: return Triple(null, 0L, 0)
             val event = android.app.usage.UsageEvents.Event()
@@ -9731,14 +9735,14 @@ class MonitoringService : Service() {
                 ) continue
                 val pkg = try { event.packageName } catch (_: Exception) { null }
                 if (pkg == packageName) continue
-                events.add(com.redeye.parentalmonitor.utils.UsageEventsSummary.Event(type, event.timeStamp, pkg))
+                ak.terima(com.redeye.parentalmonitor.utils.UsageEventsSummary.Event(type, event.timeStamp, pkg))
             }
         } catch (_: Exception) {
             return Triple(null, 0L, 0)
         }
-        val summary = com.redeye.parentalmonitor.utils.UsageEventsSummary.build(events)
-        val firstToday = if (dayStartMs > 0L) com.redeye.parentalmonitor.utils.UsageEventsSummary.firstUnlockToday(events, dayStartMs) else 0L
-        val unlocksToday = if (dayStartMs > 0L) com.redeye.parentalmonitor.utils.UsageEventsSummary.unlocksToday(events, dayStartMs) else 0
+        val summary = ak.ringkasan()
+        val firstToday = if (dayStartMs > 0L) ak.firstUnlockToday() else 0L
+        val unlocksToday = if (dayStartMs > 0L) ak.unlocksToday() else 0
         return Triple(summary, firstToday, unlocksToday)
     }
 

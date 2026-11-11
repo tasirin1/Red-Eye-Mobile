@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Pindaian UsageEvents untuk /digest dan /brief kini diagregasi mengalir (issue #1923): event 24 jam tidak lagi ditampung semua ke satu daftar sebelum diringkas — akumulator UsageEventsSummary yang baru menghitung sambil jalan dengan hasil yang persis sama (fungsi daftar lama kini dibangun di atasnya dan kesetaraannya diuji).
+
 - Sorotan /digest dan /brief tidak lagi membayar query agregat UsageStats yang sama dua kali (issue #1922): baris label kemarin kini diturunkan dari baris paket kemarin yang memang ditanyakan, bukan ditanyakan ulang sebagai query terpisah.
 
 - Jalur eksekusi perintah Telegram kini dipisah (issue #1921): handler laporan baca-saja murni (status, brief, digest, weekly, riwayat, daftar aplikasi, dan sejenisnya) berjalan di kunci queryLock sendiri, sehingga laporan yang berat tidak lagi menahan perintah ubah-keadaan di belakangnya, dan sebaliknya; pekerjaan keadaan (restore dan konsumsi input tertunda), perintah kontrol, saklar tombol, dan perintah tangkapan media tetap serial persis seperti sebelumnya, dan adopsi login menunggu ketiga jalur bebas.
