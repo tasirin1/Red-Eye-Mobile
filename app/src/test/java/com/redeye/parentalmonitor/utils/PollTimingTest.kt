@@ -31,6 +31,13 @@ class PollTimingTest {
         assertEquals(50, PollTiming.longPollTimeoutSec(7_200_000L))
     }
 
+    @Test fun modeDozeMeregangkanJedaKeduaMode() {
+        assertEquals(180_000L, PollTiming.idleGapMs(0, 0L, doze = true))
+        assertEquals(180_000L, PollTiming.idleGapMs(4, 1_800_000L, doze = true))
+        assertEquals(180_000L, PollTiming.idleGapMs(4, 1_800_000L, hematDaya = true, doze = true))
+        assertEquals(180_000L, PollTiming.idleGapMs(0, 0L, hematDaya = true, doze = true))
+    }
+
     @Test fun modeHematMengikutiJadwalLonggar() {
         assertEquals(10_000L, PollTiming.idleGapMs(0, 0L, hematDaya = true))
         assertEquals(15_000L, PollTiming.idleGapMs(1, 20_000L, hematDaya = true))

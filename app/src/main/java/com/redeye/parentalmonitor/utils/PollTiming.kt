@@ -33,8 +33,8 @@ object PollTiming {
         return if (idleForMs >= 60_000L) 50 else 30
     }
 
-    fun idleGapMs(idlePolls: Int, idleForMs: Long, hematDaya: Boolean = false): Long {
-        return if (hematDaya) {
+    fun idleGapMs(idlePolls: Int, idleForMs: Long, hematDaya: Boolean = false, doze: Boolean = false): Long {
+        val dasar = if (hematDaya) {
             when {
                 idleForMs >= 30 * 60_000L -> 120_000L
                 idleForMs >= 5 * 60_000L -> 60_000L
@@ -47,5 +47,12 @@ object PollTiming {
                 else -> (3_000L + idlePolls.coerceIn(0, 4) * 2_000L).coerceAtMost(10_000L)
             }
         }
+        // Mode Doze (keputusan pemilik 2026-11-11): saat
+        // perangkat tidur dalam, sistem membatasi jaringan
+        // dan polling rapat hanya membayar percobaan yang
+        // besar kemungkinan tertahan — jeda diregangkan ke
+        // minimal 180 dtk di kedua mode; begitu perangkat
+        // bangun, jadwal biasa kembali berlaku.
+        return if (doze) maxOf(dasar, 180_000L) else dasar
     }
 }

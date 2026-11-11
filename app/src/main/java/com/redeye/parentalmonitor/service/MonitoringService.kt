@@ -2852,7 +2852,7 @@ class MonitoringService : Service() {
                     delay(300_000)
                 } else {
                     val idleForMs = if (idleSinceElapsed > 0L) android.os.SystemClock.elapsedRealtime() - idleSinceElapsed else 0L
-                    delay(PollTiming.idleGapMs(idlePolls, idleForMs, lowPowerActive()))
+                    delay(PollTiming.idleGapMs(idlePolls, idleForMs, lowPowerActive(), dozeAktif()))
                 }
             }
         }
@@ -9173,6 +9173,19 @@ class MonitoringService : Service() {
     private fun isCharging(): Boolean {
         return try {
             batteryManager?.isCharging == true
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    // Doze sistem (tidur dalam): PollTiming meregangkan
+    // jeda poll saat ini benar, karena jaringan memang
+    // dibatasi sistem dan percobaan rapat hanya membayar
+    // kegagalan. Gagal baca = anggap tidak Doze (jadwal
+    // biasa tetap jalan).
+    private fun dozeAktif(): Boolean {
+        return try {
+            getSystemService(android.os.PowerManager::class.java)?.isDeviceIdleMode == true
         } catch (_: Exception) {
             false
         }
