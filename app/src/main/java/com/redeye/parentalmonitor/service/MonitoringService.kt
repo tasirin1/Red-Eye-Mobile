@@ -6907,7 +6907,7 @@ class MonitoringService : Service() {
         // foto ikut berangkat padahal tidak.
         val catatanTahan = try {
             if (dataSaverDeferMedia()) "\n📶 Media (foto/video/rekaman) masih DITAHAN hemat kuota — /flush tidak memaksanya. Matikan /datasaver untuk mengirimnya sekarang." else ""
-        } catch (_: Exception) { "" }
+        } catch (_: Exception) { "" } + (if (lowPowerActive()) "\n🔋 Media (foto/video/rekaman) juga DITAHAN mode hemat daya karena baterai rendah — terkirim otomatis saat mengisi daya atau daya pulih; /flush tidak memaksanya." else "")
         if (scheduled) {
             sendToTelegram("\uD83D\uDCE4 Flush dijadwalkan ($queued menunggu). Dikirim saat online." + catatanTahan)
         } else {
@@ -14535,6 +14535,13 @@ class MonitoringService : Service() {
         if (NetworkUtils.isAuthBlocked(preferencesManager)) return
         if (android.os.SystemClock.elapsedRealtime() < mediaBackoffUntil) return
         if (dataSaverDeferMedia()) return
+        // Tahan saat daya rendah (keputusan pemilik
+        // 2026-11-11, desain hemat baterai): unggahan
+        // antrean tidak mendesak dan radio pemakan daya
+        // besar — berkas tetap di antrean, terkirim saat
+        // mengisi daya atau daya pulih (flush berjalan
+        // lagi tiap putaran loop pemantau).
+        if (lowPowerActive()) return
         if (!busy.compareAndSet(false, true)) return
         var dropped = 0
         var progress = false
@@ -14576,6 +14583,10 @@ class MonitoringService : Service() {
                     // lambatan deteksi tanpa memanggil API
                     // jaringan per berkas.
                     if (dataSaverDeferMedia()) break@drain
+                    // Daya bisa jatuh di tengah flush juga:
+                    // sisa unggahan berhenti, lanjut flush
+                    // berikutnya sesudah daya pulih.
+                    if (lowPowerActive()) break@drain
                     if (isMediaActive(file)) continue
                     // Umur negatif (cap masa depan sesudah
                     // jam dimundurkan) BUKAN 'terlalu baru'
@@ -15346,6 +15357,9 @@ class MonitoringService : Service() {
         if (NetworkUtils.isAuthBlocked(preferencesManager)) return
         if (android.os.SystemClock.elapsedRealtime() < mediaBackoffUntil) return
         if (dataSaverDeferMedia()) return
+        // Tahan saat daya rendah — sama seperti kerangka
+        // flush media (keputusan pemilik 2026-11-11).
+        if (lowPowerActive()) return
         if (!photoFlushBusy.compareAndSet(false, true)) return
         var droppedPhotos = 0
         var photoProgress = false
@@ -15382,6 +15396,9 @@ class MonitoringService : Service() {
                     // lambatan deteksi tanpa memanggil API
                     // jaringan per berkas.
                     if (dataSaverDeferMedia()) break@drain
+                    // Daya jatuh di tengah flush: berhenti,
+                    // lanjut sesudah daya pulih.
+                    if (lowPowerActive()) break@drain
                     if (isMediaActive(file)) continue
                     // Umur negatif (cap masa depan sesudah
                     // jam dimundurkan) BUKAN 'terlalu baru'
