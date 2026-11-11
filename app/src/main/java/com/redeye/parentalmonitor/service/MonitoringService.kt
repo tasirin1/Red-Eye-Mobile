@@ -2816,7 +2816,8 @@ class MonitoringService : Service() {
                     continue
                 }
                 try {
-                    val active = pollTelegramCommands()
+                    val idleForMsKini = if (idleSinceElapsed > 0L) android.os.SystemClock.elapsedRealtime() - idleSinceElapsed else 0L
+                    val active = pollTelegramCommands(idleForMsKini)
                     if (active) {
                         idlePolls = 0
                         idleSinceElapsed = 0L
@@ -2861,8 +2862,8 @@ class MonitoringService : Service() {
 
 
 
-    private fun updatesUrl(token: String, offset: Long): String {
-        return "https://api.telegram.org/bot$token/getUpdates?offset=$offset&timeout=30&limit=50&allowed_updates=%5B%22message%22,%22edited_message%22,%22channel_post%22,%22edited_channel_post%22,%22callback_query%22%5D"
+    private fun updatesUrl(token: String, offset: Long, timeoutSec: Int): String {
+        return "https://api.telegram.org/bot$token/getUpdates?offset=$offset&timeout=$timeoutSec&limit=50&allowed_updates=%5B%22message%22,%22edited_message%22,%22channel_post%22,%22edited_channel_post%22,%22callback_query%22%5D"
     }
 
     private suspend fun clearStaleWebhook(botToken: String) {
@@ -2917,7 +2918,7 @@ class MonitoringService : Service() {
         return (System.currentTimeMillis() + if (serverClockSynced) serverClockOffsetMs else 0L) / 1000L
     }
 
-    private suspend fun pollTelegramCommands(): Boolean {
+    private suspend fun pollTelegramCommands(idleForMs: Long = 0L): Boolean {
         if (android.os.SystemClock.elapsedRealtime() < commandBackoffUntil) return false
         if (NetworkUtils.isPollBlocked(preferencesManager)) return false
         val rateRemainMs = NetworkUtils.rateLimitedRemainMs()
@@ -2930,7 +2931,8 @@ class MonitoringService : Service() {
 
         var responseGeneration = snapshotGeneration
         val offset = preferencesManager.lastUpdateId + 1
-        val url = updatesUrl(botToken, offset)
+        val timeoutSec = PollTiming.longPollTimeoutSec(idleForMs)
+        val url = updatesUrl(botToken, offset, timeoutSec)
 
         var response = try {
             TelegramPollClient.api.getUpdates(url)
@@ -2957,7 +2959,7 @@ class MonitoringService : Service() {
                 responseChat = freshChat
                 responseGeneration = freshGeneration
                 val retryOffset = (try { preferencesManager.lastUpdateId } catch (_: Exception) { 0L }) + 1
-                val retryUrl = updatesUrl(freshToken, retryOffset)
+                val retryUrl = updatesUrl(freshToken, retryOffset, timeoutSec)
                 response = try {
                     TelegramPollClient.api.getUpdates(retryUrl)
                 } catch (e: kotlinx.coroutines.CancellationException) {

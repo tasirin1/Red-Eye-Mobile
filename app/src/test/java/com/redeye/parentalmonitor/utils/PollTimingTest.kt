@@ -24,6 +24,13 @@ class PollTimingTest {
         assertEquals(30_000L, PollTiming.idleGapMs(0, 7_200_000L))
     }
 
+    @Test fun timeoutLongPollNaikSesudahDiamSemenit() {
+        assertEquals(30, PollTiming.longPollTimeoutSec(0L))
+        assertEquals(30, PollTiming.longPollTimeoutSec(59_999L))
+        assertEquals(50, PollTiming.longPollTimeoutSec(60_000L))
+        assertEquals(50, PollTiming.longPollTimeoutSec(7_200_000L))
+    }
+
     @Test fun modeHematMengikutiJadwalLonggar() {
         assertEquals(10_000L, PollTiming.idleGapMs(0, 0L, hematDaya = true))
         assertEquals(15_000L, PollTiming.idleGapMs(1, 20_000L, hematDaya = true))

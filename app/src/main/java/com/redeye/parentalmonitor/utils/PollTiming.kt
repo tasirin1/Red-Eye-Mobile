@@ -23,6 +23,16 @@ object PollTiming {
     // Aktivitas apa pun mengosongkan penghitung diam di
     // pemanggil, jadi jeda kembali rapat begitu ada
     // perintah. Murni & teruji JVM.
+    // Timeout long-poll getUpdates: sesudah diam berjalan
+    // >= 60 dtk, server boleh menahan jawaban sampai
+    // 50 dtk — siklus sambung-ulang lebih jarang, modem
+    // lebih jarang bangun (klien poll ber-readTimeout
+    // 300 dtk, jadi 50 dtk aman). Saat aktif tetap 30 dtk
+    // agar putaran tak tertahan lama oleh tunggu server.
+    fun longPollTimeoutSec(idleForMs: Long): Int {
+        return if (idleForMs >= 60_000L) 50 else 30
+    }
+
     fun idleGapMs(idlePolls: Int, idleForMs: Long, hematDaya: Boolean = false): Long {
         return if (hematDaya) {
             when {

@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Changed
+
+- Timeout long-poll Telegram naik dari 30 ke 50 detik sesudah perintah diam berjalan ≥60 detik (keputusan pemilik, desain hemat baterai): siklus sambung-ulang ke server lebih jarang sehingga modem lebih jarang bangun; saat aktivitas baru berjalan timeout tetap 30 detik. Aman terhadap batas baca klien poll (300 detik).
+
 ## [1.6.673] - 2026-11-11
 
 ### Changed
