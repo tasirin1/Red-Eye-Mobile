@@ -1959,6 +1959,11 @@ class PreferencesManager(context: Context) {
     val pendingQueueDrops: Int
         get() = prefInt(KEY_PENDING_QUEUE_DROPS, 0)
 
+    // Wipe Setup menolkan penghitung ini + batch
+    // pemberitahuannya (issue #2008): saudaranya
+    // pendingMsgDrops sudah lebih dulu dinolkan, dan
+    // sisa hitungan era lama membuat start pertama era
+    // baru mengirim pemberitahuan kehilangan warisan.
     fun setPendingQueueDropsSync(value: Int): Boolean {
         return try {
             sharedPreferences.edit().putInt(KEY_PENDING_QUEUE_DROPS, value).commit()

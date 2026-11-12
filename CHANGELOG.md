@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Hapus kredensial kini ikut menolkan hitungan antrean pesan gugur dan batch pemberitahuannya, jadi awal era baru tidak lagi mengirim pemberitahuan kehilangan warisan era lama.
 - Hapus kredensial kini ikut menghapus target pantau aksesibilitas (daftar paket pantau, flag peringatan dan tamper, daftar aplikasi dikenal), selaras dengan kata dan nomor pantau yang sudah dihapus.
 - Hapus kredensial kini ikut menghapus riwayat aktivitas tersimpan (fakta harian, riwayat pemakaian dan kata kunci aksesibilitas, paket peringatan malam), bukan hanya kredensial dan daftar pantau.
 - Hapus kredensial kini ikut menghapus titik lokasi terakhir yang tersimpan, selaras dengan trail lokasi dan koordinat rumah/sekolah yang sudah lebih dulu dihapus.
