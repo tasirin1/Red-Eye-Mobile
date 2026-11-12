@@ -12029,12 +12029,12 @@ class MonitoringService : Service() {
         try { MessageScheduler.scheduleWatchdog(this) } catch (_: Exception) { }
         try { Liveness.schedule(this) } catch (_: Exception) { }
         try { NotificationForwarderService.requestRebindFrom(this) } catch (_: Exception) { }
-        restartAllLoops(true)
+        val jalanUlang = restartAllLoops(true)
         try {
             preferencesManager.silentHealStage = 0
             preferencesManager.silentHealAt = 0L
         } catch (_: Exception) { }
-        replyLater("🩺 <b>Sembuh total dijalankan</b>\n• Kredensial disegarkan, webhook dibersihkan, menu command didaftar ulang\n• Semua loop dihidupkan ulang, jam bangun + watchdog dipasang ulang\n• Akses notifikasi diminta ulang bila perlu\nAntrean sebelum pemulihan: $hadQueue pesan.")
+        replyLater("🩺 <b>Sembuh total dijalankan</b>\n• Kredensial disegarkan, webhook dibersihkan, menu command didaftar ulang\n• " + (if (jalanUlang) "Semua loop dihidupkan ulang" else "Loop berat masih ditahan mode aman -- pengawas menyalakannya sesudah masa tenang, atau pakai /resume untuk keluar sekarang") + ", jam bangun + watchdog dipasang ulang\n• Akses notifikasi diminta ulang bila perlu\nAntrean sebelum pemulihan: $hadQueue pesan.")
         try {
             MessageScheduler.scheduleMessageSend(this)
         } catch (_: Exception) {

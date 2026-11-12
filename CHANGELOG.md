@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Balasan /recover kini jujur saat mode aman aktif: loop berat dilaporkan masih ditahan mode aman, bukan diklaim sudah dihidupkan ulang.
 - Aksi menyalakan ulang loop dari /ping kini menilai kesegaran perintah (maks 300 detik) seperti perintah mutasi lain; balasan Pong tetap selalu dijawab.
 - Perintah /recover kini berjalan di jalur kontrol: pemulihan menyeluruh tidak lagi mengantre di belakang perintah umum yang panjang, terutama saat layanan sedang macet.
 - Perintah /log tidak lagi berjalan di jalur baca-saja: handler-nya menghapus laporan crash tertunda sesudah terkirim, jadi ia kembali ke jalur perintah umum.
