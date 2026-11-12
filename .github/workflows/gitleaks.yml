@@ -17,6 +17,10 @@ jobs:
   scan:
     name: Scan secret
     runs-on: ubuntu-24.04
+    # Batas waktu job (issue #1941): tanpa ini bawaan
+    # GitHub 360 menit membiarkan job menggantung membakar
+    # kuota runner; workflow saudara dibatasi di #1874.
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
