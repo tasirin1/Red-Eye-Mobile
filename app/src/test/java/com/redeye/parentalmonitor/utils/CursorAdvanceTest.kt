@@ -137,6 +137,74 @@ class CursorAdvanceTest {
         assertTrue(!CursorAdvance.terlambat(11L, 1000L, 2000L, 10L, 500L))
     }
 
+    // Model konsumsi sapuan sisi SMS (issue #2020): cermin
+    // konsumsiSapuan dengan disiplin rangkap-tiga SMS —
+    // pasangan (id, tanggal) + jangkar id maksimum; halaman
+    // gabungan keyset + sapuan terpilih predikat
+    // getNewSms (INBOX disaring di lapisan repository,
+    // di luar model ini).
+    private fun ambilSms(
+        baris: List<Pair<Long, Long>>,
+        idKursor: Long,
+        tanggalKursor: Long,
+        idMaxKursor: Long,
+        batas: Long
+    ): List<Pair<Long, Long>> {
+        if (idKursor <= 0L || tanggalKursor <= 0L) return emptyList()
+        val keyset = baris.filter { (id, tanggal) ->
+            tanggal <= batas && (tanggal > tanggalKursor || (tanggal == tanggalKursor && id > idKursor))
+        }
+        if (idMaxKursor <= 0L) return keyset
+        val calon = baris.filter { (id, tanggal) -> id > idMaxKursor && tanggal <= batas }.sortedBy { it.first }.take(100)
+        val sapuan = calon.filter { (id, tanggal) ->
+            CursorAdvance.terlambat(id, tanggal, tanggalKursor, idMaxKursor, batas)
+        }
+        return (keyset + sapuan).sortedWith(compareBy({ it.second }, { it.first }))
+    }
+
+    private fun konsumsiSapuanSms(
+        baris: List<Pair<Long, Long>>,
+        idKursor0: Long,
+        tanggalKursor0: Long,
+        idMax0: Long,
+        batas: Long = CursorAdvance.batasAtas(1_700_000_000_000L)
+    ): List<Pair<Long, Long>> {
+        var idKursor = idKursor0
+        var tanggalKursor = tanggalKursor0
+        var idMax = idMax0
+        val terkirim = mutableListOf<Pair<Long, Long>>()
+        while (true) {
+            val halaman = ambilSms(baris, idKursor, tanggalKursor, idMax, batas)
+            if (halaman.isEmpty()) break
+            for (potongan in halaman.chunked(10)) {
+                val maju = CursorAdvance.penyelesaian(idKursor, tanggalKursor, potongan)
+                idKursor = maju.first
+                tanggalKursor = maju.second
+                idMax = CursorAdvance.idMaks(idMax, potongan)
+                terkirim += potongan
+            }
+        }
+        return terkirim
+    }
+
+    @Test
+    fun sapuanSmsMengirimSmsTertahanSmscTepatSatuKali() {
+        // Skenario Audit-175 A4: SMS B bercap 1000 tersinkron
+        // (jangkar 50); SMS A bercap SMSC 900 disisipkan
+        // belakangan ber-id 61 — tanpa sapuan hilang senyap.
+        val baris = listOf(50L to 1000L, 61L to 900L)
+        val terkirim = konsumsiSapuanSms(baris, 50L, 1000L, 50L)
+        assertEquals(listOf(61L to 900L), terkirim)
+    }
+
+    @Test
+    fun tanpaJangkarSmsBarisTertahanHilang() {
+        // Kontrol negatif: jangkar 0 mematikan sapuan —
+        // baris yang sama tak terpilih keyset.
+        val baris = listOf(50L to 1000L, 61L to 900L)
+        assertTrue(konsumsiSapuanSms(baris, 50L, 1000L, 0L).isEmpty())
+    }
+
     @Test
     fun sisipanTerlambatTerkirimTepatSekali() {
         // Panggilan tunggu (id 10, tanggal 2000) sudah terkirim dan

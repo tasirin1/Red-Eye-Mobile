@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- SMS yang ditahan SMSC (store-and-forward) lalu tiba sesudah SMS yang lebih baru tersinkron kini terambil sapuan baris terlambat sisi SMS dan tetap diteruskan: DATE SMS adalah cap SMSC sedangkan baris disisipkan saat tiba ber-ID tertinggi, jadi keyset tak pernah memilihnya lagi dan pesan hilang senyap dari penerusan waktu-nyata — penanda ID maksimum SMS baru, kueri sapuan di `getNewSms`, dan disiplin tulis rangkap-tiga di siklus, sinkron awal, dan situs perbaikan menutupnya, cermin perbaikan sisi panggilan sebelumnya (issue #2020).
+
 ## [1.6.687] - 2026-11-12
 
 ### Fixed
