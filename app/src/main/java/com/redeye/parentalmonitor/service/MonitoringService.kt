@@ -15225,19 +15225,24 @@ class MonitoringService : Service() {
     private fun jamDindingMelompatMaju(): Boolean {
         val w = System.currentTimeMillis()
         val e = android.os.SystemClock.elapsedRealtime()
-        if (lompatanTerakhirElapsed >= 0L && e - lompatanTerakhirElapsed < 3_600_000L) {
-            contohJamDinding = w
-            contohJamElapsed = e
-            return true
-        }
         val w0 = contohJamDinding
         val e0 = contohJamElapsed
         contohJamDinding = w
         contohJamElapsed = e
-        if (w0 == 0L) return false
-        val melompat = (w - w0) - (e - e0) > 300_000L
-        if (melompat) lompatanTerakhirElapsed = e
-        return melompat
+        // Divergensi dinilai SEBELUM pintas tahan
+        // (issue #1998): loncatan kedua di dalam jendela
+        // tahan harus memperpanjang tahan. Bentuk lama
+        // memperbarui contoh di cabang tahan lalu
+        // mengembalikan true tanpa mencatat loncatan
+        // baru, jadi tahan pertama habis di jadwal lama
+        // dan temp yang lahir di antara dua loncatan
+        // terbaca tua oleh loncatan kedua.
+        if (w0 != 0L && (w - w0) - (e - e0) > 300_000L) {
+            lompatanTerakhirElapsed = e
+            return true
+        }
+        if (lompatanTerakhirElapsed >= 0L && e - lompatanTerakhirElapsed < 3_600_000L) return true
+        return false
     }
 
     private fun pruneDitundaJamMundur(awalan: List<String>, akhiran: String): Boolean {
