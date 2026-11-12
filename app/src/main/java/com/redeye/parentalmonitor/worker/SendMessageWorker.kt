@@ -29,6 +29,11 @@ class SendMessageWorker(
     private val credsTouched = java.util.concurrent.atomic.AtomicBoolean(true)
     private val credListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, _ -> credsTouched.set(true) }
 
+    // Potongan tertolak yang pencatatannya menunggu
+    // bukti hapus asal oleh pemanggil (issue #2064):
+    // kunci = id pesan asal, nilai = jumlah potongan.
+    private val potonganTertolakTertunda = mutableMapOf<String, Int>()
+
     private val messageQueue: MessageQueue by lazy { MessageQueue.getInstance(applicationContext) }
     private val preferencesManager: PreferencesManager by lazy {
         try { PreferencesManager.refreshInstance(context.applicationContext) } catch (_: Exception) { }
@@ -220,6 +225,7 @@ class SendMessageWorker(
                             try {
                                 if (messageQueue.removeMessages(sentIds)) {
                                     flushedSent = sentIds.size
+                                    catatTertundaSesudahHapus(sentIds)
                                 }
                             } catch (_: Exception) {
                             }
@@ -244,7 +250,7 @@ class SendMessageWorker(
             } catch (e: kotlinx.coroutines.CancellationException) {
                 if (sentIds.size > flushedSent) {
                     try {
-                        messageQueue.removeMessages(sentIds)
+                        if (messageQueue.removeMessages(sentIds)) catatTertundaSesudahHapus(sentIds)
                         messageQueue.flushSync()
                     } catch (_: Exception) {
                     }
@@ -264,7 +270,7 @@ class SendMessageWorker(
         if (credsChanged) {
             if (!queueCleared && sentIds.size > flushedSent) {
                 try {
-                    messageQueue.removeMessages(sentIds)
+                    if (messageQueue.removeMessages(sentIds)) catatTertundaSesudahHapus(sentIds)
                     messageQueue.flushSync()
                 } catch (_: Exception) {
                 }
@@ -277,7 +283,7 @@ class SendMessageWorker(
         }
         if (!queueCleared && sentIds.size > flushedSent) {
             try {
-                messageQueue.removeMessages(sentIds)
+                if (messageQueue.removeMessages(sentIds)) catatTertundaSesudahHapus(sentIds)
             } catch (_: Exception) {
             }
         }
@@ -716,6 +722,16 @@ class SendMessageWorker(
         }
     }
 
+    // Mencatat potongan tertolak tertunda milik pesan
+    // yang asal-nya baru saja terbukti terhapus oleh
+    // hapus batch pemanggil (issue #2064).
+    private fun catatTertundaSesudahHapus(ids: Collection<String>) {
+        for (id in ids) {
+            val jumlah = potonganTertolakTertunda.remove(id) ?: continue
+            catatPotonganTertolak(jumlah)
+        }
+    }
+
     private suspend fun sendChunked(message: String, botToken: String, chatId: String, retryCount: Int = 0, origId: String? = null, deadlineAt: Long = Long.MAX_VALUE, priority: Boolean = false, runGen: Long = -1L, chunksSent: Int = 0): SendOutcome {
         val parts = mutableListOf<String>()
         var rest = message
@@ -963,7 +979,7 @@ class SendMessageWorker(
         }
         // Potongan tertolak dicatat saat pesan selesai
         // diproses run ini (issue #2040, diperluas
-        // #2048, dikoreksi #2058): vonis Sent, ATAU sisa
+        // #2048, dikoreksi #2058, ditunda #2064): vonis Sent, ATAU sisa
         // sudah terantre sebagai pesan baru DAN pesan
         // asal terbukti terhapus (remainderQueued +
         // asalTerhapus -- tanpa bukti hapus itu asal
@@ -974,7 +990,22 @@ class SendMessageWorker(
         // dicoba lagi utuh -- potongannya belum hilang
         // -- dan vonis Rejected sudah menghitung
         // pesannya sekali di tingkat pesan.
-        if (vonis == SendOutcome.Sent || (remainderQueued && asalTerhapus)) catatPotonganTertolak(rejected)
+        if (vonis == SendOutcome.Sent && failedKept) {
+            // Jalur failedKept (issue #2064): sisa pesan
+            // terantre sebagai pesan baru, tetapi pesan
+            // asal dihapus PEMANGGIL lewat hapus batch
+            // yang hasilnya tidak mengalir ke sini.
+            // Mencatat sekarang berisiko hitung ganda
+            // (asal yang selamat dari hapus gagal akan
+            // menolak dan mencatat potongan yang sama
+            // pada run-nya sendiri), jadi pencatatan
+            // ditunda sampai hapus batch itu terbukti.
+            if (rejected > 0 && origId != null) {
+                potonganTertolakTertunda[origId] = rejected
+            }
+        } else if (vonis == SendOutcome.Sent || (remainderQueued && asalTerhapus)) {
+            catatPotonganTertolak(rejected)
+        }
         return vonis
     }
 

@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Akuntansi potongan tertolak jalur failedKept: pencatatan kini menunggu bukti hapus batch asal oleh pemanggil, menutup hitung ganda saat hapus batch gagal senyap dan asal bangkit (issue #2064).
 - Cakupan uji model kursor: cabang tanggal-saja dan id-saja model ambil kini diuji langsung dengan batas finit, menutup celah diskriminasi perbaikan #2060 (issue #2063).
 
 ## [1.6.694] - 2026-11-13
