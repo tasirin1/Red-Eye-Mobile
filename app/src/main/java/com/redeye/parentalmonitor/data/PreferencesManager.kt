@@ -975,10 +975,16 @@ class PreferencesManager(context: Context) {
             } catch (_: Exception) {
                 0L
             }
+            // commit, bukan apply (issue #1996,
+            // residu terakhir keluarga #1979): penulis
+            // setter ini memasang jeda admin loop kamera
+            // dan menolkan jeda saat wipe -- flush yang
+            // hilang bisa membatalkan jeda admin atau
+            // menghidupkan jeda lama sesudah wipe.
             sharedPreferences.edit()
                 .putLong(KEY_PHOTO_PAUSED_UNTIL, value)
                 .putLong(KEY_PHOTO_PAUSED_ELAPSED_UNTIL, elapsed)
-                .apply()
+                .commit()
         }
 
     val photoPausedElapsedUntil: Long

@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Setter tenggat jeda foto kini disimpan seketika (commit) seperti jalur jeda lainnya, menutup residu terakhir keluarga jeda foto: jeda admin dan penolan saat hapus data tidak bisa hilang oleh kematian proses.
 - Tiga jalur simpanan akuntansi notifikasi gugur yang tersisa kini ikut bercadangan instans preferensi, jadi rekonsiliasi batch dan tulisan final tidak menyerah senyap bila adopsi preferensi sempat gagal.
 - Sapuan berkas .tmp foto dan media kini ikut dijaga dari loncatan jam maju, jadi berkas rekaman video/audio yang sedang ditulis tidak terhapus di tengah perekaman.
 - Penjaga loncatan jam untuk sapuan berkas sementara kini menahan sapuan selama satu jendela penuh sesudah loncatan terdeteksi, bukan hanya satu ronde, jadi berkas yang sedang diunggah tetap aman dari sapuan kedua.
