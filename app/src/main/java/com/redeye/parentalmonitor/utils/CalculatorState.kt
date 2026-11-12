@@ -90,7 +90,7 @@ class CalculatorState {
             // (issue #2042): kalkulator acuan
             // menerapkan operator + operand terakhir
             // ke hasil berjalan setiap = ditekan lagi.
-            if (justCalculated && lastOperator.isNotEmpty() &&
+            if (justCalculated && !entryReplaced && lastOperator.isNotEmpty() &&
                 currentNumber.isNotEmpty() && currentNumber != "-" && currentNumber != "Error"
             ) {
                 val num1 = currentNumber.toDoubleOrNull() ?: return false

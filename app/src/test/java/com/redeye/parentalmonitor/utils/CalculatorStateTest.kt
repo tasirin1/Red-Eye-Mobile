@@ -88,8 +88,12 @@ class CalculatorStateTest {
         val h = Harness()
         h.run("1000", "+", "234", "=", "=")
         assertFalse(h.secret)
-        assertEquals("1234", h.state.currentNumber)
-        assertEquals("1000 + 234", h.state.lastExpression)
+        // = kedua kini mengulang operasi terakhir
+        // (issue #2042) -- hasil hitungan yang sama
+        // dengan kode rahasia tetap tidak membuka
+        // Setup, dan pengulangannya pun tidak.
+        assertEquals("1468", h.state.currentNumber)
+        assertEquals("1234 + 234", h.state.lastExpression)
         assertTrue(h.state.justCalculated)
     }
 
