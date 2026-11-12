@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Penanda terkirim yang dibuat saat pengiriman dibatalkan di tengah jalan kini juga langsung disimpan sinkron dari jalur pembatalan itu sendiri, jadi tidak hilang hanya karena urutan berhenti layanan berubah.
 - Penyelamatan notifikasi yang sedang terbang saat layanan berhenti kini juga mencatat penanda terkirimnya per item, jadi notifikasi itu tidak diteruskan ulang sesudah layanan tersambung lagi.
 - Label SIM pada laporan panggilan kini disegarkan berkala (peta label berumur 10 menit), jadi mengganti SIM saat layanan sedang jalan tidak lagi membuat labelnya hilang atau basi sampai layanan dimulai ulang.
 - Catatan uji anti-mati kini disimpan seketika (commit) saat uji dimulai dan diakhiri, jadi kematian proses yang justru sedang diuji tidak menghapus buktinya.

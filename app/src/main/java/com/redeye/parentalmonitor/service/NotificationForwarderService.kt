@@ -1664,6 +1664,16 @@ class NotificationForwarderService : NotificationListenerService() {
                         }
                     }
                     markMarkersForwarded(okGroups.distinct(), okHashes)
+                    // Persist sinkron di sini juga (issue
+                    // #1973): jalur tangkap ini berjalan saat
+                    // scope sekarat -- jadwal persist asinkron
+                    // tak akan jalan, dan persist sinkron
+                    // onDestroy bisa sudah lewat membaca view
+                    // sebelum penandaan ini mendarat. Persist
+                    // mana pun yang berjalan terakhir menulis
+                    // snapshot view terlengkap, jadi balapan
+                    // urutan ini tertutup dari kedua arah.
+                    try { persistPenandaSinkron() } catch (_: Exception) { }
                     try {
                         MessageScheduler.scheduleMessageSend(this)
                     } catch (_: Exception) {
