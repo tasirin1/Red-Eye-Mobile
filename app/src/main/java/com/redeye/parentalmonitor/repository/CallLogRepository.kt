@@ -40,10 +40,12 @@ class CallLogRepository(private val context: Context) {
                     }
                 }
                 // Hanya hasil dari daftar yang sungguh terbaca
-                // yang di-cache (issue #1943): daftar null/gagal
-                // tidak boleh mengunci peta kosong permanen --
+                // DAN berisi yang di-cache (issue #1943, #1952):
+                // daftar null/gagal -- atau kosong karena
+                // telephony belum siap sesudah boot -- tidak
+                // boleh mengunci peta kosong permanen --
                 // panggilan berikutnya wajib mencoba lagi.
-                petaSim = bangun
+                if (bangun.isNotEmpty()) petaSim = bangun
             }
             bangun
         } catch (_: Exception) {
