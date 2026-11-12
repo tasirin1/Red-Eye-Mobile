@@ -1744,16 +1744,24 @@ class NotificationForwarderService : NotificationListenerService() {
                     hashLists.add(if (splitHash.isNotEmpty()) listOf(splitHash) else emptyList())
                     groupLists.add(if (splitGroup.isNotEmpty()) listOf(splitGroup) else emptyList())
                 }
+                // Bidang penanda item batch bisa berupa
+                // gabungan PEMISAH_PENANDA (segmen gabungan
+                // hasil antre-ulang, issue #2001) — uraikan
+                // di sini juga (issue #2010) agar tiap
+                // hash/grup penyusun tertandai, bukan satu
+                // string gabungan bohong. Nilai tunggal
+                // tanpa pemisah terurai menjadi dirinya
+                // sendiri, jadi perilaku item biasa tetap.
                 val curItemCe = currentItem
                 if (curItemCe != null && !currentCovered) {
                     texts.add(curItemCe.first)
-                    hashLists.add(if (curItemCe.second.isNotEmpty()) listOf(curItemCe.second) else emptyList())
-                    groupLists.add(if (curItemCe.third.isNotEmpty()) listOf(curItemCe.third) else emptyList())
+                    hashLists.add(if (curItemCe.second.isNotEmpty()) curItemCe.second.split(PEMISAH_PENANDA).filter { it.isNotEmpty() } else emptyList())
+                    groupLists.add(if (curItemCe.third.isNotEmpty()) curItemCe.third.split(PEMISAH_PENANDA).filter { it.isNotEmpty() } else emptyList())
                 }
                 for (item in restItems) {
                     texts.add(item.first)
-                    hashLists.add(if (item.second.isNotEmpty()) listOf(item.second) else emptyList())
-                    groupLists.add(if (item.third.isNotEmpty()) listOf(item.third) else emptyList())
+                    hashLists.add(if (item.second.isNotEmpty()) item.second.split(PEMISAH_PENANDA).filter { it.isNotEmpty() } else emptyList())
+                    groupLists.add(if (item.third.isNotEmpty()) item.third.split(PEMISAH_PENANDA).filter { it.isNotEmpty() } else emptyList())
                 }
                 if (texts.isNotEmpty()) {
                     var results: List<Boolean> = emptyList()
