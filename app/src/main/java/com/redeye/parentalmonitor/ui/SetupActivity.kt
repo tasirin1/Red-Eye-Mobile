@@ -1604,6 +1604,7 @@ class SetupActivity : AppCompatActivity() {
     private fun backupSettings() {
         val uiToken = botTokenInput.text.toString().trim()
         val uiChat = chatIdInput.text.toString().trim()
+        val uiPin = accessPinInput.text.toString().trim()
         val uiIntervalRaw = syncIntervalInput.text.toString().trim()
         val uiCamRaw = cameraIntervalInput.text.toString().trim()
         val uiInterval = uiIntervalRaw.toIntOrNull()
@@ -1665,24 +1666,32 @@ class SetupActivity : AppCompatActivity() {
             val chatId = if (isChatIdValid(resolvedChat)) resolvedChat else storedChat
             val interval = if (uiInterval != null && uiInterval in 1..1440) uiInterval else try { prefs.syncInterval } catch (_: Exception) { 5 }
             val camInterval = if (uiCam != null && uiCam in 0..60) uiCam else try { prefs.cameraInterval } catch (_: Exception) { 1 }
+            // PIN akses ikut dari KETIKAN teresolusi
+            // (issue #2016): dulu ekspor selalu memakai
+            // PIN tersimpan, jadi PIN hasil impor yang
+            // belum disimpan gugur senyap dari berkas
+            // cadangan baru. Resolusi masker sama dengan
+            // jalur Simpan, termasuk PIN pulihan cadangan.
+            val storedPin = try { prefs.accessPin } catch (_: Exception) { "" }
+            val accessPin = if (uiPin == STORED_MASK) restoreAccessPin(token, chatId, storedPin) else uiPin
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                 if (isFinishing || isDestroyed) return@withContext
                 if (token.isEmpty() || chatId.isEmpty()) {
                     Toast.makeText(this@SetupActivity, getString(R.string.backup_empty), Toast.LENGTH_LONG).show()
                     return@withContext
                 }
-                verifyStoredAccessPin { askBackupPin(token, chatId, interval, camInterval) }
+                verifyStoredAccessPin { askBackupPin(token, chatId, interval, camInterval, accessPin) }
             }
         }
     }
 
-    private fun askBackupPin(token: String, chatId: String, interval: Int, camInterval: Int) {
+    private fun askBackupPin(token: String, chatId: String, interval: Int, camInterval: Int, accessPin: String) {
                 askPin(getString(R.string.backup_pin_title), true) { pin ->
                     if (pin == null) return@askPin
                     lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
                         val blob = try {
                             com.redeye.parentalmonitor.utils.SettingsBackup.export(
-                                token, chatId, interval, camInterval, try { prefs.ownerUserId } catch (_: Exception) { 0L }, try { prefs.accessPin } catch (_: Exception) { "" }, pin
+                                token, chatId, interval, camInterval, try { prefs.ownerUserId } catch (_: Exception) { 0L }, accessPin, pin
                             )
                         } catch (_: Exception) {
                             null
