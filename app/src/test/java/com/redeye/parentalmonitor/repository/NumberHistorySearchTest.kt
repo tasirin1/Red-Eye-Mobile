@@ -180,6 +180,24 @@ class NumberHistorySearchTest {
     }
 
     @Test
+    fun pindaiHalamanTepatLimitPadaHalamanParsialTidakTerpotong() {
+        // Regresi #2051: kecocokan mencapai tepat limit
+        // pada halaman parsial terakhir (pindai tuntas)
+        // adalah hasil utuh, bukan terpotong -- hanya
+        // baris berformat bebas agar tertangkap saringan
+        // pindai halaman saja.
+        val data = listOf(
+            Baris("+62 812-3456-7890", kini - 100_000, 3),
+            Baris("62 812 3456 7890", kini - 200_000, 2),
+            Baris("+62 812-3456-7890", kini - 300_000, 1)
+        )
+        val kueri = KueriPalsu(data)
+        val hasil = pencarian(kueri).search("081234567890", limit = 3)
+        assertEquals(3, hasil.items.size)
+        assertFalse(hasil.truncated)
+    }
+
+    @Test
     fun pindaiHalamanBerhentiPadaPlafonDuaHalaman() {
         // Plafon issue #1931: 2 halaman x 500 per repositori.
         // Satu baris cocok terperangkap saringan halaman di

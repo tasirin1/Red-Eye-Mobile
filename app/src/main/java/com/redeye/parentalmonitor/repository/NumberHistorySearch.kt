@@ -63,11 +63,20 @@ class NumberHistorySearch<T>(
                 break
             }
             acc.addAll(filterByNumber(page, norm, wantAlt))
-            if (acc.size >= safeLimit) return NumberHistoryResult(acc.take(safeLimit), truncated = true)
+            // Bendera terpotong jalur halaman (issue
+            // #2051): kecocokan yang MELEBIHI limit pasti
+            // terpotong; yang TEPAT limit hanya terpotong
+            // bila pindai belum tuntas (halaman penuh =
+            // mungkin masih ada halaman berisi kecocokan
+            // lain). Halaman parsial menuntaskan pindai,
+            // jadi total tepat-limit di sana adalah hasil
+            // utuh -- pemeriksaannya sesudah cek halaman.
+            if (acc.size > safeLimit) return NumberHistoryResult(acc.take(safeLimit), truncated = true)
             if (page.size < 500) {
                 scanComplete = true
                 break
             }
+            if (acc.size >= safeLimit) return NumberHistoryResult(acc.take(safeLimit), truncated = true)
             val oldest = page.last()
             if (dateOf(oldest) <= cutoff) {
                 scanComplete = true
