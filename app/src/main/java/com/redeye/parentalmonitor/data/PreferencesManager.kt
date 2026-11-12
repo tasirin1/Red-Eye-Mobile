@@ -1837,7 +1837,13 @@ class PreferencesManager(context: Context) {
 
     fun setOwnerPairCode(value: String) {
         synchronized(pairCodeLock) {
-            sharedPreferences.edit().putString(KEY_OWNER_PAIR_CODE, value).apply()
+            // commit, bukan apply (issue #1969): pemanggil
+            // tunggalnya pembersihan kode saat hapus data.
+            // apply yang belum ter-flush saat proses mati
+            // membangkitkan kode yang sudah dibatalkan --
+            // dan AT-nya sudah 0 ter-commit gelombang 1,
+            // keadaan yang oleh pembaca dianggap sah.
+            sharedPreferences.edit().putString(KEY_OWNER_PAIR_CODE, value).commit()
         }
     }
 
