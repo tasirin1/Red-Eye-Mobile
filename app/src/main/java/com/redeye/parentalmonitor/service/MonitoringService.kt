@@ -7550,8 +7550,16 @@ class MonitoringService : Service() {
             try { com.redeye.parentalmonitor.utils.CrashReporter.clearCrashJournal(this) } catch (_: Exception) { }
             try { com.redeye.parentalmonitor.utils.CrashReporter.setSafeModeFlag(this, false) } catch (_: Exception) { }
             safeModeNow = false
-            restartAllLoops()
-            sendToTelegram("\u25B6\uFE0F Mode aman dimatikan manual — loop dijalankan ulang.")
+            // Nilai balik wajib dibaca (issue #1935): penjaga
+            // 10 detik bisa menolak penyalaan ulang sesaat
+            // sesudah start, dan klaim berhasil palsu membuat
+            // monitoring mati diam-diam s.d. watchdog bangun.
+            val jalanUlang = restartAllLoops()
+            if (jalanUlang) {
+                sendToTelegram("\u25B6\uFE0F Mode aman dimatikan manual — loop dijalankan ulang.")
+            } else {
+                sendToTelegram("\u25B6\uFE0F Mode aman dimatikan manual. Penyalaan ulang loop ditahan penjaga restart sesaat — pengawas akan menyalakannya dalam beberapa menit.")
+            }
         }
         preferencesManager.setMonitoringPausedSync(false)
         // Sodok monitor aksesibilitas (issue #1372): aplikasi
