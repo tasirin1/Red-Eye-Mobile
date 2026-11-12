@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Kabar siap dijemput tidak lagi bisa tertembak dari posisi cache patroli yang bisa berumur sampai 90 menit; jalur patroli kini menggerbang jemput sama seperti jalur kendaraan dan fallback pagar.
 - Menghapus kredensial kini menolkan kursor SMS sepenuhnya (id dan cap waktu); sebelumnya cap waktu lama bertahan sehingga SMS yang tiba sebelum penghapusan tetapi belum tersinkron terlewat permanen di era baru.
 - Penghapusan target pantau aksesibilitas saat menghapus kredensial kini memegang kunci himpunan aplikasi dikenal selama seluruh proses, sehingga penulis daftar dikenal yang berjalan bersamaan tidak lagi bisa menulis balik daftar lama sesudah penghapusan.
 - Panggilan berdurasi panjang yang catatan lognya baru tersisip sesudah panggilan berakhir kini tetap terkirim: siklus sinkron menyapu baris ber-id baru bertanggal di bawah kursor (tanggal mulai panggilan) yang sebelumnya terlewat permanen oleh kursor keyset.

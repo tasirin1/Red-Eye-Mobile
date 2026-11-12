@@ -2025,7 +2025,11 @@ class MonitoringService : Service() {
                     ambilPosisiTerakhirElapsed = android.os.SystemClock.elapsedRealtime()
                     try { preferencesManager.lastLocAt = System.currentTimeMillis() } catch (_: Exception) { }
                 }
-                try { checkGeofence(location.latitude, location.longitude, location.accuracy, fixAtMs = location.time) } catch (_: Exception) { }
+                // Posisi cache gerak (bisa 90 menit) tidak
+                // boleh menembakkan kabar jemput sekali-tembak
+                // (issue #2015) -- gerbang yang sama dengan
+                // jalur kendaraan (#1536) dan fallback (#794).
+                try { checkGeofence(location.latitude, location.longitude, location.accuracy, izinkanJemput = !dariCacheGerak, fixAtMs = location.time) } catch (_: Exception) { }
                 val prev = lastSentLatLon()
                 val dist = if (prev == null) -1f else ReportFormat.distanceMeters(prev.first, prev.second, location.latitude, location.longitude)
                 if (dist >= 0f && dist < 100f) {
