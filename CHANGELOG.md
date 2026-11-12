@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Penyalaan ulang gelung poll kini selalu membatalkan job poll lama sebelum menggantinya: dua situs penyembuhan mode aman memanggilnya telanjang, dan job macet di tengah long-poll sebelumnya bertabrakan getUpdates dengan job baru sampai kena 409 (issue #1944).
 - Label SIM pada laporan panggilan tidak lagi terkunci kosong: hasil bangun peta SIM hanya di-cache bila daftar langganan sungguh terbaca, jadi kegagalan baca sesaat pada panggilan pertama tidak lagi mengosongkan label untuk seluruh umur layanan (issue #1943).
 - Salinan foto kecil yang gagal ditulis di tengah jalan kini ikut dihapus: lemparan saat menulis tidak lagi meninggalkan berkas temp separuh di cacheDir yang tak pernah dibersihkan siapa pun (issue #1942).
 - Workflow pemindaian secret (gitleaks) kini punya batas waktu job 15 menit; tanpa itu bawaan GitHub 360 menit membiarkan job yang menggantung membakar kuota runner (issue #1941).

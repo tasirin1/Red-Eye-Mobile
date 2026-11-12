@@ -3073,7 +3073,14 @@ class MonitoringService : Service() {
                 }
             }
         }
+        // Job lama wajib dibatalkan sebelum diganti
+        // (issue #1944): situs penyembuhan poll mode aman
+        // memanggil fungsi ini tanpa membatalkan lebih dulu;
+        // job macet yang masih di tengah long-poll akan
+        // bertabrakan getUpdates dengan job baru (409).
+        val jobLama = commandJob
         commandJob = command
+        if (jobLama != null && jobLama !== command) jobLama.cancel()
         command.start()
     }
 
