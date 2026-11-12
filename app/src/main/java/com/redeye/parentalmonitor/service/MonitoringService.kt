@@ -11035,6 +11035,10 @@ class MonitoringService : Service() {
                 if (d.length >= 7) freq[d] = (freq[d] ?: 0) + 1
             }
             for (c in calls.take(200)) {
+                // REJECTED/BLOCKED bukan aktivitas anak
+                // (issue #2033): penjaga yang sama seperti
+                // freqForNumbers/sendWaspada/checkBegadang.
+                if (!callCountsAsActivity(c.type)) continue
                 val d = c.number.filter { it.isDigit() }.takeLast(10)
                 if (d.length >= 7) freq[d] = (freq[d] ?: 0) + 1
             }
@@ -11580,6 +11584,11 @@ class MonitoringService : Service() {
                 else if (watch.isNotEmpty() && AppWatch.hit(watch, s.body) != null) watchHits++
             }
             for (c in calls.take(200)) {
+                // REJECTED/BLOCKED bukan aktivitas anak
+                // (issue #2033): tanpa penjaga ini nomor
+                // spam terblokir berulang menduduki Teratas
+                // dan menaikkan hitungan begadang mingguan.
+                if (!callCountsAsActivity(c.type)) continue
                 val d = c.number.filter { it.isDigit() }.takeLast(10)
                 if (d.length >= 7) freq[d] = (freq[d] ?: 0) + 1
                 val h = hourOf(c.date)
