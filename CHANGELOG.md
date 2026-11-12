@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- /digest tidak lagi berjalan di jalur laporan baca-saja: jalurnya menulis fakta harian ke penyimpanan, jadi ia keluar dari QUERY_COMMANDS dan berjalan di commandLock seperti perintah berat lainnya (issue #1936).
 - Keluar mode aman lewat /resume kini jujur: nilai balik penyalaan ulang loop dibaca — bila penjaga restart 10 detik menahannya, pesan menyebut pengawas akan menyalakan loop dalam beberapa menit, bukan lagi mengklaim loop sudah jalan padahal monitoring mati diam-diam (issue #1935).
 - Reset penyimpanan kini ikut membuang cermin log audit di ingatan, simetris dengan cermin aplikasi dikenal: tanpa itu, penulisan audit berikutnya membangkitkan s.d. 50 baris log pra-reset ke penyimpanan baru (issue #1934, regresi dari #1929).
 - /checkdead tidak lagi salah kelas sebagai perintah laporan baca-saja: handlernya menghentikan layanan untuk uji anti-mati, jadi ia dipindah ke jalur kendali (controlLock) bersama /stop dan /restart — bukan lagi di queryLock yang dikontrakkan tanpa efek perangkat (issue #1933).
