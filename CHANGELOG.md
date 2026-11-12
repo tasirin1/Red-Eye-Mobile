@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Sapuan berkas kecil sementara kini melewatkan satu ronde saat jam perangkat terdeteksi melompat maju, jadi berkas yang sedang diunggah tidak terhapus karena tampak menua seketika.
 - Dua simpanan akuntansi notifikasi gugur di layanan penerus kini punya cadangan instans preferensi seperti jalur lainnya, jadi tidak hilang senyap bila adopsi preferensi sempat gagal.
 - Simpanan penanda notifikasi kini membawa nomor generasi: potret lama yang selesai belakangan tidak lagi menimpa tanda yang lebih baru, jadi notifikasi yang sudah diteruskan tidak muncul lagi sebagai belum tertandai.
 - Segmen gabungan notifikasi yang sedang diteruskan kini membawa penanda notifikasi penyusunnya, jadi penyelamatan saat layanan mati bisa menandainya dan pindai sambung-ulang tidak meneruskannya dua kali.

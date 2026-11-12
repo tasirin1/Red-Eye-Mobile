@@ -15195,6 +15195,30 @@ class MonitoringService : Service() {
     // terbuang lebih dulu. Prune DITUNDA seluruhnya;
     // luapan kuota sementara lebih baik daripada membuang
     // bukti terbaru secara permanen.
+    // Contoh jam ganda untuk penjaga sapuan kecil_*
+    // (issue #1985): umur temp diukur dari jam dinding,
+    // dan loncatan jam MAJU (koreksi NTP/manual) membuat
+    // semua temp tampak menua seketika -- temp yang
+    // sedang diunggah bisa ikut terhapus. Contoh
+    // (dinding, elapsed) diperbarui tiap pemeriksaan;
+    // selisih dinding yang jauh melampaui selisih
+    // elapsed berarti jam melompat, dan sapuan ronde
+    // ini dilewati. Pasangan arah mundur sudah dijaga
+    // pruneDitundaJamMundur di bawah.
+    @Volatile private var contohJamDinding = 0L
+    @Volatile private var contohJamElapsed = 0L
+
+    private fun jamDindingMelompatMaju(): Boolean {
+        val w = System.currentTimeMillis()
+        val e = android.os.SystemClock.elapsedRealtime()
+        val w0 = contohJamDinding
+        val e0 = contohJamElapsed
+        contohJamDinding = w
+        contohJamElapsed = e
+        if (w0 == 0L) return false
+        return (w - w0) - (e - e0) > 300_000L
+    }
+
     private fun pruneDitundaJamMundur(awalan: List<String>, akhiran: String): Boolean {
         return try {
             val now = System.currentTimeMillis()
@@ -15747,9 +15771,11 @@ class MonitoringService : Service() {
             // umur unggah terpanjang (callTimeout 600 dtk),
             // jadi temp yang sedang dipakai tak tersentuh.
             try {
-                val batasYatim = System.currentTimeMillis() - 3_600_000L
-                cacheDir.listFiles()?.forEach { f ->
-                    if (f.name.startsWith("kecil_") && f.lastModified() < batasYatim) deleteQuietly(f)
+                if (!jamDindingMelompatMaju()) {
+                    val batasYatim = System.currentTimeMillis() - 3_600_000L
+                    cacheDir.listFiles()?.forEach { f ->
+                        if (f.name.startsWith("kecil_") && f.lastModified() < batasYatim) deleteQuietly(f)
+                    }
                 }
             } catch (_: Exception) { }
             val tujuan = File(cacheDir, "kecil_" + sumber.name)
@@ -16122,10 +16148,12 @@ class MonitoringService : Service() {
             // Ambang 1 jam sama: jauh di atas jendela pakai
             // temp yang hidup (callTimeout 600 dtk).
             try {
-                val batasYatim = System.currentTimeMillis() - 3_600_000L
-                cacheDir.listFiles { file ->
-                    file.isFile && file.name.startsWith("kecil_") && file.lastModified() < batasYatim
-                }?.forEach { deleteQuietly(it) }
+                if (!jamDindingMelompatMaju()) {
+                    val batasYatim = System.currentTimeMillis() - 3_600_000L
+                    cacheDir.listFiles { file ->
+                        file.isFile && file.name.startsWith("kecil_") && file.lastModified() < batasYatim
+                    }?.forEach { deleteQuietly(it) }
+                }
             } catch (_: Exception) {
             }
             // Korban dipilih berdasar umur SEBENARNYA dari nama
