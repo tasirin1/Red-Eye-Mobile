@@ -929,15 +929,19 @@ class SendMessageWorker(
             rejected > 0 -> if (failedKept) SendOutcome.Sent else SendOutcome.Rejected
             else -> SendOutcome.Sent
         }
-        // Potongan tertolak hanya dicatat saat vonis
-        // Sent (issue #2040): pesan selesai diproses run
-        // ini (terkirim, atau sisanya terantre sebagai
-        // pesan baru) sehingga potongan tertolak hilang
-        // permanen. Vonis lain mempertahankan pesan
-        // untuk dicoba lagi utuh -- potongannya belum
-        // hilang -- dan vonis Rejected sudah menghitung
-        // pesannya sekali di tingkat pesan.
-        if (vonis == SendOutcome.Sent) catatPotonganTertolak(rejected)
+        // Potongan tertolak dicatat saat pesan selesai
+        // diproses run ini (issue #2040, diperluas
+        // #2048): vonis Sent, ATAU sisa sudah terantre
+        // sebagai pesan baru (remainderQueued -- pada
+        // vonis RateLimited/AuthFailed pun pesan asal
+        // sudah dihapus di cabang itu, jadi potongan
+        // tertolak hilang permanen walau vonisnya bukan
+        // Sent). Vonis tanpa sisa terantre
+        // mempertahankan pesan untuk dicoba lagi utuh --
+        // potongannya belum hilang -- dan vonis Rejected
+        // sudah menghitung pesannya sekali di tingkat
+        // pesan.
+        if (vonis == SendOutcome.Sent || remainderQueued) catatPotonganTertolak(rejected)
         return vonis
     }
 
