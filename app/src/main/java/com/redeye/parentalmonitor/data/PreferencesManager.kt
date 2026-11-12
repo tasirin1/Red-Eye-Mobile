@@ -1304,11 +1304,19 @@ class PreferencesManager(context: Context) {
 
     fun clearAuditLog() {
         synchronized(auditLock) {
-            auditMirror = null
-            try {
+            // Cermin dinolkan hanya bila commit berhasil
+            // (issue #1990): commit yang gagal
+            // mengembalikan false tanpa melempar, dan
+            // cermin yang terlanjur nol membuat
+            // appendAudit berikutnya memuat ulang log
+            // lama dari preferensi -- yang dibersihkan
+            // bangkit utuh.
+            val ok = try {
                 sharedPreferences.edit().remove(KEY_AUDIT_LOG).commit()
             } catch (_: Exception) {
+                false
             }
+            if (ok) auditMirror = null
         }
     }
 
