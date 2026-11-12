@@ -473,6 +473,7 @@ class PreferencesManager(context: Context) {
         const val KEY_SYNC_INTERVAL = "sync_interval"
         private const val KEY_LAST_SMS_ID = "last_sms_id"
         private const val KEY_LAST_SMS_TIMESTAMP = "last_sms_timestamp"
+        private const val KEY_LAST_SMS_ID_MAX = "last_sms_id_max"
         private const val KEY_LAST_CALL_TIMESTAMP = "last_call_timestamp"
         private const val KEY_SIM_IDENTITY = "sim_identity"
         private const val KEY_LAST_CALL_ID = "last_call_id"
@@ -767,6 +768,14 @@ class PreferencesManager(context: Context) {
 
     val lastSmsId: Long
         get() = prefLong(KEY_LAST_SMS_ID, 0L)
+
+    // Jangkar sapuan baris sisipan terlambat sisi SMS
+    // (issue #2020): id terbesar yang pernah terkirim —
+    // pasangan kursor tak cukup karena DATE SMS adalah cap
+    // SMSC, jadi baris yang ditahan SMSC tiba ber-id besar
+    // bertanggal kecil dan tak terpilih keyset lagi.
+    val lastSmsIdMax: Long
+        get() = prefLong(KEY_LAST_SMS_ID_MAX, 0L)
 
     val lastSmsTimestamp: Long
         get() = prefLong(KEY_LAST_SMS_TIMESTAMP, 0L)
@@ -3105,10 +3114,15 @@ class PreferencesManager(context: Context) {
         }
     }
 
-    fun setSmsCursorSync(id: Long, timestamp: Long = 0L): Boolean {
+    // idMax >= 0 ikut menulis jangkar sapuan #2020 dalam
+    // commit yang sama; pasangan (0, 0) adalah reset penuh
+    // dan selalu menolkan jangkar juga, apa pun idMax-nya.
+    fun setSmsCursorSync(id: Long, timestamp: Long = 0L, idMax: Long = -1L): Boolean {
         return commitWithRetry { editor ->
             editor.putLong(KEY_LAST_SMS_ID, id)
             if (timestamp > 0L) editor.putLong(KEY_LAST_SMS_TIMESTAMP, timestamp)
+            if (id == 0L && timestamp == 0L) editor.putLong(KEY_LAST_SMS_ID_MAX, 0L)
+            else if (idMax >= 0L) editor.putLong(KEY_LAST_SMS_ID_MAX, idMax)
             editor
         }
     }
@@ -3126,7 +3140,7 @@ class PreferencesManager(context: Context) {
     }
 
     fun resetSmsCursorSync(): Boolean {
-        return commitWithRetry { it.putLong(KEY_LAST_SMS_ID, 0L).putLong(KEY_LAST_SMS_TIMESTAMP, 0L) }
+        return commitWithRetry { it.putLong(KEY_LAST_SMS_ID, 0L).putLong(KEY_LAST_SMS_TIMESTAMP, 0L).putLong(KEY_LAST_SMS_ID_MAX, 0L) }
     }
 
     fun resetCallCursorSync(): Boolean {
@@ -3152,6 +3166,7 @@ class PreferencesManager(context: Context) {
             editor.remove(KEY_INITIAL_SYNC_DONE)
             editor.putLong(KEY_LAST_SMS_ID, 0L)
             editor.putLong(KEY_LAST_SMS_TIMESTAMP, 0L)
+            editor.putLong(KEY_LAST_SMS_ID_MAX, 0L)
             editor.putLong(KEY_LAST_CALL_TIMESTAMP, 0L)
             editor.putLong(KEY_LAST_CALL_ID, 0L)
             editor.putLong(KEY_OWNER_ID, 0L)

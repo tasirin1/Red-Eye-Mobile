@@ -8151,7 +8151,7 @@ class MonitoringService : Service() {
                         try { preferencesManager.lastSmsTimestamp } catch (_: Exception) { 0L },
                         pendingSms.map { it.id to it.date }
                     )
-                    try { preferencesManager.setSmsCursorSync(tuntasSms.first, tuntasSms.second) } catch (_: Exception) { }
+                    try { preferencesManager.setSmsCursorSync(tuntasSms.first, tuntasSms.second, pendingSms.maxOfOrNull { it.id } ?: 0L) } catch (_: Exception) { }
                 }
                 if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "All SMS sent")
             }
@@ -8314,7 +8314,7 @@ class MonitoringService : Service() {
             if (currentSms > 0L && preferencesManager.lastSmsTimestamp <= 0L) {
                 val ts = smsRepository.smsDateForId(currentSms)
                 if (ts > 0L) {
-                    preferencesManager.setSmsCursorSync(currentSms, ts)
+                    preferencesManager.setSmsCursorSync(currentSms, ts, currentSms)
                 } else {
                     // Baris kursor tak ada lagi di basis (issue
                     // #1166): kursor warisan bertimestamp 0 pada
@@ -8325,7 +8325,7 @@ class MonitoringService : Service() {
                     val newestId = smsRepository.newestSmsId()
                     if (newestId in 1 until currentSms) {
                         val nts = smsRepository.smsDateForId(newestId)
-                        if (nts > 0L) preferencesManager.setSmsCursorSync(newestId, nts)
+                        if (nts > 0L) preferencesManager.setSmsCursorSync(newestId, nts, newestId)
                     }
                 }
             }
@@ -8352,7 +8352,7 @@ class MonitoringService : Service() {
                 // begitu jam melewati tanggal kursor, tanpa
                 // risiko kirim ulang riwayat.
                 if (pred != null && racunTs - pred.second > com.redeye.parentalmonitor.utils.CursorAdvance.TOLERANSI_MASA_DEPAN_MS) {
-                    try { preferencesManager.setSmsCursorSync(pred.first, pred.second) } catch (_: Exception) { }
+                    try { preferencesManager.setSmsCursorSync(pred.first, pred.second, pred.first) } catch (_: Exception) { }
                     android.util.Log.w("MonitoringService", "Kursor SMS teracuni tanggal masa depan dijangkar ulang (ts $racunTs > batas $batasSms)")
                 } else if (pred == null) {
                     try { preferencesManager.resetSmsCursorSync() } catch (_: Exception) { }
@@ -8524,8 +8524,13 @@ class MonitoringService : Service() {
             // panggilan tetap dibaca. Halaman gagal BUKAN
             // halaman kosong: sisi ini tak ditandai tuntas.
             var smsReadFailed = false
+            val lastSmsIdMax = try {
+                preferencesManager.lastSmsIdMax
+            } catch (_: Exception) {
+                0L
+            }
             val smsPage = try {
-                smsRepository.getNewSms(lastSms, lastSmsTs)
+                smsRepository.getNewSms(lastSms, lastSmsTs, lastSmsIdMax)
             } catch (_: Exception) {
                 smsReadFailed = true
                 emptyList()
@@ -8534,6 +8539,9 @@ class MonitoringService : Service() {
             if (smsPage.isNotEmpty()) {
                 var smsCursor = lastSms
                 var smsDate = lastSmsTs
+                // Jangkar sapuan SMS #2020: maju per potongan
+                // bersama pasangan, seperti sisi panggilan.
+                var smsIdMax = lastSmsIdMax
                 var smsSentAny = false
                 val freqMap = try { freqForNumbers(smsPage.map { it.address }) } catch (_: Exception) { null }
                 val knownMap = try { smsPage.map { it.address }.distinct().associateWith { isKnownContact(it) } } catch (_: Exception) { null }
@@ -8549,7 +8557,8 @@ class MonitoringService : Service() {
                         val advSms = com.redeye.parentalmonitor.utils.CursorAdvance.penyelesaian(smsCursor, smsDate, part.map { it.id to it.date })
                         smsCursor = advSms.first
                         smsDate = advSms.second
-                        val okSms = try { preferencesManager.setSmsCursorSync(smsCursor, smsDate) } catch (_: Exception) { false }
+                        smsIdMax = com.redeye.parentalmonitor.utils.CursorAdvance.idMaks(smsIdMax, part.map { it.id to it.date })
+                        val okSms = try { preferencesManager.setSmsCursorSync(smsCursor, smsDate, smsIdMax) } catch (_: Exception) { false }
                         if (!okSms) smsTulisGagal = true
                         smsSentAny = true
                         found = true
@@ -8560,12 +8569,16 @@ class MonitoringService : Service() {
                 }
                 if (smsHabis) {
                     val tuntas = com.redeye.parentalmonitor.utils.CursorAdvance.penyelesaian(lastSms, lastSmsTs, smsPage.map { it.id to it.date })
+                    val tuntasIdMaxSms = com.redeye.parentalmonitor.utils.CursorAdvance.idMaks(lastSmsIdMax, smsPage.map { it.id to it.date })
                     // smsTulisGagal (issue #1191): tulisan per
                     // potongan yang gagal senyap harus tetap
                     // ditambal penutup walau variabel kursor
                     // sudah maju — penjaga nilai saja melewatkannya.
-                    if (tuntas.first != smsCursor || tuntas.second != smsDate || smsTulisGagal) {
-                        try { preferencesManager.setSmsCursorSync(tuntas.first, tuntas.second) } catch (_: Exception) { }
+                    // Penjaga kini mencakup jangkar juga (#2020):
+                    // halaman sapuan murni tak menggerakkan
+                    // pasangan tetapi menggerakkan jangkar.
+                    if (tuntas.first != smsCursor || tuntas.second != smsDate || tuntasIdMaxSms != smsIdMax || smsTulisGagal) {
+                        try { preferencesManager.setSmsCursorSync(tuntas.first, tuntas.second, tuntasIdMaxSms) } catch (_: Exception) { }
                     }
                 }
                 if (smsSentAny) {

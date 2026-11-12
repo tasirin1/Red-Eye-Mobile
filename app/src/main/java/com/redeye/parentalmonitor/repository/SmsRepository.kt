@@ -33,7 +33,7 @@ class SmsRepository(private val context: Context) {
         Telephony.Sms.TYPE
     )
 
-    fun getNewSms(afterId: Long, afterDate: Long = 0L): List<SmsData> {
+    fun getNewSms(afterId: Long, afterDate: Long = 0L, afterIdMax: Long = -1L): List<SmsData> {
         val selection: String
         val args: Array<String>
         if (afterId > 0L && afterDate > 0L) {
@@ -51,7 +51,7 @@ class SmsRepository(private val context: Context) {
         // Batas masa depan (issue #1374): baris melewati batas
         // ditunda sampai waktunya tiba, tak memajukan kursor.
         val batas = com.redeye.parentalmonitor.utils.CursorAdvance.batasAtas(System.currentTimeMillis())
-        return querySms(
+        val utama = querySms(
             // Hanya INBOX (issue #1477): tanpa saringan tipe,
             // baris DRAFT/OUTBOX/FAILED/QUEUED/SENT sesudah
             // kursor ikut diteruskan sebagai 'SMS baru' —
@@ -62,6 +62,28 @@ class SmsRepository(private val context: Context) {
             limit = 100,
             strict = true
         )
+        // Sapuan baris sisipan terlambat (issue #2020, cermin
+        // #2012 sisi panggilan): DATE SMS adalah cap SMSC,
+        // sedangkan baris disisipkan saat pesan TIBA — SMS
+        // yang ditahan SMSC (store-and-forward) tiba sesudah
+        // SMS lebih baru tersinkron membawa DATE di bawah
+        // tanggal kursor dan tak pernah terpilih keyset lagi.
+        // Calon kasar: id di atas jangkar, tanggal di bawah
+        // batas; saringan persisnya fungsi murni terlambat.
+        // Hanya INBOX seperti jalur utama (#1477).
+        if (afterId <= 0L || afterDate <= 0L || afterIdMax <= 0L) return utama
+        val calon = querySms(
+            selection = "${Telephony.Sms._ID} > ? AND ${Telephony.Sms.DATE} <= ? AND ${Telephony.Sms.TYPE} = ${Telephony.Sms.MESSAGE_TYPE_INBOX}",
+            args = arrayOf(afterIdMax.toString(), batas.toString()),
+            sortOrder = "${Telephony.Sms._ID} ASC",
+            limit = 100,
+            strict = true
+        )
+        val terlambat = calon.filter {
+            com.redeye.parentalmonitor.utils.CursorAdvance.terlambat(it.id, it.date, afterDate, afterIdMax, batas)
+        }
+        if (terlambat.isEmpty()) return utama
+        return (utama + terlambat).sortedWith(compareBy({ it.date }, { it.id }))
     }
 
     // Baris terbesar (tanggal, id) yang KETAT di bawah
