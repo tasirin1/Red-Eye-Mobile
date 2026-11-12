@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.694] - 2026-11-13
+
 ### Fixed
 - Fungsi bersih-semua dan cabang pemulihan Error pada operator, balik tanda, dan persen kalkulator penyamaran kini mempunyai cakupan uji: sebelumnya tombol C dipetakan harness tetapi tidak pernah ditekan satu pun uji, sehingga regresi yang menyisakan ingatan operasi terakhir sesudah dibersihkan tidak akan tertangkap (issue #2062).
 - Cabang titik desimal pada masukan kalkulator penyamaran kini mempunyai cakupan uji: titik ganda ditolak, titik di awal menjadi 0 koma, penjumlahan desimal dua operand, dan titik sesudah hasil memulai entri baru -- sebelumnya tidak ada satu pun uji yang memakai token titik (issue #2061).
