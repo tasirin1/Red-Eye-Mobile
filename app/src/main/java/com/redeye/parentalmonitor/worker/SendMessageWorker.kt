@@ -225,7 +225,7 @@ class SendMessageWorker(
                             try {
                                 if (messageQueue.removeMessages(sentIds)) {
                                     flushedSent = sentIds.size
-                                    catatTertundaSesudahHapus(sentIds)
+                                    catatTertundaSesudahHapus(sentIds, runGen)
                                 }
                             } catch (_: Exception) {
                             }
@@ -250,7 +250,7 @@ class SendMessageWorker(
             } catch (e: kotlinx.coroutines.CancellationException) {
                 if (sentIds.size > flushedSent) {
                     try {
-                        if (messageQueue.removeMessages(sentIds)) catatTertundaSesudahHapus(sentIds)
+                        if (messageQueue.removeMessages(sentIds)) catatTertundaSesudahHapus(sentIds, runGen)
                         messageQueue.flushSync()
                     } catch (_: Exception) {
                     }
@@ -270,7 +270,7 @@ class SendMessageWorker(
         if (credsChanged) {
             if (!queueCleared && sentIds.size > flushedSent) {
                 try {
-                    if (messageQueue.removeMessages(sentIds)) catatTertundaSesudahHapus(sentIds)
+                    if (messageQueue.removeMessages(sentIds)) catatTertundaSesudahHapus(sentIds, runGen)
                     messageQueue.flushSync()
                 } catch (_: Exception) {
                 }
@@ -283,7 +283,7 @@ class SendMessageWorker(
         }
         if (!queueCleared && sentIds.size > flushedSent) {
             try {
-                if (messageQueue.removeMessages(sentIds)) catatTertundaSesudahHapus(sentIds)
+                if (messageQueue.removeMessages(sentIds)) catatTertundaSesudahHapus(sentIds, runGen)
             } catch (_: Exception) {
             }
         }
@@ -294,9 +294,15 @@ class SendMessageWorker(
                 false
             }
             if (removedRejected) {
-                try {
-                    messageQueue.noteRejectedDrops(rejectedIds.size.toLong())
-                } catch (_: Exception) {
+                // Gerbang generasi (issue #2071, pola
+                // #822): penolakan pra-wipe tidak dicatat
+                // ke buku besar generasi baru.
+                val genSama = try { messageQueue.queueGeneration() == runGen } catch (_: Exception) { true }
+                if (genSama) {
+                    try {
+                        messageQueue.noteRejectedDrops(rejectedIds.size.toLong())
+                    } catch (_: Exception) {
+                    }
                 }
             }
             android.util.Log.w("SendMessageWorker", "Dropped ${rejectedIds.size} permanently rejected message(s) (HTTP 4xx)")
@@ -724,11 +730,17 @@ class SendMessageWorker(
 
     // Mencatat potongan tertolak tertunda milik pesan
     // yang asal-nya baru saja terbukti terhapus oleh
-    // hapus batch pemanggil (issue #2064).
-    private fun catatTertundaSesudahHapus(ids: Collection<String>) {
+    // hapus batch pemanggil (issue #2064). Gerbang
+    // generasi (issue #2071, pola #822): wipe antrean
+    // di tengah run menolkan buku besar drop dan
+    // mengganti generasi -- entri pra-wipe dibuang
+    // tanpa dicatat agar tak lahir laporan gugur
+    // hantu di buku besar generasi baru.
+    private fun catatTertundaSesudahHapus(ids: Collection<String>, generasiRun: Long) {
+        val genSama = try { messageQueue.queueGeneration() == generasiRun } catch (_: Exception) { true }
         for (id in ids) {
             val jumlah = potonganTertolakTertunda.remove(id) ?: continue
-            catatPotonganTertolak(jumlah)
+            if (genSama) catatPotonganTertolak(jumlah)
         }
     }
 
