@@ -9949,11 +9949,11 @@ class MonitoringService : Service() {
                 else -> " (tercatat " + (umurMs / (60 * 60_000L)) + " jam lalu)"
             }
             val acc = try { preferencesManager.lastLocAccM } catch (_: Exception) { -1f }
-            val accTeks = if (acc > 0f) " " + BS + "u00B1" + acc.toInt() + " m" else ""
-            "\n" + BS + "uD83D" + BS + "uDCCD Lokasi terakhir: https://maps.google.com/?q=" + pasangan.first + "," + pasangan.second + accTeks + umur
+            val accTeks = if (acc > 0f) " " + "\u00B1" + acc.toInt() + " m" else ""
+            "\n\uD83D\uDCCD Lokasi terakhir: https://maps.google.com/?q=" + pasangan.first + "," + pasangan.second + accTeks + umur
         } else ""
         val terkirim = sendToTelegramStatus(
-            BS + "uD83D" + BS + "uDD0B <b>Baterai kritis: tinggal " + level + "%.</b>" + lokasiBaris +
+            "\uD83D\uDD0B <b>Baterai kritis: tinggal " + level + "%.</b>" + lokasiBaris +
             "\nHP bisa mati kapan saja - ini jejak terakhirnya sebelum gelap."
         ) != SendStatus.DROPPED
         if (terkirim) {

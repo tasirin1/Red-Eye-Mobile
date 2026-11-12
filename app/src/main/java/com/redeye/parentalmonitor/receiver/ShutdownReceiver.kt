@@ -3,6 +3,7 @@ package com.redeye.parentalmonitor.receiver
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 
 // Pesan terakhir saat perangkat dimatikan (keputusan
 // pemilik 2026-11-12, paket jejak terakhir): pencuri
