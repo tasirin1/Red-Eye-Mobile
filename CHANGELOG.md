@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Perintah /recover kini berjalan di jalur kontrol: pemulihan menyeluruh tidak lagi mengantre di belakang perintah umum yang panjang, terutama saat layanan sedang macet.
 - Perintah /log tidak lagi berjalan di jalur baca-saja: handler-nya menghapus laporan crash tertunda sesudah terkirim, jadi ia kembali ke jalur perintah umum.
 
 ## [1.6.680] - 2026-11-12
