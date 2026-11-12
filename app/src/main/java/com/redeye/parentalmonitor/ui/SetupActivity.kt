@@ -1672,6 +1672,22 @@ class SetupActivity : AppCompatActivity() {
             val chatId = if (isChatIdValid(resolvedChat)) resolvedChat else storedChat
             val interval = if (uiInterval != null && uiInterval in 1..1440) uiInterval else try { prefs.syncInterval } catch (_: Exception) { 5 }
             val camInterval = if (uiCam != null && uiCam in 0..60) uiCam else try { prefs.cameraInterval } catch (_: Exception) { 1 }
+            // PIN akses KETIKAN tak sah menolak ekspor
+            // (issue #2023): jalur Simpan/Tes menolak PIN
+            // di luar 6-12 digit dengan toast yang sama,
+            // tetapi Cadangkan mengekspornya tampak-
+            // berhasil — lalu PIN gugur sebagai pinDropped
+            // saat dipulihkan, tanpa keluhan di titik
+            // kesalahan. Kolom masker/kosong tetap berarti
+            // 'pakai tersimpan' dan tak divalidasi.
+            if (uiPin != STORED_MASK && uiPin.isNotEmpty() && !AccessPin.isValid(uiPin)) {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    if (!isFinishing && !isDestroyed) {
+                        Toast.makeText(this@SetupActivity, getString(R.string.setup_bad_access_pin), Toast.LENGTH_LONG).show()
+                    }
+                }
+                return@launch
+            }
             // PIN akses ikut dari KETIKAN teresolusi
             // (issue #2016): dulu ekspor selalu memakai
             // PIN tersimpan, jadi PIN hasil impor yang
