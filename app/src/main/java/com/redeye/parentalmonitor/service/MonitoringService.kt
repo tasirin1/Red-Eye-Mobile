@@ -6332,7 +6332,12 @@ class MonitoringService : Service() {
             val rows = a11yUsageRows()
             val total = rows.sumOf { it.millis }
             val now = A11yMonitor.currentAppLabel()
-            val a11yOff = on && !ShotAccessibilityService.isEnabled(this)
+            // Standar terhubung, bukan tercantum
+            // (issue #1988, doktrin #1629): peringatan
+            // dan konfirmasi fitur bergantung-A11y
+            // menilai isEnabled && isBound seperti
+            // baris status fitur yang sama.
+            val a11yOff = on && !(ShotAccessibilityService.isEnabled(this) && ShotAccessibilityService.isBound())
             sendToTelegram(buildString {
                 appendLine("\uD83D\uDCF1 <b>Alert aplikasi</b>")
                 appendLine("Status: " + if (on) "nyala" else "mati")
@@ -6345,7 +6350,7 @@ class MonitoringService : Service() {
         } else if (sub == "on" || sub == "off") {
             val on = sub == "on"
             preferencesManager.a11yAppAlert = on
-            if (on && !ShotAccessibilityService.isEnabled(this)) {
+            if (on && !(ShotAccessibilityService.isEnabled(this) && ShotAccessibilityService.isBound())) {
                 sendToTelegram("\uD83D\uDCF1 Alert app nyala (termasuk kabar pasang/hapus aplikasi), tetapi Aksesibilitas MATI — alert app dibuka/malam butuh Aksesibilitas. Aktifkan di Setup agar semua alert bisa jalan.")
                 return
             }
@@ -6370,7 +6375,7 @@ class MonitoringService : Service() {
         } else if (sub == "on" || sub == "off") {
             val on = sub == "on"
             preferencesManager.a11yTamperEnabled = on
-            if (on && !ShotAccessibilityService.isEnabled(this)) {
+            if (on && !(ShotAccessibilityService.isEnabled(this) && ShotAccessibilityService.isBound())) {
                 sendToTelegram("\uD83D\uDEE1\uFE0F Proteksi tamper nyala, tetapi Aksesibilitas MATI. Aktifkan di Setup agar proteksi berjalan.")
                 return
             }
@@ -6463,7 +6468,7 @@ class MonitoringService : Service() {
             packages = pruneAppWatchPackages()
         }
         preferencesManager.a11yAppWatchEnabled = true
-        val a11y = ShotAccessibilityService.isEnabled(this)
+        val a11y = ShotAccessibilityService.isEnabled(this) && ShotAccessibilityService.isBound()
         sendToTelegram(buildString {
             appendLine("\uD83D\uDD75\uFE0F <b>Pantau app nyala</b>")
             appendLine("Aplikasi: ${packages.size}")
