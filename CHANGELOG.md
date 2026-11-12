@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Long-poll perintah kini benar-benar ditahan server sampai 50 detik saat HP diam: batas baca klien poll dinaikkan ke 60 detik (sebelumnya 45 detik memutus setiap putaran diam, membuat HP lebih sering bangun dari rancangan hemat baterainya).
 - Label SIM pada laporan panggilan tidak lagi terkunci kosong bila daftar SIM terbaca kosong sesaat sesudah boot; pembacaan berikutnya mencoba lagi sampai SIM terbaca.
 - Kode pasangan kini ditulis di bawah satu kunci yang sama di semua jalur: kode yang sudah dibersihkan saat adopsi pemilik atau ganti kredensial tidak bisa bangkit lagi oleh balapan penulisan.
 - Penghapusan log audit kini ditulis ke cakram seketika (commit), jadi log yang sudah dihapus tidak bisa bangkit lagi bila proses mati sebelum tulisan asinkron selesai.

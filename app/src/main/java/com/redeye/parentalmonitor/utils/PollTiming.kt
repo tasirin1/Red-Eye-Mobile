@@ -27,7 +27,7 @@ object PollTiming {
     // >= 60 dtk, server boleh menahan jawaban sampai
     // 50 dtk — siklus sambung-ulang lebih jarang, modem
     // lebih jarang bangun (klien poll ber-readTimeout
-    // 300 dtk, jadi 50 dtk aman). Saat aktif tetap 30 dtk
+    // 60 dtk, jadi 50 dtk aman). Saat aktif tetap 30 dtk
     // agar putaran tak tertahan lama oleh tunggu server.
     fun longPollTimeoutSec(idleForMs: Long): Int {
         return if (idleForMs >= 60_000L) 50 else 30

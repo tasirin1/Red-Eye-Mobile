@@ -308,7 +308,10 @@ object TelegramPollClient {
         })
         .connectionPool(SharedNet.pool)
         .connectTimeout(15, TimeUnit.SECONDS)
-        .readTimeout(45, TimeUnit.SECONDS)
+                // readTimeout wajib melebihi tahan long-poll server
+        // terpanjang (50 dtk, PollTiming): 45 dtk lama memutus
+        // SETIAP getUpdates diam di tengah jalan (issue #1953).
+.readTimeout(60, TimeUnit.SECONDS)
         .writeTimeout(30, TimeUnit.SECONDS)
         // Ulangan koneksi bawaan SENGAJA dibiarkan di klien ini
         // (issue #1231): getUpdates adalah GET idempoten dan
