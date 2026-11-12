@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.695] - 2026-11-13
+
 ### Fixed
 
 - Tiga cabang formatResult kalkulator kini mempunyai cakupan uji: skala terpaksa nol, hasil polos yang membulat ke nol, dan luapan digit sesudah pembulatan (issue #2068).
