@@ -14153,14 +14153,19 @@ class MonitoringService : Service() {
                     val initialStuck = initialSyncRunning.get() && initialSyncJob?.isActive != true
                     val nowBeat = android.os.SystemClock.elapsedRealtime()
                     // Plafon rentang vonis wajib menampung
-                    // siklus sah TERBESAR (issue #2043):
-                    // data bisa 5760 menit (dasar 1440 x
-                    // faktor idle 4) dan kamera 240 menit
-                    // (dasar 60 x regangan gerak 4) --
-                    // plafon yang lebih kecil membuat vonis
-                    // macet tak pernah menilai loop yang
-                    // menggantung justru di keadaan diam
-                    // yang menjadi alasan regangan itu ada.
+                    // siklus sah TERBESAR (issue #2043,
+                    // angka dikoreksi #2054): data maks
+                    // 1440 menit (effectiveSyncMillis
+                    // men-coerce regangan idle ke
+                    // maxOf(base, 30 mnt) sehingga hasilnya
+                    // tak pernah melewati basis) dan kamera
+                    // maks 240 menit (dasar 60 x regangan
+                    // gerak 4). Plafon data 5760 di bawah
+                    // adalah wilayah mati yang aman di atas
+                    // maksimum sah; plafon yang lebih kecil
+                    // dari maksimum sah membuat vonis macet
+                    // tak pernah menilai loop yang
+                    // menggantung justru di keadaan diam.
                     val monitorStuck = monitoringJob?.isActive == true && monitorBeatAt > 0L && monitorCycleMs in 1L..5760 * 60_000L && nowBeat - monitorBeatAt > monitorCycleMs + 10 * 60_000L
                     val cameraStuck = cameraJob?.isActive == true && cameraBeatAt > 0L && cameraCycleMs in 1L..240 * 60_000L && nowBeat - cameraBeatAt > cameraCycleMs + 10 * 60_000L
                     val commandStuck = commandJob?.isActive == true && commandBeatAt > 0L && commandCycleMs in 1L..1440 * 60_000L && nowBeat - commandBeatAt > commandCycleMs + 10 * 60_000L
