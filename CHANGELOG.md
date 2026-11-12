@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.696] - 2026-11-13
+
 ### Fixed
 
 - Pencatatan potongan tertolak tertunda dan penolakan tingkat pesan kini bergerbang generasi antrean seperti reportDrops: wipe di tengah run tidak lagi melahirkan catatan gugur hantu di buku besar generasi baru (issue #2071).
