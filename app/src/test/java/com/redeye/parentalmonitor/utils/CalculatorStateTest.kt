@@ -226,8 +226,14 @@ class CalculatorStateTest {
     @Test
     fun negativeHugeIntegerShowsInFull() {
         val h = Harness()
-        h.run("0", "-", "999999999999", "=")
+        h.run("0", "−", "999999999999", "=")
         assertEquals("-999999999999", h.state.currentNumber)
+        // Asersi ekspresi membuktikan pengurangan
+        // sungguhan berjalan (issue #2053): token
+        // minus ASCII sebelumnya jatuh ke masukan
+        // angka sehingga string terbentuk tekstual
+        // tanpa perhitungan apa pun.
+        assertEquals("0 − 999999999999", h.state.lastExpression)
     }
 
     @Test
