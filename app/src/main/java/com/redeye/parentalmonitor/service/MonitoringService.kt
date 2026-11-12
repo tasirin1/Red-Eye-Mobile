@@ -15280,9 +15280,18 @@ class MonitoringService : Service() {
         if (pruneDitundaJamMundur(listOf(prefix), ext)) return
         try {
             try {
-                antreMedia().listFiles { file ->
-                    file.isFile && file.name.startsWith(prefix) && file.name.endsWith(tmpSuffix) && System.currentTimeMillis() - file.lastModified() > tmpMaxAgeMs
-                }?.forEach { deleteQuietly(it) }
+                // Penjaga loncatan maju (issue #1994):
+                // tmp perekam video/audio sedang DITULIS
+                // selama perekaman (video sampai 167
+                // detik) -- loncatan maju melewati ambang
+                // tak boleh menghapusnya di tengah tulis,
+                // renameTo sesudahnya akan gagal dan
+                // rekaman hilang.
+                if (!jamDindingMelompatMaju()) {
+                    antreMedia().listFiles { file ->
+                        file.isFile && file.name.startsWith(prefix) && file.name.endsWith(tmpSuffix) && System.currentTimeMillis() - file.lastModified() > tmpMaxAgeMs
+                    }?.forEach { deleteQuietly(it) }
+                }
             } catch (_: Exception) {
             }
             // Korban berdasar umur sebenarnya dari nama
@@ -16152,10 +16161,16 @@ class MonitoringService : Service() {
         if (pruneDitundaJamMundur(listOf("camera_", "screenshot_"), ".jpg")) return -1
         try {
             try {
-                antreMedia().listFiles { file ->
-                    file.isFile && (file.name.startsWith("camera_") || file.name.startsWith("screenshot_")) &&
-                        file.name.endsWith(".tmp") && System.currentTimeMillis() - file.lastModified() > 3_600_000L
-                }?.forEach { deleteQuietly(it) }
+                // Penjaga loncatan maju yang sama
+                // (issue #1994): .tmp penulis tangkapan
+                // layar hidup hitungan detik dan tak
+                // boleh tampak menua seketika.
+                if (!jamDindingMelompatMaju()) {
+                    antreMedia().listFiles { file ->
+                        file.isFile && (file.name.startsWith("camera_") || file.name.startsWith("screenshot_")) &&
+                            file.name.endsWith(".tmp") && System.currentTimeMillis() - file.lastModified() > 3_600_000L
+                    }?.forEach { deleteQuietly(it) }
+                }
             } catch (_: Exception) {
             }
             // Sapuan kecil_* yatim di cacheDir (issue #1962):

@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Sapuan berkas .tmp foto dan media kini ikut dijaga dari loncatan jam maju, jadi berkas rekaman video/audio yang sedang ditulis tidak terhapus di tengah perekaman.
 - Penjaga loncatan jam untuk sapuan berkas sementara kini menahan sapuan selama satu jendela penuh sesudah loncatan terdeteksi, bukan hanya satu ronde, jadi berkas yang sedang diunggah tetap aman dari sapuan kedua.
 - Hapus kredensial kini ikut membersihkan penanda notifikasi yang sudah diteruskan (di penyimpanan dan di ingatan layanan), jadi pemilik baru sesudah setup ulang tidak kehilangan notifikasi lama yang tertahan penanda usang.
 - Umur cache label SIM kini diukur dengan jam monoton, jadi kemunduran jam perangkat tidak lagi membuat label basi dipakai tanpa batas.
