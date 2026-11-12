@@ -1712,24 +1712,32 @@ class SetupActivity : AppCompatActivity() {
             // jalur Simpan, termasuk PIN pulihan cadangan.
             val storedPin = try { prefs.accessPin } catch (_: Exception) { "" }
             val accessPin = if (uiPin == STORED_MASK) restoreAccessPin(token, chatId, storedPin) else uiPin
+            // Owner ikut dari ikatan pulih (issue #2034,
+            // sibling #2016 untuk medan owner): dulu ekspor
+            // memasangkan owner tersimpan mentah, jadi
+            // kredensial hasil impor yang belum disimpan
+            // terpasang dengan owner perangkat saat itu
+            // (atau 0 = ikatan hilang) di berkas cadangan
+            // baru. Resolusi sama dengan jalur Simpan/Tes.
+            val owner = restoreOwnerOverride(token, chatId) ?: (try { prefs.ownerUserId } catch (_: Exception) { 0L })
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                 if (isFinishing || isDestroyed) return@withContext
                 if (token.isEmpty() || chatId.isEmpty()) {
                     Toast.makeText(this@SetupActivity, getString(R.string.backup_empty), Toast.LENGTH_LONG).show()
                     return@withContext
                 }
-                verifyStoredAccessPin { askBackupPin(token, chatId, interval, camInterval, accessPin) }
+                verifyStoredAccessPin { askBackupPin(token, chatId, interval, camInterval, accessPin, owner) }
             }
         }
     }
 
-    private fun askBackupPin(token: String, chatId: String, interval: Int, camInterval: Int, accessPin: String) {
+    private fun askBackupPin(token: String, chatId: String, interval: Int, camInterval: Int, accessPin: String, owner: Long) {
                 askPin(getString(R.string.backup_pin_title), true) { pin ->
                     if (pin == null) return@askPin
                     lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
                         val blob = try {
                             com.redeye.parentalmonitor.utils.SettingsBackup.export(
-                                token, chatId, interval, camInterval, try { prefs.ownerUserId } catch (_: Exception) { 0L }, accessPin, pin
+                                token, chatId, interval, camInterval, owner, accessPin, pin
                             )
                         } catch (_: Exception) {
                             null

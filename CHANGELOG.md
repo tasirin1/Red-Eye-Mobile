@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Membuat cadangan kini memasangkan owner dari ikatan pulih impor yang belum disimpan, sama seperti token, chat, dan PIN aksesnya: sebelumnya owner selalu diambil mentah dari simpanan perangkat, jadi berkas cadangan hasil impor memasangkan kredensial baru dengan owner lama (atau tanpa owner sama sekali), dan owner basi itulah yang menjadi pemilik bot bila berkas itu kelak dipulihkan dan disimpan (issue #2034).
+
 ## [1.6.689] - 2026-11-12
 
 ### Fixed
