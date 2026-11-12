@@ -2047,7 +2047,7 @@ class PreferencesManager(context: Context) {
     // penjaga generasi dinolkan di kunci yang sama,
     // agar potret sah berikutnya dari layanan yang
     // masih berjalan tidak tertolak sebagai basi.
-    fun clearForwardedMarkersSync(): Boolean {
+    fun clearForwardedMarkersSync(generasiLantai: Long): Boolean {
         synchronized(prefsRmwLock) {
             val ok = try {
                 sharedPreferences.edit()
@@ -2057,7 +2057,17 @@ class PreferencesManager(context: Context) {
             } catch (_: Exception) {
                 false
             }
-            if (ok) generasiPenandaTertulis = -1L
+            // Penjaga NAIK ke lantai generasi pasca-bersih,
+            // BUKAN dinolkan (issue #1999): potret basi
+            // yang terlanjur terbang sebelum wipe membawa
+            // generasi di bawah lantai ini dan tertolak;
+            // menolkan penjaga justru menerimanya lagi,
+            // dan kematian proses di jendela sebelum job
+            // menimpa dengan potret kosong membuatnya
+            // menetap.
+            if (ok && generasiLantai > generasiPenandaTertulis) {
+                generasiPenandaTertulis = generasiLantai
+            }
             return ok
         }
     }

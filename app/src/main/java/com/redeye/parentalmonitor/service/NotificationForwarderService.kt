@@ -327,6 +327,7 @@ class NotificationForwarderService : NotificationListenerService() {
         // kosong pada putaran berikutnya (konvergen).
         fun clearForwardedMarkers(prefs: PreferencesManager) {
             val inst = activeInstance
+            var genLantai = generasiPenanda.get()
             if (inst != null) {
                 synchronized(inst.groupForwarded) {
                     synchronized(inst.forwardedIds) {
@@ -334,11 +335,17 @@ class NotificationForwarderService : NotificationListenerService() {
                         inst.forwardedIds.clear()
                         inst.groupForwardedView = emptyMap()
                         inst.forwardedIdsView = emptySet()
-                        generasiPenanda.incrementAndGet()
+                        genLantai = generasiPenanda.incrementAndGet()
                     }
                 }
+            } else {
+                genLantai = generasiPenanda.incrementAndGet()
             }
-            try { prefs.clearForwardedMarkersSync() } catch (_: Exception) { }
+            // Lantai generasi diteruskan ke PM (issue
+            // #1999) agar potret pra-wipe yang terlanjur
+            // terbang tertolak penjaga, bukan diterima
+            // lagi sesudah kunci terhapus.
+            try { prefs.clearForwardedMarkersSync(genLantai) } catch (_: Exception) { }
         }
     }
 
