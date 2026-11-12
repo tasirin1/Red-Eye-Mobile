@@ -1496,9 +1496,13 @@ class PreferencesManager(context: Context) {
     val liveTestStartedElapsed: Long
         get() = prefLong(KEY_LIVE_TEST_STARTED_ELAPSED, 0L)
 
+    // commit (issue #1980): label pemicu adalah bagian
+    // keadaan uji anti-mati yang dibaca vonis sesudah
+    // bangkit -- pasangan begin/clear-nya sudah commit
+    // oleh #1970, label ini tertinggal.
     var liveTestByAlarm: Boolean
         get() = prefBoolean(KEY_LIVE_TEST_BY_ALARM, false)
-        set(value) = sharedPreferences.edit().putBoolean(KEY_LIVE_TEST_BY_ALARM, value).apply()
+        set(value) = sharedPreferences.edit().putBoolean(KEY_LIVE_TEST_BY_ALARM, value).commit()
 
     // Pasangan dinding cap mulai uji (issue #1020): deteksi
     // reboot tak lagi hanya dari elapsed — uji yang dimulai
