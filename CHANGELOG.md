@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.689] - 2026-11-12
+
 ### Fixed
 - Digest harian dan laporan mingguan tidak lagi menghitung panggilan yang ditolak atau diblokir sebagai aktivitas: daftar kontak teratas, jam tersibuk, dan hitungan begadang mingguan kini mengecualikan jenis panggilan itu sama seperti penghitung frekuensi dan peringatan begadang, karena sebelumnya nomor spam yang berulang kali terblokir bisa menduduki daftar teratas dan menaikkan angka begadang tanpa ada interaksi apa pun dari anak (issue #2033).
 - Jangkar uji glitch pagar tidak lagi bisa sobek oleh panggilan serentak: pembacaan uji kewajaran lompatan dan pembaruan jangkarnya kini berjalan dalam satu ruas berkunci yang sama dengan state pagar lain, karena sebelumnya tiga nilai jangkar dibaca dan ditulis berurutan tanpa kunci dari beberapa coroutine sekaligus sehingga bisa tercampur menjadi titik gabungan dua fix berbeda dengan cap waktu yang mundur (issue #2032).
