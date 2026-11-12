@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Tombol Segarkan pada laporan kini memberi hasil yang terlihat: bila pengeditan pesan ditolak gerbang edit atau jaringan, laporan yang sama dikirim sebagai pesan baru (meniru cabang menu utama) — tidak lagi gagal diam-diam (issue #1937).
 - /digest tidak lagi berjalan di jalur laporan baca-saja: jalurnya menulis fakta harian ke penyimpanan, jadi ia keluar dari QUERY_COMMANDS dan berjalan di commandLock seperti perintah berat lainnya (issue #1936).
 - Keluar mode aman lewat /resume kini jujur: nilai balik penyalaan ulang loop dibaca — bila penjaga restart 10 detik menahannya, pesan menyebut pengawas akan menyalakan loop dalam beberapa menit, bukan lagi mengklaim loop sudah jalan padahal monitoring mati diam-diam (issue #1935).
 - Reset penyimpanan kini ikut membuang cermin log audit di ingatan, simetris dengan cermin aplikasi dikenal: tanpa itu, penulisan audit berikutnya membangkitkan s.d. 50 baris log pra-reset ke penyimpanan baru (issue #1934, regresi dari #1929).

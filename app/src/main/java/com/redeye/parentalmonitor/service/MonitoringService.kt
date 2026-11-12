@@ -3971,7 +3971,15 @@ class MonitoringService : Service() {
                     "storage" -> storageReportText()
                     else -> null
                 }
-                if (teks != null) editTextMessage(targetChat, pesanId, teks, markupSegarkan(aksi.command))
+                if (teks != null) {
+                    // Edit gagal (gerbang edit/gangguan) tidak
+                    // boleh diam: jatuh ke pesan baru seperti
+                    // cabang Navigate (issue #1937).
+                    val markup = markupSegarkan(aksi.command)
+                    if (!editTextMessage(targetChat, pesanId, teks, markup)) {
+                        sendToTelegram(teks, markup)
+                    }
+                }
             }
             return
         }
