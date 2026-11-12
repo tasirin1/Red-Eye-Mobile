@@ -290,6 +290,10 @@ class PreferencesManager(context: Context) {
         // dan penulisan berikutnya membangkitkan himpunan lama
         // ke prefs baru (issue #1047).
         synchronized(a11yKnownAppsLock) { knownAppsMirror = null }
+        // Cermin log audit (#1929) sama nasibnya: tanpa dibuang,
+        // append berikutnya membangkitkan baris pra-reset ke
+        // prefs baru (issue #1934).
+        synchronized(auditLock) { auditMirror = null }
         synchronized(listenerLock) {
             for (l in listenerSet) {
                 try { opened.first.registerOnSharedPreferenceChangeListener(l) } catch (_: Exception) { }

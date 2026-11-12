@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Reset penyimpanan kini ikut membuang cermin log audit di ingatan, simetris dengan cermin aplikasi dikenal: tanpa itu, penulisan audit berikutnya membangkitkan s.d. 50 baris log pra-reset ke penyimpanan baru (issue #1934, regresi dari #1929).
 - /checkdead tidak lagi salah kelas sebagai perintah laporan baca-saja: handlernya menghentikan layanan untuk uji anti-mati, jadi ia dipindah ke jalur kendali (controlLock) bersama /stop dan /restart — bukan lagi di queryLock yang dikontrakkan tanpa efek perangkat (issue #1933).
 
 ## [1.6.679] - 2026-11-12
