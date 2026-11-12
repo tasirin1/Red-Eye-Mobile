@@ -93,7 +93,13 @@ class CursorAdvanceTest {
             }
             val utama = rows.filter { it.second > dateCursor || (it.second == dateCursor && it.first > idCursor) }
                 .sortedWith(compareBy({ it.second }, { it.first })).take(100)
-            val calon = rows.filter { it.first > idMax }
+            // Calon sapuan disaring tanggal kursor
+            // SEBELUM batas 100 (issue #2044), meniru
+            // seleksi SQL produksi pasca-#2026 -- tanpa
+            // saringan ini jendela calon model lebih
+            // sempit dari produksi dan baris terlambat
+            // di posisi calon ke-101+ hilang dari model.
+            val calon = rows.filter { it.first > idMax && it.second < dateCursor }
                 .sortedBy { it.first }.take(100)
             val telat = calon.filter { CursorAdvance.terlambat(it.first, it.second, dateCursor, idMax, Long.MAX_VALUE) }
             val page = if (telat.isEmpty()) utama else (telat + utama).sortedWith(compareBy({ it.second }, { it.first }))
@@ -155,7 +161,7 @@ class CursorAdvanceTest {
             tanggal <= batas && (tanggal > tanggalKursor || (tanggal == tanggalKursor && id > idKursor))
         }
         if (idMaxKursor <= 0L) return keyset
-        val calon = baris.filter { (id, tanggal) -> id > idMaxKursor && tanggal <= batas }.sortedBy { it.first }.take(100)
+        val calon = baris.filter { (id, tanggal) -> id > idMaxKursor && tanggal < tanggalKursor && tanggal <= batas }.sortedBy { it.first }.take(100)
         val sapuan = calon.filter { (id, tanggal) ->
             CursorAdvance.terlambat(id, tanggal, tanggalKursor, idMaxKursor, batas)
         }
@@ -227,7 +233,7 @@ class CursorAdvanceTest {
             putaran++
             val utama = baris.filter { it.second > dateCursor || (it.second == dateCursor && it.first > idCursor) }
                 .sortedWith(compareBy({ it.second }, { it.first })).take(100)
-            val calon = baris.filter { it.first > terpersist }
+            val calon = baris.filter { it.first > terpersist && it.second < dateCursor }
                 .sortedBy { it.first }.take(100)
             val telat = calon.filter { CursorAdvance.terlambat(it.first, it.second, dateCursor, terpersist, Long.MAX_VALUE) }
             val page = if (telat.isEmpty()) utama else (telat + utama).sortedWith(compareBy({ it.second }, { it.first }))
@@ -320,6 +326,30 @@ class CursorAdvanceTest {
             idMax0 = 10L
         )
         assertEquals(listOf(11L to 1000L), terkonsumsi)
+    }
+
+    @Test
+    fun sisipanTerlambatDiLuarJendelaCalonTetapTerkirim() {
+        // Regresi #2044/#2026: 150 baris keyset plus satu
+        // baris terlambat (201, 900). Halaman pertama
+        // memuat baris ber-id 250 sehingga jangkar
+        // melompat melewati 201 -- dengan jendela calon
+        // pra-#2026 (100 calon pertama tanpa saringan
+        // tanggal) baris terlambat itu hilang dari
+        // model; produksi menyaring DATE < tanggal
+        // kursor di dalam SQL sehingga ia terkirim.
+        val baris = mutableListOf(250L to 1001L, 201L to 900L)
+        for (id in 51L..199L) baris.add(id to (1001L + (id - 50L)))
+        val terkonsumsi = konsumsiSapuan(
+            barisAwal = baris,
+            sisipan = emptyList(),
+            idCursor0 = 50L,
+            dateCursor0 = 1000L,
+            idMax0 = 50L
+        )
+        assertEquals(151, terkonsumsi.size)
+        assertEquals(terkonsumsi.size, terkonsumsi.distinct().size)
+        assertTrue(terkonsumsi.contains(201L to 900L))
     }
 
     @Test
