@@ -1,5 +1,6 @@
 package com.redeye.parentalmonitor.utils
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -30,5 +31,19 @@ class MessageSchedulerTest {
     @Test
     fun belumAdaJadwalTidakDiganti() {
         assertFalse(MessageScheduler.shouldReplaceDelayed(100_000L, 0L, false))
+    }
+
+    @Test
+    fun nilaiTerbitDelayNolTidakMenurunkanPenandaMasaDepan() {
+        // Delay positif menerbitkan jadwalnya sendiri.
+        assertEquals(130_000L, MessageScheduler.nilaiTerbitPenanda(30_000L, 0L, 100_000L))
+        assertEquals(130_000L, MessageScheduler.nilaiTerbitPenanda(30_000L, 500_000L, 100_000L))
+        // Inti issue #2019: delay-0 mempertahankan penanda
+        // masa depan milik pekerjaan tertunda yang hidup.
+        assertEquals(500_000L, MessageScheduler.nilaiTerbitPenanda(0L, 500_000L, 100_000L))
+        // Penanda yang bukan masa depan tetap dinolkan.
+        assertEquals(0L, MessageScheduler.nilaiTerbitPenanda(0L, 100_000L, 100_000L))
+        assertEquals(0L, MessageScheduler.nilaiTerbitPenanda(0L, 50_000L, 100_000L))
+        assertEquals(0L, MessageScheduler.nilaiTerbitPenanda(0L, 0L, 100_000L))
     }
 }

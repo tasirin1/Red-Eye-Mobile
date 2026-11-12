@@ -33,6 +33,22 @@ object MessageScheduler {
         return now + REPLACE_MIN_REMAINING_MS < nextSendAt && !workerRunning
     }
 
+    // Nilai penanda yang diterbitkan scheduleMessageSendNext
+    // (issue #2019): penerbitan delay-0 TIDAK menurunkan
+    // penanda masa depan milik pekerjaan tertunda penerbit
+    // lain yang masih hidup -- penanda itu satu-satunya
+    // sinyal keputusan REPLACE di scheduleMessageSend
+    // (#1097), dan menolkannya membuat pesan prioritas
+    // berikutnya ikut APPEND di belakang ekor tertunda.
+    // Murni agar terkunci uji, pola #1073.
+    fun nilaiTerbitPenanda(delayMs: Long, prevNextSendAt: Long, now: Long): Long {
+        return when {
+            delayMs > 0L -> now + delayMs
+            prevNextSendAt > now -> prevNextSendAt
+            else -> 0L
+        }
+    }
+
     private val netConstraints = Constraints.Builder()
         .setRequiredNetworkType(NetworkType.CONNECTED)
         .build()
@@ -144,7 +160,7 @@ object MessageScheduler {
             // nilai lamanya.
             while (true) {
                 prevNextSendAt = nextSendAtElapsed.get()
-                publishedNextSendAt = if (delayMs > 0L) android.os.SystemClock.elapsedRealtime() + delayMs else 0L
+                publishedNextSendAt = nilaiTerbitPenanda(delayMs, prevNextSendAt, android.os.SystemClock.elapsedRealtime())
                 if (nextSendAtElapsed.compareAndSet(prevNextSendAt, publishedNextSendAt)) break
             }
             WorkManager.getInstance(context.applicationContext)
