@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Potongan pesan yang ditolak kini tercatat pada saat kemajuan pengiriman tersimpan melewatinya: sebelumnya potongan tertolak sebelum potongan terkirim terlewati permanen oleh penanda kemajuan, sehingga run lanjutan tidak pernah mencoba maupun menghitungnya (issue #2049).
 - Potongan pesan yang ditolak kini tercatat juga bila pengiriman berhenti karena batas laju atau gagal autentikasi sesudah sisa pesan terantre: sebelumnya pencatatan hanya berjalan pada vonis terkirim, padahal pada sub-jalur itu pesan asal sudah dihapus sehingga potongan tertolak hilang tanpa catatan (issue #2048).
 - Potongan pesan panjang yang ditolak kini tercatat juga bila pengiriman berakhir lewat jalan keluar dini (kredensial diganti di tengah pesan, tenggat run tercapai, atau pekerjaan dibatalkan): sebelumnya pencatatan hanya berjalan di akhir fungsi, sehingga jalan keluar tersebut membuang catatan potongan yang sudah tertolak (issue #2047).
 - Mode aman anti crash-loop tidak lagi bisa ditembus perintah biasa: sebelumnya /night, aksi ping foto, dan perubahan preferensi dapat menyalakan ulang loop kamera/patroli di tengah mode aman (jalur restart per-loop tidak punya gerbang yang dimiliki jalur restart penuh), sehingga crash-loop dapat berlanjut sementara status tetap menampilkan mode aman; kini kedua jalur restart itu menolak selama mode aman aktif (issue #2046).

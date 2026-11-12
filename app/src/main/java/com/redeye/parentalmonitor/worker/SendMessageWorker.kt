@@ -804,7 +804,25 @@ class SendMessageWorker(
             when (val outcome = sendSingleChunk(part, botToken, chatId)) {
                 is SendOutcome.Sent -> {
                     noteSendOk()
-                    try { if (origId != null) messageQueue.noteChunkProgress(origId, idx + 1) } catch (_: Exception) { }
+                    var kemajuanTersimpan = false
+                    try {
+                        if (origId != null) {
+                            messageQueue.noteChunkProgress(origId, idx + 1)
+                            kemajuanTersimpan = true
+                        }
+                    } catch (_: Exception) {
+                    }
+                    // Kemajuan tersimpan yang melewati
+                    // potongan tertolak membuatnya hilang
+                    // permanen (issue #2049): run lanjutan
+                    // mulai sesudahnya dan penghitung lokal
+                    // run itu mulai dari nol. Catat sekarang
+                    // dan nolkan agar jalan keluar pada run
+                    // ini tidak mencatat ulang.
+                    if (kemajuanTersimpan && rejected > 0) {
+                        catatPotonganTertolak(rejected)
+                        rejected = 0
+                    }
                     try {
                         delay(500)
                     } catch (e: kotlinx.coroutines.CancellationException) {
