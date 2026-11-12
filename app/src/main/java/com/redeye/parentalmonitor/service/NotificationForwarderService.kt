@@ -322,9 +322,12 @@ class NotificationForwarderService : NotificationListenerService() {
         // resetDropCounters: peta instance yang hidup
         // dikosongkan langsung di bawah kuncinya, lalu
         // kunci preferensi dibuang. Potret job persist
-        // yang terlanjur terbang membawa isi lama,
-        // tetapi job yang sama menimpa dengan potret
-        // kosong pada putaran berikutnya (konvergen).
+        // yang terlanjur terbang membawa isi lama kini
+        // TERTOLAK oleh lantai generasi di
+        // PreferencesManager (issue #1999) — bukan lagi
+        // mengandalkan konvergensi potret kosong;
+        // potret putaran berikutnya menulis normal pada
+        // generasi >= lantai.
         fun clearForwardedMarkers(prefs: PreferencesManager) {
             val inst = activeInstance
             var genLantai = generasiPenanda.get()

@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Komentar doktrin penjaga generasi penanda sesudah penghapusan penanda kini menyatakan perilaku yang benar (penjaga naik ke lantai generasi, bukan dinolkan), agar edit di masa depan tidak mengembalikan perilaku lama yang sudah dibalik.
 - Cabang pembatalan pengiriman batch notifikasi kini menguraikan bidang penanda gabungan hasil antre-ulang saat menandai, sehingga segmen gabungan yang dibatalkan di tengah jalan tetap menandai tiap notifikasi penyusunnya dan tidak memicu duplikat saat pindai ulang.
 - Penghapusan daftar aplikasi dikenal saat menghapus kredensial kini menolkan cermin himpunannya di memori juga, sehingga daftar pra-hapus tidak lagi ditulis balik oleh penyemaian pada start berikutnya.
 

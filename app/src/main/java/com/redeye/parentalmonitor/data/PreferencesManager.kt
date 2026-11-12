@@ -2055,9 +2055,12 @@ class PreferencesManager(context: Context) {
 
     // Pembersihan penanda untuk wipe (issue #1992):
     // kedua kunci dibuang dalam satu commit dan
-    // penjaga generasi dinolkan di kunci yang sama,
-    // agar potret sah berikutnya dari layanan yang
-    // masih berjalan tidak tertolak sebagai basi.
+    // penjaga generasi NAIK ke lantai generasi yang
+    // diteruskan pemanggil di kunci yang sama (issue
+    // #1999, BUKAN dinolkan): potret pra-wipe yang
+    // terlanjur terbang tertolak sebagai basi,
+    // sedangkan potret sah berikutnya (generasi >=
+    // lantai) tetap diterima.
     fun clearForwardedMarkersSync(generasiLantai: Long): Boolean {
         synchronized(prefsRmwLock) {
             val ok = try {
