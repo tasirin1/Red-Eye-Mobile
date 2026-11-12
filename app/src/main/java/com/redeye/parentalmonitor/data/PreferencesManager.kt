@@ -2188,31 +2188,39 @@ class PreferencesManager(context: Context) {
         // pengawasan era lama. Daftar dikenal dibangun
         // ulang dari keadaan perangkat pada pemakaian
         // berikutnya.
-        return try {
-            val ok = sharedPreferences.edit()
-                .remove(KEY_A11Y_APP_WATCH_PACKAGES)
-                .remove(KEY_A11Y_APP_WATCH)
-                .remove(KEY_A11Y_APP_ALERT)
-                .remove(KEY_A11Y_TAMPER)
-                .remove(KEY_A11Y_KNOWN_APPS)
-                .remove(KEY_A11Y_KNOWN_SEEDED)
-                .commit()
-            // Cermin himpunan aplikasi dikenal wajib ikut
-            // dinolkan (issue #2009): tanpa ini
-            // knownAppsLocked terus menyajikan himpunan
-            // pra-wipe, dan penulis berikutnya (seed pada
-            // start sesudah flag seeded ikut terhapus)
-            // menulis seluruh himpunan cermin itu balik ke
-            // preferensi — penghapusan di atas batal
-            // senyap. commit() menerapkan edit ke peta
-            // in-memory sebelum melaporkan hasil cakram,
-            // jadi cermin dinolkan apa pun nilai ok —
-            // doktrin yang sama dengan penolan cermin di
-            // jalur ganti store dan reopenStorageLocked.
-            synchronized(a11yKnownAppsLock) { knownAppsMirror = null }
-            ok
-        } catch (_: Exception) {
-            false
+        // Seluruh badan memegang a11yKnownAppsLock
+        // (issue #2013): tanpa itu penulis known-apps
+        // yang sudah membaca cermin pra-wipe bisa
+        // mendaratkan commit-nya sesudah commit
+        // penghapusan ini dan menulis balik seluruh
+        // himpunan -- serial terhadap keempat penulis.
+        return synchronized(a11yKnownAppsLock) {
+            try {
+                val ok = sharedPreferences.edit()
+                    .remove(KEY_A11Y_APP_WATCH_PACKAGES)
+                    .remove(KEY_A11Y_APP_WATCH)
+                    .remove(KEY_A11Y_APP_ALERT)
+                    .remove(KEY_A11Y_TAMPER)
+                    .remove(KEY_A11Y_KNOWN_APPS)
+                    .remove(KEY_A11Y_KNOWN_SEEDED)
+                    .commit()
+                // Cermin himpunan aplikasi dikenal wajib ikut
+                // dinolkan (issue #2009): tanpa ini
+                // knownAppsLocked terus menyajikan himpunan
+                // pra-wipe, dan penulis berikutnya (seed pada
+                // start sesudah flag seeded ikut terhapus)
+                // menulis seluruh himpunan cermin itu balik ke
+                // preferensi — penghapusan di atas batal
+                // senyap. commit() menerapkan edit ke peta
+                // in-memory sebelum melaporkan hasil cakram,
+                // jadi cermin dinolkan apa pun nilai ok —
+                // doktrin yang sama dengan penolan cermin di
+                // jalur ganti store dan reopenStorageLocked.
+                knownAppsMirror = null
+                ok
+            } catch (_: Exception) {
+                false
+            }
         }
     }
 

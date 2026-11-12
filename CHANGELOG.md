@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Penghapusan target pantau aksesibilitas saat menghapus kredensial kini memegang kunci himpunan aplikasi dikenal selama seluruh proses, sehingga penulis daftar dikenal yang berjalan bersamaan tidak lagi bisa menulis balik daftar lama sesudah penghapusan.
 - Panggilan berdurasi panjang yang catatan lognya baru tersisip sesudah panggilan berakhir kini tetap terkirim: siklus sinkron menyapu baris ber-id baru bertanggal di bawah kursor (tanggal mulai panggilan) yang sebelumnya terlewat permanen oleh kursor keyset.
 
 ## [1.6.686] - 2026-11-12
