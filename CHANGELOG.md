@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Bitmap foto yang didekode untuk salinan kecil kini langsung dicatat untuk dibersihkan: bila penskalaan kehabisan memori, bitmap besar itu tetap dibebaskan, tidak menggantung.
 - Laporan /alertness tidak lagi menghitung agregat pemakaian 24 jam yang tidak pernah dibacanya; perhitungan itu kini hanya berjalan untuk laporan yang benar-benar memakainya.
 - Long-poll perintah kini benar-benar ditahan server sampai 50 detik saat HP diam: batas baca klien poll dinaikkan ke 60 detik (sebelumnya 45 detik memutus setiap putaran diam, membuat HP lebih sering bangun dari rancangan hemat baterainya).
 - Label SIM pada laporan panggilan tidak lagi terkunci kosong bila daftar SIM terbaca kosong sesaat sesudah boot; pembacaan berikutnya mencoba lagi sampai SIM terbaca.

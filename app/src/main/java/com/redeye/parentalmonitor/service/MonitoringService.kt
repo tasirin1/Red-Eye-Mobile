@@ -15677,6 +15677,11 @@ class MonitoringService : Service() {
             while (maxOf(opsi.outWidth, opsi.outHeight) / (sampel * 2) >= 1280) sampel *= 2
             val opsi2 = android.graphics.BitmapFactory.Options().apply { inSampleSize = sampel }
             var bmp = android.graphics.BitmapFactory.decodeFile(sumber.absolutePath, opsi2) ?: return null
+            // Tetapkan ke bitmap penjaga SEKARANG (issue #1955):
+            // bila penskalaan melempar Error (mis. OOM, tak
+            // tertangkap catch Exception), finally tetap
+            // me-recycle bitmap dekode ini.
+            bitmap = bmp
             val sisi = maxOf(bmp.width, bmp.height)
             if (sisi > 1280) {
                 val skala = 1280f / sisi
@@ -15684,9 +15689,9 @@ class MonitoringService : Service() {
                 if (kecil !== bmp) {
                     try { bmp.recycle() } catch (_: Exception) { }
                     bmp = kecil
+                    bitmap = kecil
                 }
             }
-            bitmap = bmp
             val tujuan = File(cacheDir, "kecil_" + sumber.name)
             tujuanRef = tujuan
             val ok = java.io.FileOutputStream(tujuan).use { bmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 80, it) }
