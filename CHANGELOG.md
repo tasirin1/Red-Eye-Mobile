@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Tautan penautan tidak lagi sesekali memicu perintah "simpan dulu" yang palsu tepat saat layar selesai memuat: sebelumnya teks kolom ditangkap sebelum pemeriksaan selesai-muat di dalam pekerjaannya, sehingga nilai kosong pra-muat bisa terbawa walau muat sudah selesai (issue #2052).
 - Pencarian riwayat nomor lewat jalur pindai halaman tidak lagi menandai hasil sebagai terpotong bila jumlah kecocokan persis sebesar batas tampil dan pindai sudah tuntas: sebelumnya pemeriksaan batas berjalan sebelum pemeriksaan tuntas-halaman, sehingga total tepat-limit pada halaman terakhir selalu berlabel terpotong (issue #2051).
 - Notifikasi yang gagal diselamatkan ke antre pada jalur penyelamatan batch layanan penerus kini tercatat sebagai terbuang: sebelumnya ketiga jalur penyelamatan memakai hasil antre biner yang menghapus beda antara item yang tereviksi (sudah terhitung) dan yang gagal total (belum terhitung di mana pun), sehingga kegagalan pada momen proses sekarat hilang tanpa catatan (issue #2050).
 - Potongan pesan yang ditolak kini tercatat pada saat kemajuan pengiriman tersimpan melewatinya: sebelumnya potongan tertolak sebelum potongan terkirim terlewati permanen oleh penanda kemajuan, sehingga run lanjutan tidak pernah mencoba maupun menghitungnya (issue #2049).

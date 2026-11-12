@@ -1360,9 +1360,6 @@ class SetupActivity : AppCompatActivity() {
         // invokeOnCompletion agar semua jalan keluar blok
         // launch (banyak return@launch) ikut terliput.
         if (!pairingLinkBusy.compareAndSet(false, true)) return
-        val rawToken = botTokenInput.text?.toString()?.trim().orEmpty()
-        val rawChat = chatIdInput.text?.toString()?.trim().orEmpty()
-        val rawAccessPin = accessPinInput.text?.toString()?.trim().orEmpty()
         val pairingJob = lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
             if (!fieldsLoaded) {
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
@@ -1370,6 +1367,22 @@ class SetupActivity : AppCompatActivity() {
                 }
                 return@launch
             }
+            // Tangkapan kolom SESUDAH gerbang muat
+            // (issue #2052): menangkap sebelum gerbang
+            // membuat nilai pra-muat (kosong) ikut lolos
+            // bila muat selesai di antaranya, memicu
+            // toast simpan-dulu palsu. Dibaca lewat utas
+            // utama karena kolom adalah View.
+            val tangkapan = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                Triple(
+                    botTokenInput.text?.toString()?.trim().orEmpty(),
+                    chatIdInput.text?.toString()?.trim().orEmpty(),
+                    accessPinInput.text?.toString()?.trim().orEmpty()
+                )
+            }
+            val rawToken = tangkapan.first
+            val rawChat = tangkapan.second
+            val rawAccessPin = tangkapan.third
             val token = if (rawToken == STORED_MASK) {
                 try { prefs.botToken } catch (_: Exception) { "" }
             } else rawToken
