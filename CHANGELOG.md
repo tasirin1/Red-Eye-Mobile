@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Penanda notifikasi yang diselamatkan saat layanan notifikasi berhenti kini ditulis ke cakram saat itu juga, jadi notifikasi yang sama tidak diteruskan ulang sesudah layanan tersambung lagi.
 - Balasan /recover kini jujur saat mode aman aktif: loop berat dilaporkan masih ditahan mode aman, bukan diklaim sudah dihidupkan ulang.
 - Aksi menyalakan ulang loop dari /ping kini menilai kesegaran perintah (maks 300 detik) seperti perintah mutasi lain; balasan Pong tetap selalu dijawab.
 - Perintah /recover kini berjalan di jalur kontrol: pemulihan menyeluruh tidak lagi mengantre di belakang perintah umum yang panjang, terutama saat layanan sedang macet.

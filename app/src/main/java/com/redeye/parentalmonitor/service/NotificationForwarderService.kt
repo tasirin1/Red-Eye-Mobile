@@ -756,6 +756,18 @@ class NotificationForwarderService : NotificationListenerService() {
     // checkpoint #946). Saat job dibatalkan, satu
     // tulisan akhir dicoba dulu (pola
     // persistDropCountFinal).
+    // Tulisan penanda satu kali secara sinkron (issue #1949):
+    // dipakai penangan pembatalan job persist dan onDestroy --
+    // di kedua tempat scope sudah mati, jadi jalur asinkron
+    // tak bisa diandalkan.
+    private fun persistPenandaSinkron() {
+        try {
+            val p = groupForwardedView.entries.map { it.key + ":" + it.value } to forwardedIdsView.toList()
+            (prefsRef ?: PreferencesManager.getInstance(this@NotificationForwarderService)).setForwardedMarkersSync(p.first, p.second)
+        } catch (_: Exception) {
+        }
+    }
+
     private fun jadwalkanPersistPenanda() {
         synchronized(markerPersistLock) {
             if (markerPersistJob?.isActive == true) return
@@ -799,11 +811,7 @@ class NotificationForwarderService : NotificationListenerService() {
                         delay(250L)
                     }
                 } catch (e: kotlinx.coroutines.CancellationException) {
-                    try {
-                        val p = groupForwardedView.entries.map { it.key + ":" + it.value } to forwardedIdsView.toList()
-                        (prefsRef ?: PreferencesManager.getInstance(this@NotificationForwarderService)).setForwardedMarkersSync(p.first, p.second)
-                    } catch (_: Exception) {
-                    }
+                    persistPenandaSinkron()
                     synchronized(markerPersistLock) {
                         if (markerPersistJob == coroutineContext[Job]) markerPersistJob = null
                     }
@@ -1341,6 +1349,12 @@ class NotificationForwarderService : NotificationListenerService() {
             salvageBatch()
         } catch (_: Exception) {
         }
+        // Penanda yang dibuat salvage di atas wajib mencapai
+        // cakram sekarang (issue #1949): scope sudah dibatalkan,
+        // jadi job persist asinkron tak akan pernah jalan dan
+        // notifikasi hasil salvage akan diteruskan ulang
+        // sesudah listener tersambung lagi.
+        try { persistPenandaSinkron() } catch (_: Exception) { }
         try { wakeJob?.cancel() } catch (_: Exception) { }
         try { rebindHandler.removeCallbacks(rebindRunnable) } catch (_: Exception) { }
         try { fwdCredsListener?.let { prefsRef?.unregisterChangeListener(it) } } catch (_: Exception) { }
