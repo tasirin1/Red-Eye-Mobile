@@ -1680,7 +1680,7 @@ class NotificationForwarderService : NotificationListenerService() {
                     splitRest = null
                     splitHash = ""
                     splitGroup = ""
-                    if (splitDelivered) markMarkersForwarded(listOf(item.third), listOf(item.second))
+                    if (splitDelivered) markMarkersForwarded(item.third.split(PEMISAH_PENANDA).filter { it.isNotEmpty() }, item.second.split(PEMISAH_PENANDA).filter { it.isNotEmpty() })
                     synchronized(batchLock) { flushInFlight = items.drop(index) }
                     continue
                 }
@@ -1688,8 +1688,14 @@ class NotificationForwarderService : NotificationListenerService() {
                 if (curCount > 0) cur.append("\n\n")
                 cur.append(msg)
                 curCount++
-                if (item.second.isNotEmpty()) curHashes.add(item.second)
-                if (item.third.isNotEmpty()) curGroups.add(item.third)
+                // Bidang penanda bisa berisi gabungan
+                // PEMISAH_PENANDA (bekuan segmen gabungan,
+                // issue #2001) -- urai kembali menjadi
+                // entri tunggal agar penandaan berhasil
+                // per penyusun; item biasa tak berubah
+                // karena bidangnya tak mengandung pemisah.
+                if (item.second.isNotEmpty()) curHashes.addAll(item.second.split(PEMISAH_PENANDA).filter { it.isNotEmpty() })
+                if (item.third.isNotEmpty()) curGroups.addAll(item.third.split(PEMISAH_PENANDA).filter { it.isNotEmpty() })
                 currentCovered = true
                 synchronized(batchLock) {
                     val sisa = items.drop(index)
@@ -1788,10 +1794,17 @@ class NotificationForwarderService : NotificationListenerService() {
                     val curItem = currentItem
                     if (curItem != null && !currentCovered) batchBuf.addFirst(curItem)
                     if (curCount > 0) {
-                        val onlyHash = if (curHashes.size == 1) curHashes[0] else ""
-                        val distinctGroups = curGroups.distinct()
-                        val onlyGroup = if (distinctGroups.size == 1) distinctGroups[0] else ""
-                        batchBuf.addFirst(Triple(cur.toString(), onlyHash, onlyGroup))
+                        // Hash/grup penyusun digabung utuh
+                        // dengan PEMISAH_PENANDA (issue
+                        // #2001, pola #1986): bentuk lama
+                        // membuangnya menjadi "" bila
+                        // penyusun lebih dari satu, jadi
+                        // segmen yang akhirnya terkirim dari
+                        // antrean ulang ini tidak menandai
+                        // satu pun penyusunnya dan pindai
+                        // ulang mengirim duplikat. Sisi
+                        // konsumsi menguraikannya lagi.
+                        batchBuf.addFirst(Triple(cur.toString(), curHashes.joinToString(PEMISAH_PENANDA), curGroups.joinToString(PEMISAH_PENANDA)))
                     }
                 }
             }
