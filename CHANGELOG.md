@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.685] - 2026-11-12
+
 ### Fixed
 - Hapus kredensial kini ikut menolkan hitungan antrean pesan gugur dan batch pemberitahuannya, jadi awal era baru tidak lagi mengirim pemberitahuan kehilangan warisan era lama.
 - Hapus kredensial kini ikut menghapus target pantau aksesibilitas (daftar paket pantau, flag peringatan dan tamper, daftar aplikasi dikenal), selaras dengan kata dan nomor pantau yang sudah dihapus.
