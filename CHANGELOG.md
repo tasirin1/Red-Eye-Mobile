@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Watchdog kini tetap bisa memulihkan loop kamera/data yang macet saat perangkat diam lama: sebelumnya batas atas rentang penilaian macet (60/1440 menit) lebih kecil dari siklus sah hasil regangan hemat daya (240/5760 menit), sehingga loop yang menggantung justru pada keadaan diam tidak pernah dinilai macet dan tidak pernah direstart (issue #2043).
 - Kalkulator penyamaran kini bertingkah seperti kalkulator biasa untuk tombol sama-dengan: menekan = lagi mengulang operasi terakhir (2+3= lalu = menjadi 8, lalu 11) dan bentuk 5+= menghitung memakai operand pertama sebagai operand kedua (hasil 10); sebelumnya = kedua dan seterusnya membeku tanpa menghitung apa pun (issue #2042).
 - Kegagalan membuka ulang antrean sesudah reset penyimpanan tidak lagi mewariskan hitungan pesan terbuang hantu dari era sebelum reset: sebelumnya penghitung dikonversi terhadap patokan cakram yang baru saja dihapus, sehingga angka yang belum sempat tersimpan ikut terbaca sebagai milik era baru dan total terbuang membengkak (issue #2041).
 - Potongan pesan panjang yang ditolak permanen kini selalu tercatat dalam hitungan terbuang bila pesan selesai diproses: sebelumnya potongan yang dibuang di tengah pesan hilang dari akuntansi setiap kali vonis akhir pesan bukan penolakan (mis. potongan berikutnya kena batas laju), sehingga pemilik menerima pesan bercelah tanpa catatan kehilangan (issue #2040).

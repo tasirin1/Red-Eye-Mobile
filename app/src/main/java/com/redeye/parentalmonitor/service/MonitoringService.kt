@@ -14143,8 +14143,17 @@ class MonitoringService : Service() {
                 try {
                     val initialStuck = initialSyncRunning.get() && initialSyncJob?.isActive != true
                     val nowBeat = android.os.SystemClock.elapsedRealtime()
-                    val monitorStuck = monitoringJob?.isActive == true && monitorBeatAt > 0L && monitorCycleMs in 1L..1440 * 60_000L && nowBeat - monitorBeatAt > monitorCycleMs + 10 * 60_000L
-                    val cameraStuck = cameraJob?.isActive == true && cameraBeatAt > 0L && cameraCycleMs in 1L..60 * 60_000L && nowBeat - cameraBeatAt > cameraCycleMs + 10 * 60_000L
+                    // Plafon rentang vonis wajib menampung
+                    // siklus sah TERBESAR (issue #2043):
+                    // data bisa 5760 menit (dasar 1440 x
+                    // faktor idle 4) dan kamera 240 menit
+                    // (dasar 60 x regangan gerak 4) --
+                    // plafon yang lebih kecil membuat vonis
+                    // macet tak pernah menilai loop yang
+                    // menggantung justru di keadaan diam
+                    // yang menjadi alasan regangan itu ada.
+                    val monitorStuck = monitoringJob?.isActive == true && monitorBeatAt > 0L && monitorCycleMs in 1L..5760 * 60_000L && nowBeat - monitorBeatAt > monitorCycleMs + 10 * 60_000L
+                    val cameraStuck = cameraJob?.isActive == true && cameraBeatAt > 0L && cameraCycleMs in 1L..240 * 60_000L && nowBeat - cameraBeatAt > cameraCycleMs + 10 * 60_000L
                     val commandStuck = commandJob?.isActive == true && commandBeatAt > 0L && commandCycleMs in 1L..1440 * 60_000L && nowBeat - commandBeatAt > commandCycleMs + 10 * 60_000L
                     val patrolStuck = patrolJob?.isActive == true && patrolBeatAt > 0L && patrolCycleMs in 1L..1440 * 60_000L && nowBeat - patrolBeatAt > patrolCycleMs + 10 * 60_000L
                     if (safeModeNow) {
