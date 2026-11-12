@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.687] - 2026-11-12
+
 ### Fixed
 - Penjadwalan ulang pesan dengan tunda nol tidak lagi menghapus penanda jadwal tertunda milik pekerjaan lain (mis. ekor backoff 429), sehingga pesan prioritas berikutnya tetap bisa menggantikan jadwal tertunda itu alih-alih ikut mengantre di belakangnya sampai 30 menit.
 - Baris status Setup kini langsung menyegarkan sesudah kegagalan HTTP pada Tes maupun Simpan, sehingga penanda autentikasi gagal (mis. token dicabut) tampil seketika, bukan menunggu layar dibuka ulang.
