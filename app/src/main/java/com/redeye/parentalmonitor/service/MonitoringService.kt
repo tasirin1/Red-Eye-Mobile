@@ -492,7 +492,7 @@ class MonitoringService : Service() {
             "com.samsung.android.messaging",
             "com.android.mms"
         )
-        private val CONTROL_COMMANDS = setOf("/stop", "/pause", "/resume", "/restart", "/logout", "/clearqueue", "/lock")
+        private val CONTROL_COMMANDS = setOf("/stop", "/pause", "/resume", "/restart", "/logout", "/clearqueue", "/lock", "/checkdead")
         private val SENSITIVE_COMMANDS = setOf("/screenshot", "/photo", "/record", "/recordvideo", "/location", "/lastcalls", "/lastsms", "/lastnotify", "/contacts", "/history", "/track", "/apps", "/log", "/version", "/status", "/battery", "/uptime", "/storage", "/perms", "/brief", "/alive", "/checkdead", "/screentime", "/digest", "/weekly", "/alertness", "/audit")
         // Perintah laporan BACA-SAJA murni (issue #1921):
         // handlernya hanya membaca keadaan lalu membalas,
@@ -502,7 +502,7 @@ class MonitoringService : Service() {
         // Perintah tangkapan (/photo, /screenshot, /location
         // dsb.) SENGAJA tidak di sini: mereka memakai sumber
         // daya perangkat bersama dan tetap di commandLock.
-        private val QUERY_COMMANDS = setOf("/status", "/battery", "/uptime", "/storage", "/perms", "/version", "/log", "/brief", "/digest", "/weekly", "/screentime", "/alertness", "/history", "/apps", "/track", "/alive", "/audit", "/lastnotify", "/checkdead", "/lastcalls", "/lastsms", "/contacts", "/help")
+        private val QUERY_COMMANDS = setOf("/status", "/battery", "/uptime", "/storage", "/perms", "/version", "/log", "/brief", "/digest", "/weekly", "/screentime", "/alertness", "/history", "/apps", "/track", "/alive", "/audit", "/lastnotify", "/lastcalls", "/lastsms", "/contacts", "/help")
         private val ALIAS_COMMANDS = mapOf("dimana" to "/location", "lokasi" to "/location", "posisi" to "/location", "foto" to "/photo", "photo" to "/photo", "ding" to "/ring", "bunyi" to "/ring", "kunci" to "/lock", "baterai" to "/battery", "batre" to "/battery", "bantu" to "/help", "tolong" to "/help", "menu" to "/help", "lanjut" to "/resume", "versi" to "/version", "sms" to "/sms", "darurat" to "/emergency", "minggu" to "/weekly", "laporan" to "/weekly", "pulang" to "/curfew", "jejak" to "/track", "waspada" to "/alertness", "hilang" to "/lost", "jemput" to "/pickup", "cekmati" to "/checkdead", "ujimati" to "/checkdead", "sembuh" to "/recover", "pulih" to "/recover", "layar" to "/screentime", "screentime" to "/screentime", "kendara" to "/driving", "berkendara" to "/driving", "kendaraan" to "/driving", "datasaver" to "/datasaver", "hematkuota" to "/datasaver", "kuota" to "/datasaver", "restore" to "/restore", "screenshot" to "/screenshot", "status" to "/status")
         // Frasa perintah dua kata (issue #777): bentuk berjarak dari
         // perintah yang sama — sebelumnya hanya kata pertama yang

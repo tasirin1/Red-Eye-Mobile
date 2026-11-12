@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Fixed
+
+- /checkdead tidak lagi salah kelas sebagai perintah laporan baca-saja: handlernya menghentikan layanan untuk uji anti-mati, jadi ia dipindah ke jalur kendali (controlLock) bersama /stop dan /restart — bukan lagi di queryLock yang dikontrakkan tanpa efek perangkat (issue #1933).
+
 ## [1.6.679] - 2026-11-12
 
 ### Added
