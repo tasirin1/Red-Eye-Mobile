@@ -10696,19 +10696,23 @@ class MonitoringService : Service() {
     }
 
     private class UsageDayData(
-        val rows: List<Pair<String, Long>>?,
+        rowsProvider: () -> List<Pair<String, Long>>?,
         val a11yRows: List<A11yMonitor.AppUsage>,
         val firstUnlockMs: Long,
         dayRowsProvider: () -> List<Pair<String, Long>>?
     ) {
+        // rows ikut malas seperti dayRows (issue #1954):
+        // jalur /alertness dan fakta harian tak pernah
+        // membacanya, jadi agregat 24 jam tak perlu
+        // dihitung untuk mereka.
+        val rows: List<Pair<String, Long>>? by lazy { rowsProvider() }
         val dayRows: List<Pair<String, Long>>? by lazy { dayRowsProvider() }
     }
 
     private fun usageDayData(now: Long, firstUnlockOverride: Long? = null): UsageDayData {
-        val rows = try { usageRows(24) } catch (_: Exception) { null }
         val a11yRows = a11yUsageRows()
         val fu = firstUnlockOverride ?: try { firstUnlockTodayMs(now) } catch (_: Exception) { 0L }
-        return UsageDayData(rows, a11yRows, fu) {
+        return UsageDayData({ try { usageRows(24) } catch (_: Exception) { null } }, a11yRows, fu) {
             try {
                 usageRowsBetween(com.redeye.parentalmonitor.utils.A11yUsageMath.dayStartWallMillis(now, java.util.TimeZone.getDefault()), now)
             } catch (_: Exception) {
