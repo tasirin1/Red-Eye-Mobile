@@ -224,6 +224,44 @@ class CalculatorStateTest {
     // negatif sebesar pasangan positifnya tampil utuh,
     // bukan notasi ilmiah terbulatkan.
     @Test
+    fun titikDesimalGandaDitolak() {
+        // Cakupan #2061: titik kedua pada entri yang
+        // sama diabaikan penjaga titik ganda.
+        val h = Harness()
+        h.run("1", ".", ".", "5")
+        assertEquals("1.5", h.state.currentNumber)
+    }
+
+    @Test
+    fun titikDiAwalMenjadiNolKoma() {
+        // Cakupan #2061: titik pada entri kosong
+        // menjadi awalan 0.
+        val h = Harness()
+        h.run(".", "5")
+        assertEquals("0.5", h.state.currentNumber)
+    }
+
+    @Test
+    fun penjumlahanDesimalDuaOperand() {
+        // Cakupan #2061: desimal di kedua operand
+        // dihitung dan diformat utuh.
+        val h = Harness()
+        h.run("1.5", "+", "2.25", "=")
+        assertEquals("3.75", h.state.currentNumber)
+        assertEquals("1.5 + 2.25", h.state.lastExpression)
+    }
+
+    @Test
+    fun titikSesudahHasilMulaiEntriBaru() {
+        // Cakupan #2061: titik sesudah hasil
+        // membersihkan keadaan hitung dan memulai
+        // entri desimal baru dari 0.
+        val h = Harness()
+        h.run("2", "+", "3", "=", ".", "5")
+        assertEquals("0.5", h.state.currentNumber)
+    }
+
+    @Test
     fun persenOperandKeduaLaluUlangSamaDengan() {
         // Regresi #2059: persen pada operand kedua
         // dikonsumsi perhitungan sungguhan, jadi =

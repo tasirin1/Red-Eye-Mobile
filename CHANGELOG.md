@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Cabang titik desimal pada masukan kalkulator penyamaran kini mempunyai cakupan uji: titik ganda ditolak, titik di awal menjadi 0 koma, penjumlahan desimal dua operand, dan titik sesudah hasil memulai entri baru -- sebelumnya tidak ada satu pun uji yang memakai token titik (issue #2061).
 - Model pengambilan riwayat panggilan pada harness uji kini menerapkan saringan batas masa depan di semua cabangnya dan mengurutkan cabang id-saja menurut id saja, persis kueri produksi: sebelumnya baris bertanggal masa depan terkonsumsi model tetapi ditunda produksi, dan komposisi halaman cabang id-saja bisa berbeda (issue #2060).
 - Tombol sama-dengan pada kalkulator penyamaran kini mengulang operasi terakhir juga sesudah persen dipakai pada operand kedua: sebelumnya bendera entri-terganti yang basi tidak dibersihkan perhitungan yang mengonsumsinya, sehingga pengulangan mati diam-diam hanya pada jalur itu (issue #2059).
 - Potongan pesan tertolak tidak lagi tercatat bila penghapusan pesan asal gagal diam-diam pada jalur batas laju, gagal autentikasi, atau pembatalan: sebelumnya hasil penghapusan dibuang sehingga ekor tetap mencatat, padahal asal yang selamat akan mencoba lagi dan mencatat potongan yang sama untuk kedua kalinya (issue #2058).
