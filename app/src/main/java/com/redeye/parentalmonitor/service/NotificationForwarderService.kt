@@ -1933,7 +1933,11 @@ class NotificationForwarderService : NotificationListenerService() {
         val batchTs = System.currentTimeMillis()
         val text = dropNoticeText(count, firstAt)
         try {
-            prefsRef?.setDropNoticeBatchSync("$count:$batchTs:$firstAt")
+            // Cadangan getInstance (issue #1984, pola
+            // #1975): prefsRef kosong berarti adopsi di
+            // onCreate gagal -- tulisan akuntansi gugur
+            // tak boleh ikut hilang senyap.
+            (prefsRef ?: PreferencesManager.getInstance(this@NotificationForwarderService)).setDropNoticeBatchSync("$count:$batchTs:$firstAt")
         } catch (_: Exception) {
         }
         val queued = try {
@@ -1953,7 +1957,7 @@ class NotificationForwarderService : NotificationListenerService() {
             dropNoticeCount.get() to dropNoticeFirstAt
         }
         try {
-            prefsRef?.setDropNoticeStateSync(state.first, "", state.second)
+            (prefsRef ?: PreferencesManager.getInstance(this@NotificationForwarderService)).setDropNoticeStateSync(state.first, "", state.second)
         } catch (_: Exception) {
         }
         if (queued) {
