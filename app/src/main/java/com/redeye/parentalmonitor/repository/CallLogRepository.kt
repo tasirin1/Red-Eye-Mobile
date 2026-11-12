@@ -39,8 +39,13 @@ class CallLogRepository(private val context: Context) {
                     } catch (_: Exception) {
                     }
                 }
+                // Hanya hasil dari daftar yang sungguh terbaca
+                // yang di-cache (issue #1943): daftar null/gagal
+                // tidak boleh mengunci peta kosong permanen --
+                // panggilan berikutnya wajib mencoba lagi.
+                petaSim = bangun
             }
-            bangun.also { petaSim = it }
+            bangun
         } catch (_: Exception) {
             emptyMap()
         }
