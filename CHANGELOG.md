@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Empat cabang backspace kalkulator kini mempunyai cakupan uji: pemulihan Error, no-op atas hasil, entri satu karakter, dan pembuangan akhiran minus (issue #2067).
 - Uji Error-lalu-operator kalkulator kini menegaskan previousNumber dan operator yang bersih sesudah penekanan operator: hilangnya cabang pemulihan Error di setOperator tak lagi lolos (issue #2066).
 - Uji clear kalkulator kini menegaskan langsung penolan ingatan pengulangan (lastOperator/lastOperand), bukan hanya tampilan: mutan yang menyisakan keduanya tak lagi lolos (issue #2065).
 - Akuntansi potongan tertolak jalur failedKept: pencatatan kini menunggu bukti hapus batch asal oleh pemanggil, menutup hitung ganda saat hapus batch gagal senyap dan asal bangkit (issue #2064).

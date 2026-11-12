@@ -116,6 +116,51 @@ class CalculatorStateTest {
     }
 
     @Test
+    fun backspacePadaErrorMembersihkanKeadaan() {
+        // Cakupan #2067: cabang pemulihan Error di
+        // kepala backspace membersihkan keadaan.
+        val h = Harness()
+        h.run("1", "÷", "0", "=")
+        assertEquals("Error", h.state.currentNumber)
+        h.run("⌫")
+        assertEquals("", h.state.currentNumber)
+        h.run("5")
+        assertEquals("5", h.state.currentNumber)
+    }
+
+    @Test
+    fun backspacePadaHasilTidakMengubah() {
+        // Cakupan #2067: backspace atas hasil hitung
+        // adalah no-op (gerbang justCalculated).
+        val h = Harness()
+        h.run("2", "+", "3", "=")
+        assertEquals("5", h.state.currentNumber)
+        h.run("⌫")
+        assertEquals("5", h.state.currentNumber)
+    }
+
+    @Test
+    fun backspaceEntriSatuKarakterMengosongkan() {
+        // Cakupan #2067: entri 1 karakter menjadi
+        // kosong, bukan memotong sebagian.
+        val h = Harness()
+        h.run("7", "⌫")
+        assertEquals("", h.state.currentNumber)
+    }
+
+    @Test
+    fun backspaceMenghapusAkhiranMinus() {
+        // Cakupan #2067: memotong digit terakhir dari
+        // entri negatif membuang juga tanda minus yang
+        // tertinggal sendirian.
+        val h = Harness()
+        h.run("5", "±")
+        assertEquals("-5", h.state.currentNumber)
+        h.run("⌫")
+        assertEquals("", h.state.currentNumber)
+    }
+
+    @Test
     fun backspaceOnPercentResultClearsWholeEntry() {
         val h = Harness()
         h.run("123400", "%", "⌫", "=")
