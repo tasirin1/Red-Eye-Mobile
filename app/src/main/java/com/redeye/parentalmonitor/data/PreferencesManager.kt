@@ -2117,6 +2117,26 @@ class PreferencesManager(context: Context) {
         }
     }
 
+    fun clearLastLocationSync(): Boolean {
+        // Titik lokasi terakhir ikut dihapus saat wipe
+        // (issue #2005): wipe yang sama sudah menghapus
+        // trail 24 jam dan koordinat rumah/sekolah, jadi
+        // membiarkan satu titik presisi terakhir bertahan
+        // itu inkonsisten -- titik itu dibaca jalur jejak
+        // terakhir (ShutdownReceiver dan lastSentLatLon)
+        // dan bisa memancar di era baru.
+        return try {
+            sharedPreferences.edit()
+                .remove(KEY_LAST_LOC_LAT)
+                .remove(KEY_LAST_LOC_LON)
+                .remove(KEY_LAST_LOC_AT)
+                .remove(KEY_LAST_LOC_ACC)
+                .commit()
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     fun setForwardedMarkersSync(groupValues: List<String>, idValues: List<String>, generasi: Long): Boolean {
         synchronized(prefsRmwLock) {
             if (generasi < generasiPenandaTertulis) return true
