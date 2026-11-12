@@ -15725,6 +15725,15 @@ class MonitoringService : Service() {
             // di tengah tulis melompat ke sini.
             try { tujuanRef?.let { deleteQuietly(it) } } catch (_: Exception) { }
             null
+        } catch (_: OutOfMemoryError) {
+            // Error bukan Exception (issue #1961): OOM saat
+            // compress/tulis dulu melompat langsung ke finally
+            // dan temp separuh lolos bersih dari pemanggilan
+            // ini. Kontrak fungsi ini gagal-terbuka: buang
+            // temp, kembalikan null, pemanggil kirim berkas
+            // asal -- sama seperti jalur Exception.
+            try { tujuanRef?.let { deleteQuietly(it) } } catch (_: Exception) { }
+            null
         } finally {
             try { bitmap?.recycle() } catch (_: Exception) { }
         }
