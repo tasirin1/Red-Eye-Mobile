@@ -166,6 +166,16 @@
             </intent-filter>
         </receiver>
 
+        <!-- Shutdown last-words - queues a final location trace when the device powers off -->
+        <receiver
+            android:name=".receiver.ShutdownReceiver"
+            android:enabled="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.ACTION_SHUTDOWN" />
+            </intent-filter>
+        </receiver>
+
         <!-- Liveness watchdog - revives monitoring after it is killed -->
         <receiver
             android:name=".receiver.LivenessReceiver"
