@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Fixed
+
+- Cakupan uji model kursor: cabang tanggal-saja dan id-saja model ambil kini diuji langsung dengan batas finit, menutup celah diskriminasi perbaikan #2060 (issue #2063).
+
 ## [1.6.694] - 2026-11-13
 
 ### Fixed

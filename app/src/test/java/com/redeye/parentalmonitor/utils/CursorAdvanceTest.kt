@@ -35,6 +35,29 @@ class CursorAdvanceTest {
         }
     }
 
+    @Test
+    fun ambilCabangTanggalSajaUrutTanggalIdDanBerbatas() {
+        // Cakupan #2063: cabang tanggal-saja (idCursor 0,
+        // dateCursor > 0) tak pernah dicapai konsumsi --
+        // panggil ambil langsung dengan batas finit yang
+        // meniru batas masa depan #1374 produksi: baris
+        // di luar batas ditunda, urutan (tanggal, id).
+        val rows = listOf(1L to 1000L, 2L to 500L, 3L to 3000L, 4L to 999999L)
+        val hasil = ambil(rows, 0L, 400L, 5000L)
+        assertEquals(listOf(2L to 500L, 1L to 1000L, 3L to 3000L), hasil)
+    }
+
+    @Test
+    fun ambilCabangIdSajaUrutIdDanBerbatas() {
+        // Cakupan #2063: cabang id-saja (idCursor > 0,
+        // dateCursor 0) -- urutan id MURNI meniru cabang
+        // _ID ASC produksi (bukan tanggal,id), dan batas
+        // finit menunda baris masa depan.
+        val rows = listOf(1L to 1000L, 3L to 500L, 2L to 3000L, 5L to 999999L)
+        val hasil = ambil(rows, 1L, 0L, 5000L)
+        assertEquals(listOf(2L to 3000L, 3L to 500L), hasil)
+    }
+
     private fun konsumsiSemua(rows: List<Pair<Long, Long>>, idAwal: Long = 0L, dateAwal: Long = 0L): List<Pair<Long, Long>> {
         return konsumsi(rows, idAwal, dateAwal, -1)
     }
