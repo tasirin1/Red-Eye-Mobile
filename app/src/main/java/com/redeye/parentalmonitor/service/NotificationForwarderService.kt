@@ -60,6 +60,16 @@ class NotificationForwarderService : NotificationListenerService() {
     // Kunci khusus tulis-disk penanda (issue #1018): commit
     // sinkron tidak lagi menahan kunci dua peta penanda.
     private val markerPersistLock = Any()
+
+    // Generasi penanda (issue #1983): naik tiap
+    // markMarkersForwarded mengganti view. Potret
+    // membawa generasinya; penulis di
+    // PreferencesManager menolak potret yang lebih
+    // tua dari yang terakhir tertulis, jadi dari
+    // tiga jalur persist tak ada potret basi yang
+    // bisa mendarat terakhir dan menghapus tanda
+    // terbaru.
+    private val generasiPenanda = java.util.concurrent.atomic.AtomicLong(0)
     // Job persist penanda tertunda (issue #1851): lihat
     // jadwalkanPersistPenanda.
     private var markerPersistJob: Job? = null
@@ -730,6 +740,7 @@ class NotificationForwarderService : NotificationListenerService() {
                 }
                 groupForwardedView = LinkedHashMap(groupForwarded)
                 forwardedIdsView = LinkedHashSet(forwardedIds.keys)
+                generasiPenanda.incrementAndGet()
             }
         }
         // Persist disk DITUNDA + digabung (issue #1851,
@@ -768,12 +779,18 @@ class NotificationForwarderService : NotificationListenerService() {
             // dalam kunci bersarang ini, jadi potret di sini
             // tak bisa sobek satu generasi di sela dua
             // penggantian.
-            val p = synchronized(groupForwarded) {
+            // Generasi dibaca di bagian kritis yang
+            // sama (issue #1983): label generasi harus
+            // persis milik pasangan view ini -- membaca
+            // di kunci terpisah bisa memasangkan potret
+            // lama dengan generasi baru, dan tulisan
+            // sah berikutnya lalu tertolak sebagai basi.
+            val pg = synchronized(groupForwarded) {
                 synchronized(forwardedIds) {
-                    groupForwardedView.entries.map { it.key + ":" + it.value } to forwardedIdsView.toList()
+                    (groupForwardedView.entries.map { it.key + ":" + it.value } to forwardedIdsView.toList()) to generasiPenanda.get()
                 }
             }
-            (prefsRef ?: PreferencesManager.getInstance(this@NotificationForwarderService)).setForwardedMarkersSync(p.first, p.second)
+            (prefsRef ?: PreferencesManager.getInstance(this@NotificationForwarderService)).setForwardedMarkersSync(pg.first.first, pg.first.second, pg.second)
         } catch (_: Exception) {
         }
     }
@@ -784,16 +801,20 @@ class NotificationForwarderService : NotificationListenerService() {
             markerPersistJob = scope.launch {
                 try {
                     var tertulis: Pair<List<String>, List<String>>? = null
+                    var tertulisGen = -1L
                     var gagalBeruntun = 0
                     while (true) {
                         var selesai = false
+                        var potretGen = -1L
                         val potret = synchronized(markerPersistLock) {
-                            val p = synchronized(groupForwarded) {
+                            val pg = synchronized(groupForwarded) {
                                 synchronized(forwardedIds) {
-                                    groupForwardedView.entries.map { it.key + ":" + it.value } to forwardedIdsView.toList()
+                                    (groupForwardedView.entries.map { it.key + ":" + it.value } to forwardedIdsView.toList()) to generasiPenanda.get()
                                 }
                             }
-                            if (p == tertulis) {
+                            val p = pg.first
+                            potretGen = pg.second
+                            if (p == tertulis && potretGen == tertulisGen) {
                                 if (markerPersistJob == coroutineContext[Job]) markerPersistJob = null
                                 selesai = true
                             }
@@ -801,12 +822,13 @@ class NotificationForwarderService : NotificationListenerService() {
                         }
                         if (selesai) break
                         val ok = try {
-                            (prefsRef ?: PreferencesManager.getInstance(this@NotificationForwarderService)).setForwardedMarkersSync(potret.first, potret.second)
+                            (prefsRef ?: PreferencesManager.getInstance(this@NotificationForwarderService)).setForwardedMarkersSync(potret.first, potret.second, potretGen)
                         } catch (_: Exception) {
                             false
                         }
                         if (ok) {
                             tertulis = potret
+                            tertulisGen = potretGen
                             gagalBeruntun = 0
                         } else {
                             // Disk yang gagal permanen tak

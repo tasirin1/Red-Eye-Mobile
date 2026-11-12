@@ -2017,14 +2017,26 @@ class PreferencesManager(context: Context) {
     val notifGroupForwarded: List<String>
         get() = prefStringList(KEY_NOTIF_GROUP_FORWARDED)
 
-    fun setForwardedMarkersSync(groupValues: List<String>, idValues: List<String>): Boolean {
-        return try {
-            sharedPreferences.edit()
-                .putString(KEY_NOTIF_GROUP_FORWARDED, groupValues.joinToString(","))
-                .putString(KEY_FORWARDED_NOTIF_IDS, idValues.joinToString(","))
-                .commit()
-        } catch (_: Exception) {
-            false
+    // Generasi potret penanda terakhir yang tertulis
+    // (issue #1983): potret yang lebih tua ditolak --
+    // isinya sudah terkandung di tulisan yang lebih
+    // baru -- jadi tak ada jalur persist yang bisa
+    // menghidupkan lagi tanda yang sudah tergantikan.
+    private var generasiPenandaTertulis = -1L
+
+    fun setForwardedMarkersSync(groupValues: List<String>, idValues: List<String>, generasi: Long): Boolean {
+        synchronized(prefsRmwLock) {
+            if (generasi < generasiPenandaTertulis) return true
+            val ok = try {
+                sharedPreferences.edit()
+                    .putString(KEY_NOTIF_GROUP_FORWARDED, groupValues.joinToString(","))
+                    .putString(KEY_FORWARDED_NOTIF_IDS, idValues.joinToString(","))
+                    .commit()
+            } catch (_: Exception) {
+                false
+            }
+            if (ok) generasiPenandaTertulis = generasi
+            return ok
         }
     }
 
