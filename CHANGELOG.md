@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Hapus kredensial kini ikut menghapus target pantau aksesibilitas (daftar paket pantau, flag peringatan dan tamper, daftar aplikasi dikenal), selaras dengan kata dan nomor pantau yang sudah dihapus.
 - Hapus kredensial kini ikut menghapus riwayat aktivitas tersimpan (fakta harian, riwayat pemakaian dan kata kunci aksesibilitas, paket peringatan malam), bukan hanya kredensial dan daftar pantau.
 - Hapus kredensial kini ikut menghapus titik lokasi terakhir yang tersimpan, selaras dengan trail lokasi dan koordinat rumah/sekolah yang sudah lebih dulu dihapus.
 - Hapus kredensial kini ikut menghapus username bot yang tersimpan, jadi sesudah ganti bot perintah grup untuk bot baru tidak lagi diabaikan sebagai untuk bot lain.

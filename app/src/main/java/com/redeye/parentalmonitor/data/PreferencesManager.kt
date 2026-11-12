@@ -2163,6 +2163,30 @@ class PreferencesManager(context: Context) {
         }
     }
 
+    fun clearA11yWatchTargetsSync(): Boolean {
+        // Target pantau aksesibilitas ikut dihapus saat
+        // wipe (issue #2007): daftar paket pantau, flag
+        // app-watch/app-alert/tamper, dan daftar aplikasi
+        // dikenal. Wipe yang sama sudah menghapus kata
+        // dan nomor pantau, jadi membiarkan targetnya
+        // bertahan membuat era baru diam-diam mewarisi
+        // pengawasan era lama. Daftar dikenal dibangun
+        // ulang dari keadaan perangkat pada pemakaian
+        // berikutnya.
+        return try {
+            sharedPreferences.edit()
+                .remove(KEY_A11Y_APP_WATCH_PACKAGES)
+                .remove(KEY_A11Y_APP_WATCH)
+                .remove(KEY_A11Y_APP_ALERT)
+                .remove(KEY_A11Y_TAMPER)
+                .remove(KEY_A11Y_KNOWN_APPS)
+                .remove(KEY_A11Y_KNOWN_SEEDED)
+                .commit()
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     fun setForwardedMarkersSync(groupValues: List<String>, idValues: List<String>, generasi: Long): Boolean {
         synchronized(prefsRmwLock) {
             if (generasi < generasiPenandaTertulis) return true
