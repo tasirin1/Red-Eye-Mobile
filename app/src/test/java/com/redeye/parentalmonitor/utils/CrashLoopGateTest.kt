@@ -53,17 +53,14 @@ class CrashLoopGateTest {
     fun catatMemangkasYangTuaDanMembatasi() {
         val lama = (0 until 60).map { it * menit }
         val hasil = CrashLoopGate.catat(lama, 200 * menit)
-        assertTrue(hasil.size <= CrashLoopGate.MAKS_ENTRI)
-        assertEquals(200 * menit, hasil.last())
-        // Entri yang masih dalam jendela simpan bertahan
-        // (issue #1958: asersi lama menyebut 195 menit yang
-        // tak pernah jadi entri, jadi selalu lolos lewat
-        // disjungsi ukuran saja). Yang bertahan dan yang
-        // terpangkas plafon dibuktikan satu-satu: 61 entri
-        // masuk, yang dipertahankan 11..59 menit + entri baru.
-        assertTrue(hasil.contains(59 * menit))
-        assertTrue(hasil.contains(11 * menit))
-        assertFalse(hasil.contains(10 * menit))
+        // Daftar PERSIS (issue #1976, memperketat #1958):
+        // asersi sampel tepi (ukuran <= plafon, ujung 59/11
+        // ada, 10 tak ada) terbukti lewat port lolos untuk
+        // mutan pembuang satu entri tengah dan mutan
+        // berkompensasi (buang tengah + tahan yang
+        // terpangkas). 61 entri masuk; yang bertahan tepat
+        // 11..59 menit (49 entri) + entri baru 200 menit.
+        assertEquals((11..59).map { it * menit } + 200 * menit, hasil)
         val basi = CrashLoopGate.catat(listOf(1L), 200 * menit + CrashLoopGate.SIMPAN_MS + 1)
         assertEquals(listOf(200 * menit + CrashLoopGate.SIMPAN_MS + 1), basi)
     }
