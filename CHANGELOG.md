@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.682] - 2026-11-12
+
 ### Fixed
 - Uji retensi jurnal crash kini menuntut daftar hasil yang persis, bukan lagi sampel tepi, jadi regresi yang membuang entri tengah jurnal tidak bisa lolos uji.
 - Simpanan hitungan notifikasi gugur saat layanan berhenti kini punya cadangan pengambil preferensi yang sama seperti simpanan penanda, jadi tidak hilang senyap bila pengambilan awal sempat gagal.
