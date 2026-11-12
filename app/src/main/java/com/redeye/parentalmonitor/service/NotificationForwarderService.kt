@@ -1369,7 +1369,11 @@ class NotificationForwarderService : NotificationListenerService() {
                 val pending = synchronized(dropNoticeLock) {
                     (dropNoticeCount.get() + dropNoticeInFlight) to dropNoticeFirstAt
                 }
-                prefsRef?.setPendingNotifDropsSync(pending.first, pending.second)
+                // Cadangan getInstance seperti helper penanda
+                // (issue #1975): prefsRef bisa kosong bila
+                // adopsi prefs gagal di onCreate, dan safe-call
+                // di sini dulu membuang hitungan gugur senyap.
+                (prefsRef ?: com.redeye.parentalmonitor.data.PreferencesManager.getInstance(this@NotificationForwarderService)).setPendingNotifDropsSync(pending.first, pending.second)
             }
         } catch (_: Exception) {
         }

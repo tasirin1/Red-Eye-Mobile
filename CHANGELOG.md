@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Simpanan hitungan notifikasi gugur saat layanan berhenti kini punya cadangan pengambil preferensi yang sama seperti simpanan penanda, jadi tidak hilang senyap bila pengambilan awal sempat gagal.
 - Potret penanda terkirim kini dibaca sebagai satu pasangan yang utuh di bawah kunci yang sama dengan penulisnya, jadi simpanan tidak bisa tercampur dua generasi penanda.
 - Penanda terkirim yang dibuat saat pengiriman dibatalkan di tengah jalan kini juga langsung disimpan sinkron dari jalur pembatalan itu sendiri, jadi tidak hilang hanya karena urutan berhenti layanan berubah.
 - Penyelamatan notifikasi yang sedang terbang saat layanan berhenti kini juga mencatat penanda terkirimnya per item, jadi notifikasi itu tidak diteruskan ulang sesudah layanan tersambung lagi.
