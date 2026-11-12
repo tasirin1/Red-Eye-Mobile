@@ -5033,6 +5033,12 @@ class MonitoringService : Service() {
             "/restart" -> {
                 if (restartAllLoops()) {
                     replyLater("\u267B\uFE0F Loop dijalankan ulang.")
+                } else if (safeModeNow || safeModeAktif()) {
+                    // Penolakan gerbang mode aman, bukan
+                    // batasan penjaga (issue #1964): mencoba
+                    // lagi tak akan pernah lolos -- jalan
+                    // keluarnya /resume.
+                    sendToTelegram("🛟 Masih di mode aman — restart ditolak. Pakai /resume untuk keluar dari mode aman.")
                 } else {
                     sendToTelegram("⏳️ Restart dibatasi, coba lagi sebentar.")
                 }
