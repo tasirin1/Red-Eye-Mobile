@@ -40,13 +40,17 @@ object MessageScheduler {
     // sinyal keputusan REPLACE di scheduleMessageSend
     // (#1097), dan menolkannya membuat pesan prioritas
     // berikutnya ikut APPEND di belakang ekor tertunda.
+    // Diperluas issue #2024: delay POSITIF pun tidak
+    // menurunkan penanda masa depan yang hidup -- pekerjaan
+    // baru toh menempel di belakang ekor rantai yang ada
+    // (APPEND_OR_REPLACE), jadi kesempatan kirim sebenarnya
+    // tetap pada penanda lama; menerbitkan nilai lebih kecil
+    // (mis. +15 detik dari run tertolak menimpa +30 menit)
+    // menyesatkan keputusan REPLACE berikutnya.
     // Murni agar terkunci uji, pola #1073.
     fun nilaiTerbitPenanda(delayMs: Long, prevNextSendAt: Long, now: Long): Long {
-        return when {
-            delayMs > 0L -> now + delayMs
-            prevNextSendAt > now -> prevNextSendAt
-            else -> 0L
-        }
+        val target = if (delayMs > 0L) now + delayMs else 0L
+        return if (prevNextSendAt > now) maxOf(target, prevNextSendAt) else target
     }
 
     private val netConstraints = Constraints.Builder()

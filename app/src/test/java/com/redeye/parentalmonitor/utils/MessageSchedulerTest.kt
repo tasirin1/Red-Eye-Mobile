@@ -37,7 +37,11 @@ class MessageSchedulerTest {
     fun nilaiTerbitDelayNolTidakMenurunkanPenandaMasaDepan() {
         // Delay positif menerbitkan jadwalnya sendiri.
         assertEquals(130_000L, MessageScheduler.nilaiTerbitPenanda(30_000L, 0L, 100_000L))
-        assertEquals(130_000L, MessageScheduler.nilaiTerbitPenanda(30_000L, 500_000L, 100_000L))
+        // Delay positif TIDAK menimpa penanda masa depan
+        // yang lebih jauh (issue #2024; kasus ini dulu
+        // mengunci perilaku menimpa dari #2019).
+        assertEquals(500_000L, MessageScheduler.nilaiTerbitPenanda(30_000L, 500_000L, 100_000L))
+        assertEquals(130_000L, MessageScheduler.nilaiTerbitPenanda(30_000L, 120_000L, 100_000L))
         // Inti issue #2019: delay-0 mempertahankan penanda
         // masa depan milik pekerjaan tertunda yang hidup.
         assertEquals(500_000L, MessageScheduler.nilaiTerbitPenanda(0L, 500_000L, 100_000L))
