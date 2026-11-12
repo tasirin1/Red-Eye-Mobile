@@ -82,12 +82,12 @@ class CallLogRepository(private val context: Context) {
         idOf = { it.id }
     )
 
-    fun getNewCalls(afterTimestamp: Long, afterId: Long = 0L): List<CallData> {
+    fun getNewCalls(afterTimestamp: Long, afterId: Long = 0L, afterIdMax: Long = -1L): List<CallData> {
         // Batas masa depan (issue #1374): baris melewati batas
         // ditunda sampai waktunya tiba, tak memajukan kursor.
         val batas = com.redeye.parentalmonitor.utils.CursorAdvance.batasAtas(System.currentTimeMillis())
         if (afterId > 0L && afterTimestamp > 0L) {
-            return queryCalls(
+            val utama = queryCalls(
                 // Keyset atas urutan (DATE, _ID) — predikat OR lama melompati
                 // baris sudut di bawah kedua maksimum kursor (issue #655).
                 selection = "(${CallLog.Calls.DATE} > ? OR (${CallLog.Calls.DATE} = ? AND ${CallLog.Calls._ID} > ?)) AND ${CallLog.Calls.DATE} <= ?",
@@ -96,6 +96,28 @@ class CallLogRepository(private val context: Context) {
                 limit = 100,
                 strict = true
             )
+            // Sapuan baris sisipan terlambat (issue #2012):
+            // baris panggilan panjang disisipkan saat
+            // panggilan berakhir dengan DATE = waktu mulai,
+            // sehingga tanggalnya di bawah kursor dan keyset
+            // tak pernah memilihnya. Calon diambil kasar
+            // menurut _ID (monoton sisip), lalu disaring
+            // persis oleh predikat murni CursorAdvance.
+            // afterIdMax <= 0 menonaktifkan sapuan (pemanggil
+            // selain siklus waktu-nyata tak berubah).
+            if (afterIdMax <= 0L) return utama
+            val calon = queryCalls(
+                selection = "${CallLog.Calls._ID} > ? AND ${CallLog.Calls.DATE} <= ?",
+                args = arrayOf(afterIdMax.toString(), batas.toString()),
+                sortOrder = "${CallLog.Calls._ID} ASC",
+                limit = 100,
+                strict = true
+            )
+            val terlambat = calon.filter {
+                com.redeye.parentalmonitor.utils.CursorAdvance.terlambat(it.id, it.date, afterTimestamp, afterIdMax, batas)
+            }
+            if (terlambat.isEmpty()) return utama
+            return (terlambat + utama).sortedWith(compareBy({ it.date }, { it.id }))
         }
         if (afterId > 0L) {
             return queryCalls(

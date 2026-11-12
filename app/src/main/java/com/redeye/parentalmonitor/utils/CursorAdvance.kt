@@ -21,6 +21,31 @@ object CursorAdvance {
      * maks dari baris berbeda) DILARANG: kombinasinya melompati baris sudut
      * yang belum terkirim sehingga hilang permanen (issue #655).
      */
+    // Id terbesar di antara baris yang sungguh terkirim
+    // (issue #2012): jangkar sapuan baris sisipan terlambat.
+    // Berbeda dari penyelesaian, nilai ini memang maksimum
+    // per-bidang murni -- ia TIDAK ikut membentuk pasangan
+    // kursor keyset (yang tetap leksikografik, #655), hanya
+    // menandai "semua baris ber-id <= ini sudah terkirim",
+    // dan _ID penyedia memang monoton menurut urutan sisip.
+    fun idMaks(idMaxCursor: Long, rows: List<Pair<Long, Long>>): Long {
+        var m = idMaxCursor
+        for (row in rows) if (row.first > m) m = row.first
+        return m
+    }
+
+    // Baris sisipan terlambat (issue #2012): log panggilan
+    // menyisipkan baris saat panggilan BERAKHIR dengan DATE
+    // = waktu MULAI, jadi baris panggilan panjang tiba
+    // dengan _ID baru tetapi tanggal di bawah kursor --
+    // predikat keyset tak pernah memilihnya lagi. Baris
+    // terlambat = id belum terkirim, tanggal di bawah
+    // tanggal kursor, dan tidak melewati batas masa depan
+    // (#1374). Tanggal == kursor adalah wilayah keyset.
+    fun terlambat(id: Long, date: Long, dateCursor: Long, idMaxCursor: Long, batas: Long): Boolean {
+        return id > idMaxCursor && date < dateCursor && date <= batas
+    }
+
     fun penyelesaian(idCursor: Long, dateCursor: Long, rows: List<Pair<Long, Long>>): Pair<Long, Long> {
         var id = idCursor
         var date = dateCursor

@@ -476,6 +476,7 @@ class PreferencesManager(context: Context) {
         private const val KEY_LAST_CALL_TIMESTAMP = "last_call_timestamp"
         private const val KEY_SIM_IDENTITY = "sim_identity"
         private const val KEY_LAST_CALL_ID = "last_call_id"
+        private const val KEY_LAST_CALL_ID_MAX = "last_call_id_max"
         const val KEY_USER_DISABLED = "user_disabled_monitoring"
         private const val KEY_INITIAL_SYNC_DONE = "initial_sync_done"
         const val KEY_CAMERA_INTERVAL = "camera_interval"
@@ -775,6 +776,12 @@ class PreferencesManager(context: Context) {
 
     val lastCallId: Long
         get() = prefLong(KEY_LAST_CALL_ID, 0L)
+
+    // Id panggilan terbesar yang sungguh terkirim (issue
+    // #2012): jangkar sapuan baris sisipan terlambat.
+    // Terpisah dari pasangan kursor keyset (#655).
+    val lastCallIdMax: Long
+        get() = prefLong(KEY_LAST_CALL_ID_MAX, 0L)
 
     val userDisabledMonitoring: Boolean
         get() = prefBoolean(KEY_USER_DISABLED, false)
@@ -3098,8 +3105,16 @@ class PreferencesManager(context: Context) {
         }
     }
 
-    fun setCallCursorSync(timestamp: Long, id: Long): Boolean {
-        return commitWithRetry { it.putLong(KEY_LAST_CALL_TIMESTAMP, timestamp).putLong(KEY_LAST_CALL_ID, id) }
+    // idMax >= 0 ikut menulis jangkar sapuan #2012 dalam
+    // commit yang sama; pasangan (0, 0) adalah reset penuh
+    // dan selalu menolkan jangkar juga, apa pun idMax-nya.
+    fun setCallCursorSync(timestamp: Long, id: Long, idMax: Long = -1L): Boolean {
+        return commitWithRetry { editor ->
+            editor.putLong(KEY_LAST_CALL_TIMESTAMP, timestamp).putLong(KEY_LAST_CALL_ID, id)
+            if (timestamp == 0L && id == 0L) editor.putLong(KEY_LAST_CALL_ID_MAX, 0L)
+            else if (idMax >= 0L) editor.putLong(KEY_LAST_CALL_ID_MAX, idMax)
+            editor
+        }
     }
 
     fun resetSmsCursorSync(): Boolean {
@@ -3107,7 +3122,7 @@ class PreferencesManager(context: Context) {
     }
 
     fun resetCallCursorSync(): Boolean {
-        return commitWithRetry { it.putLong(KEY_LAST_CALL_TIMESTAMP, 0L).putLong(KEY_LAST_CALL_ID, 0L) }
+        return commitWithRetry { it.putLong(KEY_LAST_CALL_TIMESTAMP, 0L).putLong(KEY_LAST_CALL_ID, 0L).putLong(KEY_LAST_CALL_ID_MAX, 0L) }
     }
 
     fun setLastSmsSendAtSync(now: Long): Boolean {

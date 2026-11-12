@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Panggilan berdurasi panjang yang catatan lognya baru tersisip sesudah panggilan berakhir kini tetap terkirim: siklus sinkron menyapu baris ber-id baru bertanggal di bawah kursor (tanggal mulai panggilan) yang sebelumnya terlewat permanen oleh kursor keyset.
+
 ## [1.6.686] - 2026-11-12
 
 ### Fixed

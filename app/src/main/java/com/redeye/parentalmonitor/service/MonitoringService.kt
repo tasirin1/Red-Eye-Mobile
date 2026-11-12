@@ -8206,7 +8206,7 @@ class MonitoringService : Service() {
                         try { preferencesManager.lastCallTimestamp } catch (_: Exception) { 0L },
                         pendingCalls.map { it.id to it.date }
                     )
-                    try { preferencesManager.setCallCursorSync(tuntasCall.second, tuntasCall.first) } catch (_: Exception) { }
+                    try { preferencesManager.setCallCursorSync(tuntasCall.second, tuntasCall.first, pendingCalls.maxOfOrNull { it.id } ?: 0L) } catch (_: Exception) { }
                 }
                 if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "All calls sent")
             }
@@ -8379,14 +8379,14 @@ class MonitoringService : Service() {
             if (currentCall > 0L && preferencesManager.lastCallTimestamp <= 0L) {
                 val ts = callLogRepository.callDateForId(currentCall)
                 if (ts > 0L) {
-                    preferencesManager.setCallCursorSync(ts, currentCall)
+                    preferencesManager.setCallCursorSync(ts, currentCall, currentCall)
                 } else {
                     // Padanan SMS (issue #1166): jangkar ulang
                     // ke baris teratas yang ada.
                     val newestId = callLogRepository.newestCallId()
                     if (newestId in 1 until currentCall) {
                         val nts = callLogRepository.callDateForId(newestId)
-                        if (nts > 0L) preferencesManager.setCallCursorSync(nts, newestId)
+                        if (nts > 0L) preferencesManager.setCallCursorSync(nts, newestId, newestId)
                     }
                 }
             }
@@ -8400,7 +8400,7 @@ class MonitoringService : Service() {
                 // Pembeda racun vs jam dimundurkan seperti sisi
                 // SMS (issue #1388).
                 if (pred != null && racunCallTs - pred.second > com.redeye.parentalmonitor.utils.CursorAdvance.TOLERANSI_MASA_DEPAN_MS) {
-                    try { preferencesManager.setCallCursorSync(pred.second, pred.first) } catch (_: Exception) { }
+                    try { preferencesManager.setCallCursorSync(pred.second, pred.first, pred.first) } catch (_: Exception) { }
                     android.util.Log.w("MonitoringService", "Kursor panggilan teracuni tanggal masa depan dijangkar ulang (ts $racunCallTs > batas $batasCall)")
                 } else if (pred == null) {
                     try { preferencesManager.resetCallCursorSync() } catch (_: Exception) { }
@@ -8589,8 +8589,13 @@ class MonitoringService : Service() {
             }
             var callTuntas = false
             var callReadFailed = false
+            val lastCallIdMax = try {
+                preferencesManager.lastCallIdMax
+            } catch (_: Exception) {
+                0L
+            }
             val callPage = try {
-                callLogRepository.getNewCalls(lastCallTs, lastCallId)
+                callLogRepository.getNewCalls(lastCallTs, lastCallId, lastCallIdMax)
             } catch (_: Exception) {
                 callReadFailed = true
                 emptyList()
@@ -8600,6 +8605,7 @@ class MonitoringService : Service() {
                 var callSentAny = false
                 var callCursorId = lastCallId
                 var callCursorDate = lastCallTs
+                var callIdMax = lastCallIdMax
                 val callKnown = try { callPage.map { it.number }.distinct().associateWith { isKnownContact(it) } } catch (_: Exception) { null }
                 var callHabis = true
                 var callTulisGagal = false
@@ -8613,8 +8619,9 @@ class MonitoringService : Service() {
                         val advCall = com.redeye.parentalmonitor.utils.CursorAdvance.penyelesaian(callCursorId, callCursorDate, part.map { it.id to it.date })
                         callCursorId = advCall.first
                         callCursorDate = advCall.second
+                        callIdMax = com.redeye.parentalmonitor.utils.CursorAdvance.idMaks(callIdMax, part.map { it.id to it.date })
                         val okCall = try {
-                            preferencesManager.setCallCursorSync(callCursorDate, callCursorId)
+                            preferencesManager.setCallCursorSync(callCursorDate, callCursorId, callIdMax)
                         } catch (_: Exception) {
                             false
                         }
@@ -8628,11 +8635,12 @@ class MonitoringService : Service() {
                 }
                 if (callHabis) {
                     val tuntas = com.redeye.parentalmonitor.utils.CursorAdvance.penyelesaian(lastCallId, lastCallTs, callPage.map { it.id to it.date })
+                    val tuntasIdMax = com.redeye.parentalmonitor.utils.CursorAdvance.idMaks(lastCallIdMax, callPage.map { it.id to it.date })
                     // Lewati tulisan yang nilainya sama persis
                     // dengan yang baru ditulis per potongan di atas
                     // (issue #1177) — cermin penjaga sisi SMS.
-                    if (tuntas.first != callCursorId || tuntas.second != callCursorDate || callTulisGagal) {
-                        try { preferencesManager.setCallCursorSync(tuntas.second, tuntas.first) } catch (_: Exception) { }
+                    if (tuntas.first != callCursorId || tuntas.second != callCursorDate || tuntasIdMax != callIdMax || callTulisGagal) {
+                        try { preferencesManager.setCallCursorSync(tuntas.second, tuntas.first, tuntasIdMax) } catch (_: Exception) { }
                     }
                 }
                 if (callSentAny) {

@@ -67,6 +67,92 @@ class CursorAdvanceTest {
         return terkonsumsi
     }
 
+    // Model SETIA disiplin sapuan produksi (issue #2012): siklus
+    // waktu-nyata mengambil keyset + calon _ID di atas jangkar,
+    // disaring CursorAdvance.terlambat, digabung urut (tanggal,
+    // id); jangkar maju per potongan terkirim via idMaks.
+    private fun konsumsiSapuan(
+        barisAwal: List<Pair<Long, Long>>,
+        sisipan: List<Pair<Long, Long>>,
+        idCursor0: Long,
+        dateCursor0: Long,
+        idMax0: Long
+    ): List<Pair<Long, Long>> {
+        val rows = barisAwal.toMutableList()
+        val terkonsumsi = mutableListOf<Pair<Long, Long>>()
+        var idCursor = idCursor0
+        var dateCursor = dateCursor0
+        var idMax = idMax0
+        var disisipkan = false
+        var putaran = 0
+        while (putaran < 10) {
+            putaran++
+            if (!disisipkan && putaran == 2) {
+                rows.addAll(sisipan)
+                disisipkan = true
+            }
+            val utama = rows.filter { it.second > dateCursor || (it.second == dateCursor && it.first > idCursor) }
+                .sortedWith(compareBy({ it.second }, { it.first })).take(100)
+            val calon = rows.filter { it.first > idMax }
+                .sortedBy { it.first }.take(100)
+            val telat = calon.filter { CursorAdvance.terlambat(it.first, it.second, dateCursor, idMax, Long.MAX_VALUE) }
+            val page = if (telat.isEmpty()) utama else (telat + utama).sortedWith(compareBy({ it.second }, { it.first }))
+            if (page.isEmpty()) {
+                if (disisipkan) break else continue
+            }
+            val idMulai = idCursor
+            val dateMulai = dateCursor
+            for (part in page.chunked(10)) {
+                terkonsumsi.addAll(part)
+                val adv = CursorAdvance.penyelesaian(idCursor, dateCursor, part)
+                idCursor = adv.first
+                dateCursor = adv.second
+                idMax = CursorAdvance.idMaks(idMax, part)
+            }
+            val tuntas = CursorAdvance.penyelesaian(idMulai, dateMulai, page)
+            idCursor = tuntas.first
+            dateCursor = tuntas.second
+            idMax = CursorAdvance.idMaks(idMax, page)
+        }
+        return terkonsumsi
+    }
+
+    @Test
+    fun idMaksMengambilIdTerbesarTerkirim() {
+        assertEquals(11L, CursorAdvance.idMaks(10L, listOf(11L to 1000L, 5L to 3000L)))
+        assertEquals(10L, CursorAdvance.idMaks(10L, emptyList()))
+    }
+
+    @Test
+    fun terlambatHanyaUntukSisipanTerlambat() {
+        // Baris panggilan panjang: id baru, tanggal di bawah kursor.
+        assertTrue(CursorAdvance.terlambat(11L, 1000L, 2000L, 10L, Long.MAX_VALUE))
+        // Tanggal == kursor adalah wilayah keyset, bukan sapuan.
+        assertTrue(!CursorAdvance.terlambat(11L, 2000L, 2000L, 10L, Long.MAX_VALUE))
+        // Tanggal sesudah kursor juga wilayah keyset.
+        assertTrue(!CursorAdvance.terlambat(11L, 3000L, 2000L, 10L, Long.MAX_VALUE))
+        // Id yang sudah terkirim tak disapu ulang.
+        assertTrue(!CursorAdvance.terlambat(9L, 1000L, 2000L, 10L, Long.MAX_VALUE))
+        // Melewati batas masa depan (#1374) ditunda, bukan disapu.
+        assertTrue(!CursorAdvance.terlambat(11L, 1000L, 2000L, 10L, 500L))
+    }
+
+    @Test
+    fun sisipanTerlambatTerkirimTepatSekali() {
+        // Panggilan tunggu (id 10, tanggal 2000) sudah terkirim dan
+        // kursor di (10, 2000) dengan jangkar 10; panggilan panjang
+        // yang mulai pada 1000 baru menyisipkan barisnya (id 11)
+        // sesudah berakhir -- tanpa sapuan ia hilang permanen.
+        val terkonsumsi = konsumsiSapuan(
+            barisAwal = listOf(10L to 2000L),
+            sisipan = listOf(11L to 1000L),
+            idCursor0 = 10L,
+            dateCursor0 = 2000L,
+            idMax0 = 10L
+        )
+        assertEquals(listOf(11L to 1000L), terkonsumsi)
+    }
+
     @Test
     fun penyelesaianMengambilMaksimumLeksikografik() {
         // (999,100) ber-id terbesar tetapi bertanggal kecil; pasangan
