@@ -986,7 +986,7 @@ class PreferencesManager(context: Context) {
 
     var photoPauseSource: Int
         get() = prefInt(KEY_PHOTO_PAUSE_SOURCE, 0)
-        set(value) = sharedPreferences.edit().putInt(KEY_PHOTO_PAUSE_SOURCE, value).apply()
+        set(value) = sharedPreferences.edit().putInt(KEY_PHOTO_PAUSE_SOURCE, value).commit()
 
     fun setPhotoPause(until: Long, source: Int) {
         try {
@@ -996,11 +996,16 @@ class PreferencesManager(context: Context) {
             } else {
                 0L
             }
+            // commit (issue #1979): jeda foto adalah
+            // keputusan pengguna yang dibaca lagi sesudah
+            // proses bangkit -- apply yang hilang oleh
+            // kematian proses membatalkan jeda senyap dan
+            // foto otomatis jalan lagi di masa jeda.
             sharedPreferences.edit()
                 .putLong(KEY_PHOTO_PAUSED_UNTIL, until)
                 .putLong(KEY_PHOTO_PAUSED_ELAPSED_UNTIL, elapsed)
                 .putInt(KEY_PHOTO_PAUSE_SOURCE, source)
-                .apply()
+                .commit()
         } catch (_: Exception) {
         }
     }

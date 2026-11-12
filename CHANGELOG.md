@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Jeda foto kini disimpan seketika (commit) saat dipasang, jadi kematian proses tidak bisa membatalkan jeda yang diminta pengguna.
 - Dialog peringatan akses mati sesudah mulai monitoring kini menilai Aksesibilitas dengan standar yang sama seperti baris status (tercantum DAN terhubung), jadi layanan yang belum terikat ikut diperingatkan.
 - Balasan gagal /restart kini memakai syarat mode aman yang persis sama dengan gerbang penyalaan ulangnya, jadi penolakan oleh penjaga 10 detik di jendela sesudah mode aman kedaluwarsa tidak lagi terbaca sebagai penolakan mode aman.
 
