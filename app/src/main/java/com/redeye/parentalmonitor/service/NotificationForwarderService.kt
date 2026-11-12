@@ -1283,9 +1283,13 @@ class NotificationForwarderService : NotificationListenerService() {
                 }
                 val survived = leftover.filterIndexed { idx, _ -> results.getOrElse(idx) { false } }
                 if (survived.isNotEmpty()) {
+                    // Bidang hash/grup segmen gabungan berisi
+                    // banyak nilai berpisah "|" (issue #1982)
+                    // -- uraikan dulu; item biasa tanpa "|"
+                    // terurai menjadi dirinya sendiri.
                     markMarkersForwarded(
-                        survived.map { it.third }.filter { it.isNotEmpty() }.distinct(),
-                        survived.map { it.second }.filter { it.isNotEmpty() }
+                        survived.flatMap { it.third.split('|') }.filter { it.isNotEmpty() }.distinct(),
+                        survived.flatMap { it.second.split('|') }.filter { it.isNotEmpty() }
                     )
                 }
                 try {
@@ -1337,9 +1341,13 @@ class NotificationForwarderService : NotificationListenerService() {
                 }
                 val survived = sisa.filterIndexed { idx, _ -> results.getOrElse(idx) { false } }
                 if (survived.isNotEmpty()) {
+                    // Bidang hash/grup segmen gabungan berisi
+                    // banyak nilai berpisah "|" (issue #1982)
+                    // -- uraikan dulu; item biasa tanpa "|"
+                    // terurai menjadi dirinya sendiri.
                     markMarkersForwarded(
-                        survived.map { it.third }.filter { it.isNotEmpty() }.distinct(),
-                        survived.map { it.second }.filter { it.isNotEmpty() }
+                        survived.flatMap { it.third.split('|') }.filter { it.isNotEmpty() }.distinct(),
+                        survived.flatMap { it.second.split('|') }.filter { it.isNotEmpty() }
                     )
                 }
                 try {
@@ -1620,7 +1628,14 @@ class NotificationForwarderService : NotificationListenerService() {
                 currentCovered = true
                 synchronized(batchLock) {
                     val sisa = items.drop(index)
-                    flushInFlight = if (curCount > 0) listOf(Triple(cur.toString(), "", "")) + sisa else sisa
+                    // Segmen gabungan membawa hash/grup
+                    // penyusunnya digabung "|" (issue #1982):
+                    // kosong seperti dulu membuat salvage tak
+                    // bisa menandainya, jadi notifikasi
+                    // penyusun diteruskan ulang oleh pindai
+                    // sambung-ulang. "|" tak mungkin muncul di
+                    // hash heksadesimal maupun nama paket.
+                    flushInFlight = if (curCount > 0) listOf(Triple(cur.toString(), curHashes.joinToString("|"), curGroups.joinToString("|"))) + sisa else sisa
                 }
             }
             flushCur()

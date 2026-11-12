@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Segmen gabungan notifikasi yang sedang diteruskan kini membawa penanda notifikasi penyusunnya, jadi penyelamatan saat layanan mati bisa menandainya dan pindai sambung-ulang tidak meneruskannya dua kali.
 - Penghitung kematian proses (liveness) kini disimpan seketika (commit) saat bertambah dan saat ditandai terlapor, jadi laporannya tidak kekurangan atau kelebihan satu karena simpanan yang hilang.
 - Label pemicu uji anti-mati kini disimpan seketika (commit) seperti bagian keadaan uji lainnya, jadi vonis sesudah bangkit tidak membaca label pemicu yang basi.
 - Jeda foto kini disimpan seketika (commit) saat dipasang, jadi kematian proses tidak bisa membatalkan jeda yang diminta pengguna.
