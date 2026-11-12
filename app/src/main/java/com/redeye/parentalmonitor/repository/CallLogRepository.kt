@@ -101,14 +101,19 @@ class CallLogRepository(private val context: Context) {
             // panggilan berakhir dengan DATE = waktu mulai,
             // sehingga tanggalnya di bawah kursor dan keyset
             // tak pernah memilihnya. Calon diambil kasar
-            // menurut _ID (monoton sisip), lalu disaring
-            // persis oleh predikat murni CursorAdvance.
+            // menurut _ID (monoton sisip) + tanggal di
+            // bawah kursor (issue #2026: tanpa syarat
+            // tanggal itu, LIMIT 100 bisa habis oleh baris
+            // bukan-terlambat dan baris terlambat sungguhan
+            // di luar jendela terlewati jangkar), lalu
+            // disaring persis oleh predikat murni
+            // CursorAdvance.
             // afterIdMax <= 0 menonaktifkan sapuan (pemanggil
             // selain siklus waktu-nyata tak berubah).
             if (afterIdMax <= 0L) return utama
             val calon = queryCalls(
-                selection = "${CallLog.Calls._ID} > ? AND ${CallLog.Calls.DATE} <= ?",
-                args = arrayOf(afterIdMax.toString(), batas.toString()),
+                selection = "${CallLog.Calls._ID} > ? AND ${CallLog.Calls.DATE} < ? AND ${CallLog.Calls.DATE} <= ?",
+                args = arrayOf(afterIdMax.toString(), afterTimestamp.toString(), batas.toString()),
                 sortOrder = "${CallLog.Calls._ID} ASC",
                 limit = 100,
                 strict = true

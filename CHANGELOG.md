@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Jendela calon sapuan baris terlambat tidak lagi bisa melewatkan baris yang seharusnya terambil: kueri calon di repositori panggilan dan SMS kini juga menyaring tanggal di bawah tanggal kursor, karena sebelumnya batas 100 calon bisa habis oleh baris yang bukan terlambat sehingga baris terlambat sungguhan di luar jendela terlewati jangkar dan hilang permanen dari penerusan waktu-nyata (issue #2026).
+
 ## [1.6.688] - 2026-11-12
 
 ### Fixed
