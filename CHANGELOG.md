@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.677] - 2026-11-12
+
 ### Added
 
 - Tombol konteks di bawah kiriman media (keputusan pemilik, kemudahan pakai): foto dan video kini membawa tombol 📍 Lokasi dan 📊 Status di atas baris Menu utama, dan rekaman audio membawa 📊 Status — langkah lanjutan yang paling nyambung dengan kirimannya cukup satu ketukan, tanpa masuk menu dulu. Markup lama satu baris Menu utama untuk kiriman media (menuBarBody) digantikan pembangun markup konteks ini dan fungsinya yang tak lagi terpakai dihapus.
