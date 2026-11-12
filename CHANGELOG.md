@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.690] - 2026-11-13
+
 ### Fixed
 - Hitungan Kena pantau dari panggilan di ringkasan harian kini mengecualikan panggilan yang ditolak atau diblokir, sama seperti jalur peringatan dan laporan mingguan: sebelumnya nomor pantau yang diblokir perangkat dan menelepon berulang menaikkan hitungan itu tanpa satu pun panggilan mencapai anak (issue #2035).
 - Membuat cadangan kini memasangkan owner dari ikatan pulih impor yang belum disimpan, sama seperti token, chat, dan PIN aksesnya: sebelumnya owner selalu diambil mentah dari simpanan perangkat, jadi berkas cadangan hasil impor memasangkan kredensial baru dengan owner lama (atau tanpa owner sama sekali), dan owner basi itulah yang menjadi pemilik bot bila berkas itu kelak dipulihkan dan disimpan (issue #2034).
