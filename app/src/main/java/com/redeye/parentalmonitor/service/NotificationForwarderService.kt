@@ -61,16 +61,6 @@ class NotificationForwarderService : NotificationListenerService() {
     // sinkron tidak lagi menahan kunci dua peta penanda.
     private val markerPersistLock = Any()
 
-    // Generasi penanda (issue #1983): naik tiap
-    // markMarkersForwarded mengganti view. Potret
-    // membawa generasinya; penulis di
-    // PreferencesManager menolak potret yang lebih
-    // tua dari yang terakhir tertulis, jadi dari
-    // tiga jalur persist tak ada potret basi yang
-    // bisa mendarat terakhir dan menghapus tanda
-    // terbaru.
-    private val generasiPenanda = java.util.concurrent.atomic.AtomicLong(0)
-
     // Pemisah daftar penanda di bidang triple segmen
     // gabungan (issue #1986): karakter kontrol yang
     // mustahil muncul di hash Base64 maupun groupKey
@@ -222,6 +212,19 @@ class NotificationForwarderService : NotificationListenerService() {
     data class NotifRecord(val app: String, val title: String, val text: String, val at: Long)
 
     companion object {
+        // Generasi penanda (issue #1983, cakupan
+        // dikoreksi #1987): naik tiap
+        // markMarkersForwarded mengganti view; potret
+        // membawa generasinya dan penulis di
+        // PreferencesManager menolak potret yang lebih
+        // tua dari yang terakhir tertulis. Penghitung
+        // ini WAJIB seumur proses seperti penjaganya:
+        // sebagai field instance, instance baru
+        // sesudah rebind mulai dari 0 dan semua
+        // persist-nya ditolak senyap oleh penjaga
+        // yang sudah jauh lebih tinggi.
+        private val generasiPenanda = java.util.concurrent.atomic.AtomicLong(0)
+
         private const val MAX_FORWARDED_IDS = 100
         private const val MAX_GROUP_FORWARDED = 50
         private const val GROUP_SUMMARY_HOLD_MS = 30 * 60_000L

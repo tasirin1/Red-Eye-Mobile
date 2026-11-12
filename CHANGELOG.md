@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Penghitung generasi penanda notifikasi kini berumur proses seperti penjaganya, jadi layanan penerus yang dibuat ulang tidak kehilangan semua simpanan penandanya secara senyap.
 - Pemisah daftar penanda pada segmen gabungan notifikasi diganti karakter kontrol yang tidak mungkin muncul di kunci grup maupun hash, jadi penanda grup tidak lagi pecah dan ringkasan grup tidak terkirim ganda sesudah penyelamatan.
 
 ## [1.6.683] - 2026-11-12
