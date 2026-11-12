@@ -3918,6 +3918,22 @@ class MonitoringService : Service() {
             sendToTelegram(layar.text, layar.markup)
             return
         }
+        if (aksi is com.redeye.parentalmonitor.utils.MenuCallback.Refresh) {
+            if (!ownerOk) return
+            val pesanId = try { query.message?.messageId ?: 0L } catch (_: Exception) { 0L }
+            if (pesanId <= 0L) return
+            val targetChat = originChat.ifEmpty { chatId }
+            queryLock.withLock {
+                val teks = when (aksi.command) {
+                    "status" -> statusReportText()
+                    "battery" -> batteryReportText()
+                    "storage" -> storageReportText()
+                    else -> null
+                }
+                if (teks != null) editTextMessage(targetChat, pesanId, teks, markupSegarkan(aksi.command))
+            }
+            return
+        }
         val lahirAt = try {
             query.message?.date ?: 0L
         } catch (_: Exception) {
@@ -4047,6 +4063,10 @@ class MonitoringService : Service() {
     }
 
     private suspend fun editMenuMessage(chatId: String, messageId: Long, layar: MenuScreen): Boolean {
+        return editTextMessage(chatId, messageId, layar.text, layar.markup)
+    }
+
+    private suspend fun editTextMessage(chatId: String, messageId: Long, teks: String, markup: com.redeye.parentalmonitor.network.InlineKeyboardMarkup): Boolean {
         try {
             if (chatId.isEmpty() || messageId <= 0L) return false
             val botToken = try { preferencesManager.botToken } catch (_: Exception) { "" }
@@ -4059,8 +4079,8 @@ class MonitoringService : Service() {
             val body = com.redeye.parentalmonitor.network.EditMessageRequest(
                 chatId = chatId,
                 messageId = messageId,
-                text = layar.text,
-                replyMarkup = layar.markup
+                text = teks,
+                replyMarkup = markup
             )
             val url = "https://api.telegram.org/bot${botToken}/editMessageText"
             val response = TelegramClient.api.editMessageText(url, body)
@@ -4256,6 +4276,19 @@ class MonitoringService : Service() {
         return com.redeye.parentalmonitor.network.InlineKeyboardMarkup(
             listOf(
                 listOf(button("\uD83C\uDFE0 Menu utama", "menu:open"))
+            )
+        )
+    }
+
+    // Markup balasan laporan yang bisa disegarkan
+    // (kemudahan pakai, keputusan pemilik 2026-11-12):
+    // tombol Segarkan mengedit pesan yang sama lewat
+    // MenuCallback.Refresh; Menu utama tetap satu ketuk.
+    private fun markupSegarkan(command: String): com.redeye.parentalmonitor.network.InlineKeyboardMarkup {
+        return com.redeye.parentalmonitor.network.InlineKeyboardMarkup(
+            listOf(
+                listOf(com.redeye.parentalmonitor.network.InlineButton("\uD83D\uDD04 Segarkan", "segar:" + command)),
+                listOf(com.redeye.parentalmonitor.network.InlineButton("\uD83C\uDFE0 Menu utama", "menu:open"))
             )
         )
     }
@@ -4900,12 +4933,9 @@ class MonitoringService : Service() {
             "/pause" -> handlePauseCommand(arg)
             "/battery" -> {
                 if (!privateChat) {
-                    sendToTelegram("🔒 Rincian hanya via private chat dengan bot.")
+                    sendToTelegram("\uD83D\uDD12 Rincian hanya via private chat dengan bot.")
                 } else {
-                    val level = batteryLevel()
-                    val levelText = if (level in 0..100) "$level%" else "tak tahu"
-                    val suhu = thermalStatusText()
-                    sendToTelegram("🔋 <b>Baterai</b>\nLevel: $levelText" + if (suhu.isNotEmpty()) "\nSuhu perangkat: $suhu" else "")
+                    sendToTelegram(batteryReportText(), markupSegarkan("battery"))
                 }
             }
             "/stop" -> {
@@ -6102,14 +6132,16 @@ class MonitoringService : Service() {
     private suspend fun handleStorageCommand(privateChat: Boolean) {
         // Penolakan grup (issue #1758), pola #1689.
         if (!privateChat) { sendToTelegram("\uD83D\uDD12 Rincian hanya via private chat dengan bot."); return }
+        sendToTelegram(storageReportText(), markupSegarkan("storage"))
+    }
+
+    private suspend fun storageReportText(): String {
         val stats = withContext(Dispatchers.IO) { cacheStats() }
-        sendToTelegram(
-            buildString {
-                appendLine("\uD83D\uDCBE <b>Penyimpanan</b>")
-                appendLine("Cache: " + ReportFormat.formatBytes(stats.bytes) + " (" + stats.photos + " foto, " + stats.audios + " audio, " + stats.videos + " video)")
-                appendLine("Antrean: ${messageQueue.getQueueSize()}")
-            }
-        )
+        return buildString {
+            appendLine("\uD83D\uDCBE <b>Penyimpanan</b>")
+            appendLine("Cache: " + ReportFormat.formatBytes(stats.bytes) + " (" + stats.photos + " foto, " + stats.audios + " audio, " + stats.videos + " video)")
+            appendLine("Antrean: ${messageQueue.getQueueSize()}")
+        }
     }
 
     private suspend fun handleHistoryCommand(arg: String, privateChat: Boolean) {
@@ -7254,9 +7286,19 @@ class MonitoringService : Service() {
         captureAndSendPhoto(reportResult = true, replyOverrideChatId)
     }
 
+    private fun batteryReportText(): String {
+        val level = batteryLevel()
+        val levelText = if (level in 0..100) "$level%" else "tak tahu"
+        val suhu = thermalStatusText()
+        return "🔋 <b>Baterai</b>\nLevel: $levelText" + if (suhu.isNotEmpty()) "\nSuhu perangkat: $suhu" else ""
+    }
+
     private suspend fun handleStatusCommand(privateChat: Boolean) {
         if (!privateChat) { sendToTelegram("\uD83D\uDD12 Rincian hanya via private chat dengan bot."); return }
+        sendToTelegram(statusReportText(), markupSegarkan("status"))
+    }
 
+    private suspend fun statusReportText(): String {
         val lastSync = preferencesManager.lastSyncTime
         val lastSyncStr = if (lastSync > 0) formatDate(lastSync) else "belum pernah"
         // Nilai yang tampil lebih dari sekali dibaca SEKALI
@@ -7274,55 +7316,52 @@ class MonitoringService : Service() {
         } else {
             "tiap $intervalKamera mnt"
         }
-        sendToTelegram(
-            buildString {
-                appendLine("📊 <b>Status</b>")
-                appendLine("Monitoring: ${if (preferencesManager.monitoringPaused) "JEDA" else "JALAN"}")
-                appendLine("Sync terakhir: $lastSyncStr")
-                appendLine("Antrean: ${messageQueue.getQueueSize()}")
-                if (try { messageQueue.isVolatileOnly() } catch (_: Exception) { false }) appendLine("⚠️ Antrean di memori saja (penyimpanan terenkripsi tak tersedia) — pesan tertunda bisa hilang bila aplikasi mati.")
-                val effMin = effectiveSyncMillis() / 60_000L
-                appendLine("Interval data: tiap $intervalSync mnt" + if (idleDataCycles > 0 && effMin > intervalSync) " (sepi adaptif, kini tiap $effMin mnt)" else "")
-                appendLine("Foto: $photoState")
-                appendLine("Patroli: ${if (preferencesManager.patrolEnabled) "JALAN tiap ${preferencesManager.patrolInterval} mnt" else "mati"}")
-                appendLine("Kamera: ${preferencesManager.cameraFacing}")
-                appendLine("Malam: " + if (preferencesManager.nightMode) "JALAN 23–05" + if (isNightPaused()) " (sunyi sekarang)" else "" else "mati")
-                appendLine("Pantau: " + (watchList().takeIf { it.isNotEmpty() }?.joinToString(",") { Html.escape(it) } ?: "mati"))
-                appendLine("Rumah: " + fenceStatusText(true) + " · Sekolah: " + fenceStatusText(false))
-                appendLine("Izin kamera: ${if (hasCameraPermission()) "ada" else "HILANG"}")
-                appendLine("Izin lokasi: ${if (hasLocationPermission()) "ada" else "HILANG"}")
-                appendLine("Lokasi presisi: ${if (hasFineLocation()) "ada" else "HILANG (hanya perkiraan)"}")
-                appendLine("Lokasi latar: ${if (com.redeye.parentalmonitor.utils.AppPermissions.hasBackgroundLocation(this@MonitoringService)) "ada" else "HILANG"}")
-                appendLine("Izin SMS masuk: ${if (hasReceiveSmsPermission()) "ada" else "tidak"}")
-                appendLine("Izin status telepon: ${if (hasPhoneStatePermission()) "ada" else "tidak"}")
-                appendLine("Jaringan: " + networkSummary())
-                appendLine("Baterai: " + batterySummary())
-                appendLine("SIM: " + (try { currentSimIdentity().ifEmpty { "tak terbaca" } } catch (_: Exception) { "?" }))
-                try {
-                    val gagal = adminFailedAttempts()
-                    if (gagal > 0) appendLine("Buka kunci gagal: $gagal× sejak buka terakhir")
-                } catch (_: Exception) {
-                }
-                appendLine("Notifikasi: ${if (isNotifForwarding()) "teruskan" else "mati"}")
-                appendLine("Aksesibilitas: " + when {
-                    // 'Aktif' wajib ter-bind sungguhan
-                    // (issue #1606, pola pemeriksa kesehatan
-                    // #1505): tercantum di setelan saja bisa
-                    // berarti bind dibekukan OEM — status
-                    // on-demand tak boleh menenangkan palsu.
-                    ShotAccessibilityService.isEnabled(this@MonitoringService) && ShotAccessibilityService.isBound() -> "aktif"
-                    ShotAccessibilityService.isEnabled(this@MonitoringService) -> "tercantum (belum terhubung)"
-                    preferencesManager.accessibilityEverEnabled -> "MATI"
-                    else -> "belum diaktifkan"
-                } + " · alert app: " + (if (preferencesManager.a11yAppAlert) "nyala" else "mati") +
-                    " · proteksi: " + (if (preferencesManager.a11yTamperEnabled) "nyala" else "mati"))
-                appendLine("Pantau app: " + (if (preferencesManager.a11yAppWatchEnabled) "nyala (" + preferencesManager.a11yAppWatchPackageSet().size + " app)" else "mati"))
-                appendLine("Sekarang: " + Html.escape(A11yMonitor.currentAppLabel().ifEmpty { "-" }))
-                appendLine("Foto terakhir: ${if (fotoTerakhir > 0) formatDate(fotoTerakhir) else "belum pernah"}")
-                appendLine("Jam malam: ${try { preferencesManager.curfewTime.takeIf { it.isNotEmpty() } ?: "mati" } catch (_: Exception) { "?" }}")
-            },
-            mainMenu()
-        )
+        return buildString {
+            appendLine("📊 <b>Status</b>")
+            appendLine("Monitoring: ${if (preferencesManager.monitoringPaused) "JEDA" else "JALAN"}")
+            appendLine("Sync terakhir: $lastSyncStr")
+            appendLine("Antrean: ${messageQueue.getQueueSize()}")
+            if (try { messageQueue.isVolatileOnly() } catch (_: Exception) { false }) appendLine("⚠️ Antrean di memori saja (penyimpanan terenkripsi tak tersedia) — pesan tertunda bisa hilang bila aplikasi mati.")
+            val effMin = effectiveSyncMillis() / 60_000L
+            appendLine("Interval data: tiap $intervalSync mnt" + if (idleDataCycles > 0 && effMin > intervalSync) " (sepi adaptif, kini tiap $effMin mnt)" else "")
+            appendLine("Foto: $photoState")
+            appendLine("Patroli: ${if (preferencesManager.patrolEnabled) "JALAN tiap ${preferencesManager.patrolInterval} mnt" else "mati"}")
+            appendLine("Kamera: ${preferencesManager.cameraFacing}")
+            appendLine("Malam: " + if (preferencesManager.nightMode) "JALAN 23–05" + if (isNightPaused()) " (sunyi sekarang)" else "" else "mati")
+            appendLine("Pantau: " + (watchList().takeIf { it.isNotEmpty() }?.joinToString(",") { Html.escape(it) } ?: "mati"))
+            appendLine("Rumah: " + fenceStatusText(true) + " · Sekolah: " + fenceStatusText(false))
+            appendLine("Izin kamera: ${if (hasCameraPermission()) "ada" else "HILANG"}")
+            appendLine("Izin lokasi: ${if (hasLocationPermission()) "ada" else "HILANG"}")
+            appendLine("Lokasi presisi: ${if (hasFineLocation()) "ada" else "HILANG (hanya perkiraan)"}")
+            appendLine("Lokasi latar: ${if (com.redeye.parentalmonitor.utils.AppPermissions.hasBackgroundLocation(this@MonitoringService)) "ada" else "HILANG"}")
+            appendLine("Izin SMS masuk: ${if (hasReceiveSmsPermission()) "ada" else "tidak"}")
+            appendLine("Izin status telepon: ${if (hasPhoneStatePermission()) "ada" else "tidak"}")
+            appendLine("Jaringan: " + networkSummary())
+            appendLine("Baterai: " + batterySummary())
+            appendLine("SIM: " + (try { currentSimIdentity().ifEmpty { "tak terbaca" } } catch (_: Exception) { "?" }))
+            try {
+                val gagal = adminFailedAttempts()
+                if (gagal > 0) appendLine("Buka kunci gagal: $gagal× sejak buka terakhir")
+            } catch (_: Exception) {
+            }
+            appendLine("Notifikasi: ${if (isNotifForwarding()) "teruskan" else "mati"}")
+            appendLine("Aksesibilitas: " + when {
+                // 'Aktif' wajib ter-bind sungguhan
+                // (issue #1606, pola pemeriksa kesehatan
+                // #1505): tercantum di setelan saja bisa
+                // berarti bind dibekukan OEM — status
+                // on-demand tak boleh menenangkan palsu.
+                ShotAccessibilityService.isEnabled(this@MonitoringService) && ShotAccessibilityService.isBound() -> "aktif"
+                ShotAccessibilityService.isEnabled(this@MonitoringService) -> "tercantum (belum terhubung)"
+                preferencesManager.accessibilityEverEnabled -> "MATI"
+                else -> "belum diaktifkan"
+            } + " · alert app: " + (if (preferencesManager.a11yAppAlert) "nyala" else "mati") +
+                " · proteksi: " + (if (preferencesManager.a11yTamperEnabled) "nyala" else "mati"))
+            appendLine("Pantau app: " + (if (preferencesManager.a11yAppWatchEnabled) "nyala (" + preferencesManager.a11yAppWatchPackageSet().size + " app)" else "mati"))
+            appendLine("Sekarang: " + Html.escape(A11yMonitor.currentAppLabel().ifEmpty { "-" }))
+            appendLine("Foto terakhir: ${if (fotoTerakhir > 0) formatDate(fotoTerakhir) else "belum pernah"}")
+            appendLine("Jam malam: ${try { preferencesManager.curfewTime.takeIf { it.isNotEmpty() } ?: "mati" } catch (_: Exception) { "?" }}")
+        }
     }
 
     private suspend fun handleRingkasCommand(privateChat: Boolean) {

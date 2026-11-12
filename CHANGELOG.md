@@ -2,6 +2,7 @@
 
 ### Added
 
+- Tombol Segarkan pada balasan laporan /status, /battery, dan /storage (keputusan pemilik, kemudahan pakai): balasan ketiga laporan itu kini membawa tombol 🔄 Segarkan yang mengedit pesan yang sama dengan data terbaru — chat tidak lagi menumpuk pesan status lama. Parser callback mendapat aksi Refresh yang daftar perintahnya dikunci ke tiga laporan baca-saja itu, penyegaran berjalan di jalur query dan memakai gerbang rate-limit edit yang sama dengan menu, dan perakit teks ketiga laporan diekstrak agar jalur perintah dan jalur segarkan memakai teks yang persis sama.
 - Tombol Jeda/Lanjut pada notifikasi layanan (keputusan pemilik, kemudahan pakai): notifikasi tetap yang tadinya hanya bisa diketuk untuk membuka Setup kini punya satu tombol aksi di tampilannya yang diperluas — Jeda menghentikan pemantauan seketika dan Lanjut menjalankannya lagi, memakai jalur yang sama dengan /stop dan /resume Telegram termasuk pesan konfirmasinya. Melanjutkan dari notifikasi bersifat seketika (tidak menunggu poll yang saat dijeda tidur 5 menit), dan label tombol selalu mengikuti keadaan jeda terbaru dari jalur mana pun.
 
 ## [1.6.676] - 2026-11-12

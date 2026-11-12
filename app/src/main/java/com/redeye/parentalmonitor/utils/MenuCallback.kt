@@ -5,6 +5,12 @@ import java.util.Locale
 sealed class MenuCallback {
     data class Navigate(val view: String, val editInPlace: Boolean) : MenuCallback()
     data class Run(val command: String) : MenuCallback()
+    // Segarkan (kemudahan pakai, keputusan pemilik
+    // 2026-11-12): tombol di bawah balasan laporan yang
+    // mengedit pesan yang sama dengan data terbaru, bukan
+    // mengirim pesan baru. Hanya laporan baca-saja murah
+    // yang boleh disegarkan; daftar di REFRESH_COMMANDS.
+    data class Refresh(val command: String) : MenuCallback()
     data class AskInput(val command: String, val view: String) : MenuCallback()
     // harapan (issue #902): keadaan yang TERTULIS di label saat
     // tombol dibuat ("1"=NYALA, "0"=MATI). Bila keadaan aktual
@@ -22,6 +28,11 @@ sealed class MenuCallback {
         // ini ditolak parser agar data callback liar tak bisa
         // membalik setelan apa pun.
         val TOGGLE_KEYS = setOf("notify", "otp", "patrol", "night", "appalert", "appwatch", "protect", "datasaver")
+
+        // Laporan yang boleh disegarkan di tempat lewat
+        // tombol "segar:<perintah>": baca-saja, murah, dan
+        // teksnya dibangun ulang penuh tiap penyegaran.
+        val REFRESH_COMMANDS = setOf("status", "battery", "storage")
 
         // Sengaja tidak private (issue #903): uji mengunci tiap
         // nilai peta ini ke kepala perintah yang hidup di
@@ -71,6 +82,10 @@ sealed class MenuCallback {
             if (raw == "menu:open") return Navigate("main", false)
             if (raw == "menu:angka") return Navigate("main", false)
             if (raw.startsWith("m:")) return Navigate(viewName(raw.removePrefix("m:").trim()), true)
+            if (raw.startsWith("segar:")) {
+                val command = perintah(raw.removePrefix("segar:"))
+                return if (command in REFRESH_COMMANDS) Refresh(command) else null
+            }
             if (raw.startsWith("x:")) {
                 val command = perintah(raw.removePrefix("x:"))
                 return if (command.isEmpty()) null else Run(command)

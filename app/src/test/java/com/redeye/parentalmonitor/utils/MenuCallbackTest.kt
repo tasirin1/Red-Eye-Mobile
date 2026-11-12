@@ -37,6 +37,17 @@ class MenuCallbackTest {
     }
 
     @Test
+    fun segarkanLaporanDiTempat() {
+        assertEquals(MenuCallback.Refresh("status"), MenuCallback.parse("segar:status"))
+        assertEquals(MenuCallback.Refresh("battery"), MenuCallback.parse("segar:battery"))
+        assertEquals(MenuCallback.Refresh("storage"), MenuCallback.parse("segar:/storage"))
+        assertNull(MenuCallback.parse("segar:photo"))
+        assertNull(MenuCallback.parse("segar:stop"))
+        assertNull(MenuCallback.parse("segar:"))
+        assertNull(MenuCallback.parse("segar:status extra"))
+    }
+
+    @Test
     fun mintaAngkaAtauTeks() {
         assertEquals(MenuCallback.AskInput("record", ""), MenuCallback.parse("num:record"))
         assertEquals(MenuCallback.AskInput("record", "media"), MenuCallback.parse("num:media:record"))
