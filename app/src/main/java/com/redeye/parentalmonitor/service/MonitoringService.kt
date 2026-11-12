@@ -6597,7 +6597,11 @@ class MonitoringService : Service() {
             }
             return fresh
         }
-        if (cached.isNotEmpty()) return cached
+        // Cadangan dibaca ulang di bawah kunci (issue #1938):
+        // snapshot pra-pindai bisa sudah terinvalidasi di
+        // tengah pindai; dua cache saudara membaca ulang.
+        val cadangan = synchronized(appsCacheLock) { launchablePairsCache }
+        if (cadangan.isNotEmpty()) return cadangan
         return fresh
     }
 
