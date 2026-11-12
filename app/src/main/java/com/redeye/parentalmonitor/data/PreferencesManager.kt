@@ -2100,6 +2100,23 @@ class PreferencesManager(context: Context) {
         }
     }
 
+    fun clearBotUsernameSync(): Boolean {
+        // Username bot ikut dihapus saat wipe (issue
+        // #2004): nilainya menggerbangi perutean
+        // perintah grup dan gerbang belajar getMe hanya
+        // berjalan bila kosong. Username basi yang
+        // bertahan membuat perintah untuk bot BARU
+        // diabaikan sebagai "untuk bot lain" dan gerbang
+        // belajar tak pernah terisi ulang. Lewat commit,
+        // bukan setter apply(), agar kematian proses
+        // sesudah wipe tak menghidupkannya lagi.
+        return try {
+            sharedPreferences.edit().remove(KEY_BOT_USERNAME).commit()
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     fun setForwardedMarkersSync(groupValues: List<String>, idValues: List<String>, generasi: Long): Boolean {
         synchronized(prefsRmwLock) {
             if (generasi < generasiPenandaTertulis) return true

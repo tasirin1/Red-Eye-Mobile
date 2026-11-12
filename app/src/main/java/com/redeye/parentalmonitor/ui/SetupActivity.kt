@@ -1004,6 +1004,7 @@ class SetupActivity : AppCompatActivity() {
                 try { prefs.watchKeywords = "" } catch (_: Exception) { }
                 try { prefs.watchNumbers = "" } catch (_: Exception) { }
                 try { prefs.clearRestoreAnchorSync() } catch (_: Exception) { }
+                try { prefs.clearBotUsernameSync() } catch (_: Exception) { }
                 wasVolatile = try { !prefs.isStorageEncrypted } catch (_: Exception) { false }
                 if (wasVolatile) {
                     val outcome = try {
