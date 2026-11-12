@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Uji penolakan PIN salah pada impor cadangan diperketat: kini wajib gagal karena verifikasi tag enkripsi, bukan sekadar pengecualian apa pun.
 - Uji retensi jurnal crash diperketat: asersi lamanya selalu lolos lewat jalan pintas, kini entri yang bertahan dan yang terpangkas dibuktikan satu-satu.
 - Tiga workflow GitHub terakhir yang belum punya batas waktu job (auto-merge, labeler, stale) kini dibatasi 10 menit, jadi job yang menggantung tidak membakar runner sampai 6 jam.
 - Sisa berkas salinan kecil foto dari proses yang mati di tengah unggah kini disapu pada pembuatan salinan berikutnya, jadi tidak menumpuk selamanya di cache.

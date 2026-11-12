@@ -146,7 +146,11 @@ class SettingsBackupTest {
             SettingsBackup.decrypt(cipherText, "pin-yang-salah-total", salt, iv, 1_000)
             fail("PIN salah harus menggagalkan dekripsi")
         } catch (e: Exception) {
-            assertTrue(e is javax.crypto.AEADBadTagException || e.cause is javax.crypto.AEADBadTagException || e.message != null)
+            // Disjungsi ketiga (e.message != null) dicabut
+            // (issue #1959): ia lolos untuk hampir semua
+            // pengecualian berpesan, jadi penolakan PIN salah
+            // tak lagi membuktikan verifikasi tag AEAD.
+            assertTrue(e is javax.crypto.AEADBadTagException || e.cause is javax.crypto.AEADBadTagException)
         }
     }
 
