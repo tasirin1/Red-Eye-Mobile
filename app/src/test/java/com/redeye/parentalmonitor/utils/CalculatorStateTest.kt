@@ -269,6 +269,36 @@ class CalculatorStateTest {
     // negatif sebesar pasangan positifnya tampil utuh,
     // bukan notasi ilmiah terbulatkan.
     @Test
+    fun hasilKecilMembulatKeNolTampilIlmiah() {
+        // Cakupan #2068: cabang polos yang membulat
+        // ke nol pada skala maksimum beralih ke
+        // notasi ilmiah, bukan tampil "0".
+        val h = Harness()
+        h.run("1", "÷", "999999999999", "=")
+        assertEquals("1.00000E-12", h.state.currentNumber)
+    }
+
+    @Test
+    fun skalaTerpaksaNolMembulatkanSetengahKeAtas() {
+        // Cakupan #2068: cabang skala ter-coerce 0
+        // (bagian bulat sudah 12 digit): pembulatan
+        // setengah ke atas pada skala nol.
+        val h = Harness()
+        h.run("999999999999", "−", "0.5", "=")
+        assertEquals("999999999999", h.state.currentNumber)
+    }
+
+    @Test
+    fun luapanDigitSesudahPembulatanTampilIlmiah() {
+        // Cakupan #2068: cabang luapan digit PASCA
+        // pembulatan (12 digit menjadi 13) beralih
+        // ke notasi ilmiah.
+        val h = Harness()
+        h.run("999999999999", "+", "0.5", "=")
+        assertEquals("1.00000E+12", h.state.currentNumber)
+    }
+
+    @Test
     fun clearMenghapusSemuaTermasukIngatanPengulangan() {
         // Cakupan #2062: C menolkan semua bidang
         // termasuk ingatan operasi terakhir #2042 --

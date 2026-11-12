@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Tiga cabang formatResult kalkulator kini mempunyai cakupan uji: skala terpaksa nol, hasil polos yang membulat ke nol, dan luapan digit sesudah pembulatan (issue #2068).
 - Empat cabang backspace kalkulator kini mempunyai cakupan uji: pemulihan Error, no-op atas hasil, entri satu karakter, dan pembuangan akhiran minus (issue #2067).
 - Uji Error-lalu-operator kalkulator kini menegaskan previousNumber dan operator yang bersih sesudah penekanan operator: hilangnya cabang pemulihan Error di setOperator tak lagi lolos (issue #2066).
 - Uji clear kalkulator kini menegaskan langsung penolan ingatan pengulangan (lastOperator/lastOperand), bukan hanya tampilan: mutan yang menyisakan keduanya tak lagi lolos (issue #2065).
