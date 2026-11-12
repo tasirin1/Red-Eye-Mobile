@@ -974,7 +974,7 @@ class SetupActivity : AppCompatActivity() {
                     }
                 } catch (_: Exception) {
                 }
-                try { prefs.setSmsCursorSync(0L) } catch (_: Exception) { }
+                try { prefs.resetSmsCursorSync() } catch (_: Exception) { }
                 try { prefs.setCallCursorSync(0L, 0L) } catch (_: Exception) { }
                 try { prefs.lastSyncTime = 0L } catch (_: Exception) { }
                 try { prefs.lastPhotoTime = 0L } catch (_: Exception) { }
