@@ -1299,7 +1299,7 @@ class PreferencesManager(context: Context) {
         synchronized(auditLock) {
             auditMirror = null
             try {
-                sharedPreferences.edit().remove(KEY_AUDIT_LOG).apply()
+                sharedPreferences.edit().remove(KEY_AUDIT_LOG).commit()
             } catch (_: Exception) {
             }
         }
