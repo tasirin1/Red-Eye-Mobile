@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Label SIM pada laporan panggilan kini disegarkan berkala (peta label berumur 10 menit), jadi mengganti SIM saat layanan sedang jalan tidak lagi membuat labelnya hilang atau basi sampai layanan dimulai ulang.
 - Catatan uji anti-mati kini disimpan seketika (commit) saat uji dimulai dan diakhiri, jadi kematian proses yang justru sedang diuji tidak menghapus buktinya.
 - Pembersihan kode pasangan saat hapus data kini tersimpan seketika (commit), jadi kode yang sudah dibatalkan tidak bisa hidup lagi bila proses mati sebelum simpanan biasa sempat tertulis.
 - Pembersihan SMS tertahan saat hapus data kini memakai satu tulisan commit yang terkunci, bukan empat tulisantak sinkron yang bisa bangkit lagi bila proses mati sebelum tersimpan.

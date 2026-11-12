@@ -22,13 +22,23 @@ class CallLogRepository(private val context: Context) {
     )
 
     // Peta id akun telepon -> label SIM (issue #1496),
-    // dibangun malas & ditahan per instans repositori.
+    // dibangun malas & ditahan per instans repositori,
+    // tetapi berumur terbatas (issue #1971): dulu peta
+    // yang sudah terisi tak pernah dibatalkan, jadi ganti
+    // SIM saat layanan hidup membuat label hilang/basi
+    // sampai layanan restart. Sepuluh menit cukup pendek
+    // untuk menangkap pergantian, cukup panjang agar
+    // daftar langganan tak dibaca ulang per baris laporan.
     @Volatile
     private var petaSim: Map<String, String>? = null
 
+    @Volatile
+    private var petaSimAt: Long = 0L
+
     private fun labelSim(accountId: String?): String {
         if (accountId.isNullOrEmpty()) return ""
-        val peta = petaSim ?: try {
+        val tersimpan = petaSim
+        val peta = if (tersimpan != null && System.currentTimeMillis() - petaSimAt <= 600_000L) tersimpan else try {
             val sm = context.getSystemService(android.telephony.SubscriptionManager::class.java)
             val daftar = try { sm?.activeSubscriptionInfoList } catch (_: Exception) { null }
             val bangun = HashMap<String, String>()
@@ -45,7 +55,10 @@ class CallLogRepository(private val context: Context) {
                 // telephony belum siap sesudah boot -- tidak
                 // boleh mengunci peta kosong permanen --
                 // panggilan berikutnya wajib mencoba lagi.
-                if (bangun.isNotEmpty()) petaSim = bangun
+                if (bangun.isNotEmpty()) {
+                    petaSim = bangun
+                    petaSimAt = System.currentTimeMillis()
+                }
             }
             bangun
         } catch (_: Exception) {
