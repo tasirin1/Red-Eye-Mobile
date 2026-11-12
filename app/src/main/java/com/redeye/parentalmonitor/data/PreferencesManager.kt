@@ -2078,6 +2078,28 @@ class PreferencesManager(context: Context) {
         }
     }
 
+    fun clearRestoreAnchorSync(): Boolean {
+        // Jangkar kepercayaan restore ikut dihapus saat
+        // wipe (issue #2003, pola #1600): gelombang lama
+        // menghapus catatan restore terkonfirmasi tetapi
+        // membiarkan rahasia akar HMAC dan flag mode
+        // ketatnya, jadi rantai kepercayaan era lama
+        // diam-diam mengikat era baru. Rahasia dibuat
+        // ulang malas pada pemakaian berikutnya. Kunci
+        // anti-brute-force (lockout/epoch) SENGAJA tidak
+        // disentuh -- menolkannya melemahkan keamanan.
+        synchronized(restoreSecretLock) {
+            return try {
+                sharedPreferences.edit()
+                    .remove(KEY_RESTORE_SECRET)
+                    .remove(KEY_RESTORE_STRICT)
+                    .commit()
+            } catch (_: Exception) {
+                false
+            }
+        }
+    }
+
     fun setForwardedMarkersSync(groupValues: List<String>, idValues: List<String>, generasi: Long): Boolean {
         synchronized(prefsRmwLock) {
             if (generasi < generasiPenandaTertulis) return true

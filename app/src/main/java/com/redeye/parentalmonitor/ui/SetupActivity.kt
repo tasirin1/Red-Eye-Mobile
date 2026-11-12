@@ -1003,6 +1003,7 @@ class SetupActivity : AppCompatActivity() {
                 try { prefs.clearAuditLog() } catch (_: Exception) { }
                 try { prefs.watchKeywords = "" } catch (_: Exception) { }
                 try { prefs.watchNumbers = "" } catch (_: Exception) { }
+                try { prefs.clearRestoreAnchorSync() } catch (_: Exception) { }
                 wasVolatile = try { !prefs.isStorageEncrypted } catch (_: Exception) { false }
                 if (wasVolatile) {
                     val outcome = try {
