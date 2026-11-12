@@ -1688,6 +1688,22 @@ class SetupActivity : AppCompatActivity() {
                 }
                 return@launch
             }
+            // PIN pulihan yang hilang menolak ekspor
+            // (issue #2028): gerbang yang sama ada di
+            // Simpan/Tes — keadaan bendera pulihan
+            // terpasang tetapi PIN pulihannya kosong
+            // (rekreasi activity menolkan PIN) dulu
+            // lolos di sini dan resolusi masker jatuh
+            // senyap ke PIN tersimpan lama, jadi berkas
+            // cadangan membawa PIN yang salah.
+            if (uiPin == STORED_MASK && pendingRestorePinExpected && pendingRestoreAccessPin.isEmpty()) {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    if (!isFinishing && !isDestroyed) {
+                        Toast.makeText(this@SetupActivity, getString(R.string.setup_restore_pin_lost), Toast.LENGTH_LONG).show()
+                    }
+                }
+                return@launch
+            }
             // PIN akses ikut dari KETIKAN teresolusi
             // (issue #2016): dulu ekspor selalu memakai
             // PIN tersimpan, jadi PIN hasil impor yang
