@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Tiga jalur simpanan akuntansi notifikasi gugur yang tersisa kini ikut bercadangan instans preferensi, jadi rekonsiliasi batch dan tulisan final tidak menyerah senyap bila adopsi preferensi sempat gagal.
 - Sapuan berkas .tmp foto dan media kini ikut dijaga dari loncatan jam maju, jadi berkas rekaman video/audio yang sedang ditulis tidak terhapus di tengah perekaman.
 - Penjaga loncatan jam untuk sapuan berkas sementara kini menahan sapuan selama satu jendela penuh sesudah loncatan terdeteksi, bukan hanya satu ronde, jadi berkas yang sedang diunggah tetap aman dari sapuan kedua.
 - Hapus kredensial kini ikut membersihkan penanda notifikasi yang sudah diteruskan (di penyimpanan dan di ingatan layanan), jadi pemilik baru sesudah setup ulang tidak kehilangan notifikasi lama yang tertahan penanda usang.

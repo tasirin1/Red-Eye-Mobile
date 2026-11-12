@@ -1794,7 +1794,11 @@ class NotificationForwarderService : NotificationListenerService() {
     }
 
     private fun persistDropCountFinal(expectedGeneration: Long) {
-        val prefs = prefsRef ?: return
+        // Cadangan getInstance (issue #1995, pola
+        // #1975/#1984): tulisan final akuntansi gugur
+        // tak boleh menyerah hanya karena adopsi
+        // prefsRef sempat gagal.
+        val prefs = prefsRef ?: PreferencesManager.getInstance(this@NotificationForwarderService)
         for (attempt in 1..3) {
             val written = try {
                 synchronized(dropWriteLock) {
@@ -1850,8 +1854,7 @@ class NotificationForwarderService : NotificationListenerService() {
                                 }
                                 val snapshot = snap.first
                                 if (snapshot != lastWritten) {
-                                    val prefs = prefsRef
-                                    val written = if (prefs == null) true else try { prefs.setPendingNotifDropsSync(snapshot, snap.second) } catch (_: Exception) { false }
+                                    val written = try { (prefsRef ?: PreferencesManager.getInstance(this@NotificationForwarderService)).setPendingNotifDropsSync(snapshot, snap.second) } catch (_: Exception) { false }
                                     if (written) {
                                         lastWritten = snapshot
                                         gagalBeruntun = 0
@@ -1904,7 +1907,7 @@ class NotificationForwarderService : NotificationListenerService() {
     }
 
     private fun reconcileDropNoticeBatch() {
-        val prefs = prefsRef ?: return
+        val prefs = prefsRef ?: PreferencesManager.getInstance(this@NotificationForwarderService)
         val batch = try { prefs.dropNoticeBatch } catch (_: Exception) { "" }
         if (batch.isEmpty()) return
         val firstSep = batch.indexOf(':')
