@@ -398,6 +398,7 @@ class MonitoringService : Service() {
     private var dataSaverCheckedAtElapsed = 0L
     @Volatile
     private var dataSaverDeferResult = false
+    private val dataSaverNoticeLock = Any()
     private var vehiclePrevFix: Triple<Double, Double, Long>? = null
     private var vehicleFastSamples = 0
     private var vehicleLastSampleFixTime = 0L
@@ -9941,14 +9942,42 @@ class MonitoringService : Service() {
         if (pending <= 0) return false
         try {
             val now = System.currentTimeMillis()
-            val last = preferencesManager.dataSaverNoticeAt
-            if (last > now) {
-                preferencesManager.dataSaverNoticeAt = now
-            } else if (last <= 0L || now - last >= 6 * 60 * 60_000L) {
+            // Penilaian + pencapan diklaim atomik lebih
+            // dulu (issue #2030): dulu baca-lalu-tulis
+            // polos berpacu — dua penilai sejajar (kirim
+            // foto vs putaran flush) sama-sama lolos
+            // penjaga 6 jam dan notis terkirim ganda.
+            var capSebelum = 0L
+            val kirimNotis = synchronized(dataSaverNoticeLock) {
+                val last = preferencesManager.dataSaverNoticeAt
+                capSebelum = last
+                when {
+                    last > now -> {
+                        preferencesManager.dataSaverNoticeAt = now
+                        false
+                    }
+                    last <= 0L || now - last >= 6 * 60 * 60_000L -> {
+                        // Klaim: cap ditulis SEKARANG agar
+                        // penilai lain menunggu jeda.
+                        preferencesManager.dataSaverNoticeAt = now
+                        true
+                    }
+                    else -> false
+                }
+            }
+            if (kirimNotis) {
                 // Cap jeda sesudah kirim berhasil (issue #798, pola #737);
                 // status #806: terantre juga mencap agar tak dobel.
-                if (sendToTelegramStatus("📶 <b>Hemat kuota</b>: $pending foto/video/rekaman ditahan dulu, dikirim otomatis begitu tersambung jaringan tak-terukur (mis. Wi-Fi).") != SendStatus.DROPPED) {
-                    preferencesManager.dataSaverNoticeAt = now
+                if (sendToTelegramStatus("📶 <b>Hemat kuota</b>: $pending foto/video/rekaman ditahan dulu, dikirim otomatis begitu tersambung jaringan tak-terukur (mis. Wi-Fi).") == SendStatus.DROPPED) {
+                    // Terbuang: lepaskan klaim (pulihkan
+                    // cap lama) agar notis dicoba lagi
+                    // nanti — hanya bila cap masih milik
+                    // klaim ini.
+                    synchronized(dataSaverNoticeLock) {
+                        if (preferencesManager.dataSaverNoticeAt == now) {
+                            preferencesManager.dataSaverNoticeAt = capSebelum
+                        }
+                    }
                 }
             }
         } catch (_: Exception) {

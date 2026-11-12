@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Notis Hemat Kuota tidak lagi bisa terkirim ganda: penilaian jeda enam jam dan pencapan notisnya kini diklaim atomik dalam satu ruas berkunci sebelum mengirim, karena sebelumnya dua penilai yang berjalan sejajar (pengiriman foto dan putaran flush) sama-sama membaca cap lama yang sudah lewat dan sama-sama lolos penjaga sehingga pemberitahuan yang sama sampai dua kali ke pemilik (issue #2030).
 - Pesan yang gagal masuk antrean dari jalur penerusan notifikasi kini tercatat sebagai gugur: sebelumnya hanya penolakan permanen dari Telegram yang masuk penghitung notifikasi dibuang, sedangkan pesan yang hilang karena antrean penuh atau simpanan gagal di belasan cabang antre lain tidak tercatat sama sekali sehingga pemberitahuan total yang dibuang meremehkan kehilangan sebenarnya (issue #2029).
 - Cadangkan kini juga menolak keadaan PIN pulihan yang hilang, sama seperti Simpan dan Tes: sesudah mengimpor cadangan ber-PIN lalu activity terbuat ulang sebelum menyimpan, ekspor dulu jatuh senyap ke PIN akses tersimpan lama sehingga berkas cadangan baru membawa PIN yang salah tanpa keluhan apa pun (issue #2028).
 - Model uji sapuan terputus kini menilai baris terlambat terkirim persis seperti produksi (keanggotaan himpunan terlambat halaman yang dihitung dari tanggal kursor awal putaran berjalan), karena sebelumnya model menambatkan penilaiannya ke tanggal kursor putaran pertama sehingga skenario multi-putaran dimodelkan lebih longgar dari perilaku aplikasi sebenarnya (issue #2027).
