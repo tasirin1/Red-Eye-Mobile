@@ -255,6 +255,13 @@ class CursorAdvanceTest {
     }
 
     @Test
+    fun jangkarTakMundurMengambilYangTerbesar() {
+        assertEquals(500L, CursorAdvance.jangkarTakMundur(500L, 300L))
+        assertEquals(500L, CursorAdvance.jangkarTakMundur(300L, 500L))
+        assertEquals(0L, CursorAdvance.jangkarTakMundur(0L, 0L))
+    }
+
+    @Test
     fun jangkarTerbitMenghormatiSisaTerlambat() {
         assertEquals(120L, CursorAdvance.jangkarTerbit(120L, null))
         assertEquals(94L, CursorAdvance.jangkarTerbit(120L, 95L))

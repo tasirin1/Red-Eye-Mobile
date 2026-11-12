@@ -60,6 +60,21 @@ object CursorAdvance {
     // berikut (duplikat terbatas sebesar awalan yang
     // terputus) — harga yang dipilih basis kode ini
     // ketimbang kehilangan (pola jangkar ulang #1374).
+    // Jangkar tidak pernah mundur (issue #2022): setiap
+    // id di bawah jangkar tersimpan sudah terkirim minimal
+    // satu kali (jangkar hanya maju melewati baris terkirim,
+    // tertopi #2021 pun tetap di atas jangkar lama), jadi
+    // situs jangkar ulang (racun tanggal, penyelesaian
+    // sinkron awal terpotong, perbaikan kursor) yang menulis
+    // nilai lebih kecil hanya akan membuat baris sudut yang
+    // sudah terkirim layak-sapu lagi dan terkirim ulang.
+    // Nilai terbit selalu maksimum keduanya; penurunan
+    // hanya lewat reset eksplisit (pasangan (0, 0) /
+    // reset*CursorSync / hapus kredensial).
+    fun jangkarTakMundur(idMaxTersimpan: Long, idMaxBaru: Long): Long {
+        return maxOf(idMaxTersimpan, idMaxBaru)
+    }
+
     fun jangkarTerbit(idMaxTerkirim: Long, idTerlambatTersisaTerkecil: Long?): Long {
         if (idTerlambatTersisaTerkecil == null) return idMaxTerkirim
         return minOf(idMaxTerkirim, idTerlambatTersisaTerkecil - 1L)

@@ -3117,12 +3117,14 @@ class PreferencesManager(context: Context) {
     // idMax >= 0 ikut menulis jangkar sapuan #2020 dalam
     // commit yang sama; pasangan (0, 0) adalah reset penuh
     // dan selalu menolkan jangkar juga, apa pun idMax-nya.
+    // Jangkar tak pernah mundur (#2022): nilai terbit =
+    // jangkarTakMundur(tersimpan, idMax).
     fun setSmsCursorSync(id: Long, timestamp: Long = 0L, idMax: Long = -1L): Boolean {
         return commitWithRetry { editor ->
             editor.putLong(KEY_LAST_SMS_ID, id)
             if (timestamp > 0L) editor.putLong(KEY_LAST_SMS_TIMESTAMP, timestamp)
             if (id == 0L && timestamp == 0L) editor.putLong(KEY_LAST_SMS_ID_MAX, 0L)
-            else if (idMax >= 0L) editor.putLong(KEY_LAST_SMS_ID_MAX, idMax)
+            else if (idMax >= 0L) editor.putLong(KEY_LAST_SMS_ID_MAX, com.redeye.parentalmonitor.utils.CursorAdvance.jangkarTakMundur(lastSmsIdMax, idMax))
             editor
         }
     }
@@ -3130,11 +3132,13 @@ class PreferencesManager(context: Context) {
     // idMax >= 0 ikut menulis jangkar sapuan #2012 dalam
     // commit yang sama; pasangan (0, 0) adalah reset penuh
     // dan selalu menolkan jangkar juga, apa pun idMax-nya.
+    // Jangkar tak pernah mundur (#2022): nilai terbit =
+    // jangkarTakMundur(tersimpan, idMax).
     fun setCallCursorSync(timestamp: Long, id: Long, idMax: Long = -1L): Boolean {
         return commitWithRetry { editor ->
             editor.putLong(KEY_LAST_CALL_TIMESTAMP, timestamp).putLong(KEY_LAST_CALL_ID, id)
             if (timestamp == 0L && id == 0L) editor.putLong(KEY_LAST_CALL_ID_MAX, 0L)
-            else if (idMax >= 0L) editor.putLong(KEY_LAST_CALL_ID_MAX, idMax)
+            else if (idMax >= 0L) editor.putLong(KEY_LAST_CALL_ID_MAX, com.redeye.parentalmonitor.utils.CursorAdvance.jangkarTakMundur(lastCallIdMax, idMax))
             editor
         }
     }
@@ -3169,6 +3173,7 @@ class PreferencesManager(context: Context) {
             editor.putLong(KEY_LAST_SMS_ID_MAX, 0L)
             editor.putLong(KEY_LAST_CALL_TIMESTAMP, 0L)
             editor.putLong(KEY_LAST_CALL_ID, 0L)
+            editor.putLong(KEY_LAST_CALL_ID_MAX, 0L)
             editor.putLong(KEY_OWNER_ID, 0L)
         }
         editor.putString(KEY_CRED_ERROR, "")
