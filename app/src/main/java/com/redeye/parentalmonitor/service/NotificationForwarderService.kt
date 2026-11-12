@@ -1341,13 +1341,21 @@ class NotificationForwarderService : NotificationListenerService() {
                 // sebagian batch tereviksi — pola all-or-nothing lama
                 // membuat yang selamat terkirim tanpa tanda (dobel saat
                 // replay) dan yang tereviksi hilang tanpa tercatat.
-                var results: List<Boolean> = emptyList()
+                var results: List<MessageQueue.AddItemResult> = emptyList()
                 try {
-                    results = queue().addMessagesPerItem(leftover.map { it.first })
+                    results = queue().addMessagesPerItemDetailed(leftover.map { it.first })
                     queue().flushSync()
                 } catch (_: Exception) {
                 }
-                val survived = leftover.filterIndexed { idx, _ -> results.getOrElse(idx) { false } }
+                // Item FAILED belum terhitung di mana pun
+                // (doktrin #1633, issue #2050): jalur
+                // salvage wajib mencatatnya; EVICTED sudah
+                // terhitung sebagai luapan di dalam antre.
+                val gagalSalvage = results.count { it == MessageQueue.AddItemResult.FAILED }
+                if (gagalSalvage > 0) {
+                    try { noteDroppedNotification(gagalSalvage) } catch (_: Exception) { }
+                }
+                val survived = leftover.filterIndexed { idx, _ -> results.getOrElse(idx) { MessageQueue.AddItemResult.FAILED } == MessageQueue.AddItemResult.QUEUED }
                 if (survived.isNotEmpty()) {
                     // Bidang hash/grup segmen gabungan
                     // berisi banyak nilai berpisah
@@ -1400,13 +1408,21 @@ class NotificationForwarderService : NotificationListenerService() {
                 // item yang selamat terkirim tetapi id/grupnya
                 // tak tercatat di mana pun dan diteruskan
                 // ulang oleh pindai sambung-ulang.
-                var results: List<Boolean> = emptyList()
+                var results: List<MessageQueue.AddItemResult> = emptyList()
                 try {
-                    results = queue().addMessagesPerItem(sisa.map { it.first })
+                    results = queue().addMessagesPerItemDetailed(sisa.map { it.first })
                     queue().flushSync()
                 } catch (_: Exception) {
                 }
-                val survived = sisa.filterIndexed { idx, _ -> results.getOrElse(idx) { false } }
+                // Item FAILED belum terhitung di mana pun
+                // (doktrin #1633, issue #2050): jalur
+                // salvage wajib mencatatnya; EVICTED sudah
+                // terhitung sebagai luapan di dalam antre.
+                val gagalSalvage = results.count { it == MessageQueue.AddItemResult.FAILED }
+                if (gagalSalvage > 0) {
+                    try { noteDroppedNotification(gagalSalvage) } catch (_: Exception) { }
+                }
+                val survived = sisa.filterIndexed { idx, _ -> results.getOrElse(idx) { MessageQueue.AddItemResult.FAILED } == MessageQueue.AddItemResult.QUEUED }
                 if (survived.isNotEmpty()) {
                     // Bidang hash/grup segmen gabungan
                     // berisi banyak nilai berpisah
@@ -1767,16 +1783,20 @@ class NotificationForwarderService : NotificationListenerService() {
                     groupLists.add(if (item.third.isNotEmpty()) item.third.split(PEMISAH_PENANDA).filter { it.isNotEmpty() } else emptyList())
                 }
                 if (texts.isNotEmpty()) {
-                    var results: List<Boolean> = emptyList()
+                    var results: List<MessageQueue.AddItemResult> = emptyList()
                     try {
-                        results = queue().addMessagesPerItem(texts)
+                        results = queue().addMessagesPerItemDetailed(texts)
                         queue().flushSync()
                     } catch (_: Exception) {
+                    }
+                    val gagalSalvage = results.count { it == MessageQueue.AddItemResult.FAILED }
+                    if (gagalSalvage > 0) {
+                        try { noteDroppedNotification(gagalSalvage) } catch (_: Exception) { }
                     }
                     val okHashes = ArrayList<String>()
                     val okGroups = ArrayList<String>()
                     for (idx in texts.indices) {
-                        if (results.getOrElse(idx) { false }) {
+                        if (results.getOrElse(idx) { MessageQueue.AddItemResult.FAILED } == MessageQueue.AddItemResult.QUEUED) {
                             okHashes.addAll(hashLists[idx])
                             okGroups.addAll(groupLists[idx])
                         }

@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Notifikasi yang gagal diselamatkan ke antre pada jalur penyelamatan batch layanan penerus kini tercatat sebagai terbuang: sebelumnya ketiga jalur penyelamatan memakai hasil antre biner yang menghapus beda antara item yang tereviksi (sudah terhitung) dan yang gagal total (belum terhitung di mana pun), sehingga kegagalan pada momen proses sekarat hilang tanpa catatan (issue #2050).
 - Potongan pesan yang ditolak kini tercatat pada saat kemajuan pengiriman tersimpan melewatinya: sebelumnya potongan tertolak sebelum potongan terkirim terlewati permanen oleh penanda kemajuan, sehingga run lanjutan tidak pernah mencoba maupun menghitungnya (issue #2049).
 - Potongan pesan yang ditolak kini tercatat juga bila pengiriman berhenti karena batas laju atau gagal autentikasi sesudah sisa pesan terantre: sebelumnya pencatatan hanya berjalan pada vonis terkirim, padahal pada sub-jalur itu pesan asal sudah dihapus sehingga potongan tertolak hilang tanpa catatan (issue #2048).
 - Potongan pesan panjang yang ditolak kini tercatat juga bila pengiriman berakhir lewat jalan keluar dini (kredensial diganti di tengah pesan, tenggat run tercapai, atau pekerjaan dibatalkan): sebelumnya pencatatan hanya berjalan di akhir fungsi, sehingga jalan keluar tersebut membuang catatan potongan yang sudah tertolak (issue #2047).
