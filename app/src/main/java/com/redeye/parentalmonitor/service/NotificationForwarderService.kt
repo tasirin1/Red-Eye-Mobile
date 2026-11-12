@@ -762,7 +762,17 @@ class NotificationForwarderService : NotificationListenerService() {
     // tak bisa diandalkan.
     private fun persistPenandaSinkron() {
         try {
-            val p = groupForwardedView.entries.map { it.key + ":" + it.value } to forwardedIdsView.toList()
+            // Pasangan view dibaca di bawah kunci peta yang
+            // sama dengan penulisnya (issue #1974):
+            // markMarkersForwarded mengganti kedua view di
+            // dalam kunci bersarang ini, jadi potret di sini
+            // tak bisa sobek satu generasi di sela dua
+            // penggantian.
+            val p = synchronized(groupForwarded) {
+                synchronized(forwardedIds) {
+                    groupForwardedView.entries.map { it.key + ":" + it.value } to forwardedIdsView.toList()
+                }
+            }
             (prefsRef ?: PreferencesManager.getInstance(this@NotificationForwarderService)).setForwardedMarkersSync(p.first, p.second)
         } catch (_: Exception) {
         }
@@ -778,7 +788,11 @@ class NotificationForwarderService : NotificationListenerService() {
                     while (true) {
                         var selesai = false
                         val potret = synchronized(markerPersistLock) {
-                            val p = groupForwardedView.entries.map { it.key + ":" + it.value } to forwardedIdsView.toList()
+                            val p = synchronized(groupForwarded) {
+                                synchronized(forwardedIds) {
+                                    groupForwardedView.entries.map { it.key + ":" + it.value } to forwardedIdsView.toList()
+                                }
+                            }
                             if (p == tertulis) {
                                 if (markerPersistJob == coroutineContext[Job]) markerPersistJob = null
                                 selesai = true
