@@ -1356,7 +1356,18 @@ class MessageQueue private constructor(context: Context) {
     fun restoreOverflowDrops(by: Long) {
         if (by <= 0L) return
         synchronized(lock) {
-            takenUnpersistedOverflowDrops = (takenUnpersistedOverflowDrops - by).coerceAtLeast(0L)
+            // Penanda terambil hanya berkurang di mode
+            // persisten (issue #2036): saat volatile,
+            // angka yang dipulihkan sudah kembali ke
+            // memori sedangkan salinan cakramnya masih
+            // utuh — menolkan penanda di sini membuat
+            // gabungan pulih (loadDropCountsLocked
+            // aditif) menambahkannya sekali lagi dari
+            // cakram, hitungan ganda dalam proses yang
+            // sama. Penanda tetap membuat gabungan
+            // menguranginya tepat sekali; persist
+            // gabungan yang sukses menolkannya.
+            if (!volatileOnly) takenUnpersistedOverflowDrops = (takenUnpersistedOverflowDrops - by).coerceAtLeast(0L)
             noteOverflowLocked(by)
         }
     }
@@ -1364,7 +1375,8 @@ class MessageQueue private constructor(context: Context) {
     fun restorePriorityDrops(by: Long) {
         if (by <= 0L) return
         synchronized(lock) {
-            takenUnpersistedPriorityDrops = (takenUnpersistedPriorityDrops - by).coerceAtLeast(0L)
+            // Penanda tetap saat volatile (issue #2036).
+            if (!volatileOnly) takenUnpersistedPriorityDrops = (takenUnpersistedPriorityDrops - by).coerceAtLeast(0L)
             noteDropLocked(priorityDrops, by, true)
         }
     }
@@ -1372,7 +1384,8 @@ class MessageQueue private constructor(context: Context) {
     fun restoreExpiredDrops(by: Long) {
         if (by <= 0L) return
         synchronized(lock) {
-            takenUnpersistedExpiredDrops = (takenUnpersistedExpiredDrops - by).coerceAtLeast(0L)
+            // Penanda tetap saat volatile (issue #2036).
+            if (!volatileOnly) takenUnpersistedExpiredDrops = (takenUnpersistedExpiredDrops - by).coerceAtLeast(0L)
             noteExpiredLocked(by)
         }
     }
@@ -1406,7 +1419,8 @@ class MessageQueue private constructor(context: Context) {
     fun restoreExhaustedDrops(by: Long) {
         if (by <= 0L) return
         synchronized(lock) {
-            takenUnpersistedExhaustedDrops = (takenUnpersistedExhaustedDrops - by).coerceAtLeast(0L)
+            // Penanda tetap saat volatile (issue #2036).
+            if (!volatileOnly) takenUnpersistedExhaustedDrops = (takenUnpersistedExhaustedDrops - by).coerceAtLeast(0L)
             noteDropLocked(exhaustedDrops, by, true)
         }
     }
@@ -1414,7 +1428,8 @@ class MessageQueue private constructor(context: Context) {
     fun restoreRejectedDrops(by: Long) {
         if (by <= 0L) return
         synchronized(lock) {
-            takenUnpersistedRejectedDrops = (takenUnpersistedRejectedDrops - by).coerceAtLeast(0L)
+            // Penanda tetap saat volatile (issue #2036).
+            if (!volatileOnly) takenUnpersistedRejectedDrops = (takenUnpersistedRejectedDrops - by).coerceAtLeast(0L)
             noteDropLocked(rejectedDrops, by, true)
         }
     }
@@ -1438,7 +1453,8 @@ class MessageQueue private constructor(context: Context) {
     fun restoreCorruptDrops(by: Long) {
         if (by <= 0L) return
         synchronized(lock) {
-            takenUnpersistedCorruptDrops = (takenUnpersistedCorruptDrops - by).coerceAtLeast(0L)
+            // Penanda tetap saat volatile (issue #2036).
+            if (!volatileOnly) takenUnpersistedCorruptDrops = (takenUnpersistedCorruptDrops - by).coerceAtLeast(0L)
             noteDropLocked(corruptDrops, by, true)
         }
     }
