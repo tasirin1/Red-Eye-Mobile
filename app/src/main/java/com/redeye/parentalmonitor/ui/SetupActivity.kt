@@ -1006,6 +1006,7 @@ class SetupActivity : AppCompatActivity() {
                 try { prefs.clearRestoreAnchorSync() } catch (_: Exception) { }
                 try { prefs.clearBotUsernameSync() } catch (_: Exception) { }
                 try { prefs.clearLastLocationSync() } catch (_: Exception) { }
+                try { prefs.clearActivityHistorySync() } catch (_: Exception) { }
                 wasVolatile = try { !prefs.isStorageEncrypted } catch (_: Exception) { false }
                 if (wasVolatile) {
                     val outcome = try {

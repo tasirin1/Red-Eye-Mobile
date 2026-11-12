@@ -2137,6 +2137,32 @@ class PreferencesManager(context: Context) {
         }
     }
 
+    fun clearActivityHistorySync(): Boolean {
+        // Keluarga riwayat aktivitas ikut dihapus saat
+        // wipe (issue #2006): fakta harian 14 hari,
+        // riwayat pemakaian aksesibilitas tiga generasi,
+        // riwayat kata kunci, dan paket peringatan malam.
+        // Yang paling tajam: kunci-kunci di riwayat kata
+        // kunci ADALAH kata pantau itu sendiri, jadi
+        // membiarkannya membocorkan kosakata yang daftar
+        // pantaunya sudah dihapus gelombang yang sama.
+        return try {
+            sharedPreferences.edit()
+                .remove(KEY_DAILY_FACTS)
+                .remove(KEY_A11Y_USAGE_DATE)
+                .remove(KEY_A11Y_USAGE_JSON)
+                .remove(KEY_A11Y_USAGE_PREV_DATE)
+                .remove(KEY_A11Y_USAGE_PREV_JSON)
+                .remove(KEY_A11Y_USAGE_PREV2_DATE)
+                .remove(KEY_A11Y_USAGE_PREV2_JSON)
+                .remove(KEY_A11Y_KEYWORD_JSON)
+                .remove(KEY_A11Y_NIGHT_ALERT_PKG)
+                .commit()
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     fun setForwardedMarkersSync(groupValues: List<String>, idValues: List<String>, generasi: Long): Boolean {
         synchronized(prefsRmwLock) {
             if (generasi < generasiPenandaTertulis) return true
