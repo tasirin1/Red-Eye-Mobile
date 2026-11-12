@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Keyset model SMS pada harness uji kini mengurutkan (tanggal, id) dan membatasi 100 baris seperti kueri produksi, sehingga komposisi halaman model sama dengan produksi dan skenario yang peka terhadap komposisi halaman terwakili setia (issue #2056).
 - Model sapuan panggilan pada harness uji kini menerapkan saringan batas masa depan pada keyset seperti produksi, menyamakan perlakuan antar model (model SMS sudah menerapkannya): skenario baris bertanggal masa depan kini terwakili bentuk saringannya di semua model (issue #2055).
 - Komentar penjelasan plafon watchdog dikoreksi ke angka yang terbukti: siklus data maksimum sebenarnya 1440 menit (regangan idle ter-coerce agar tidak melewati basis), bukan 5760 menit seperti tertulis sebelumnya; perilaku tidak berubah (issue #2054).
 - Uji format integer negatif besar tidak lagi vakum: sebelumnya token minusnya ASCII sehingga tidak pernah memicu perhitungan dan string hasil terbentuk secara tekstual; kini memakai operator minus yang sebenarnya dan memverifikasi ekspresi hitungnya, sehingga regresi format hasil negatif benar-benar tertangkap (issue #2053).

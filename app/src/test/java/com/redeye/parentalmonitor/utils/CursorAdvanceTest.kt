@@ -163,9 +163,13 @@ class CursorAdvanceTest {
         batas: Long
     ): List<Pair<Long, Long>> {
         if (idKursor <= 0L || tanggalKursor <= 0L) return emptyList()
+        // Keyset cermin produksi (issue #2056):
+        // urutan (tanggal, id) menaik + LIMIT 100
+        // seperti kueri getNewSms, agar komposisi
+        // halaman model sama dengan produksi.
         val keyset = baris.filter { (id, tanggal) ->
             tanggal <= batas && (tanggal > tanggalKursor || (tanggal == tanggalKursor && id > idKursor))
-        }
+        }.sortedWith(compareBy({ it.second }, { it.first })).take(100)
         if (idMaxKursor <= 0L) return keyset
         val calon = baris.filter { (id, tanggal) -> id > idMaxKursor && tanggal < tanggalKursor && tanggal <= batas }.sortedBy { it.first }.take(100)
         val sapuan = calon.filter { (id, tanggal) ->
