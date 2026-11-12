@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Model uji sapuan terputus kini menilai baris terlambat terkirim persis seperti produksi (keanggotaan himpunan terlambat halaman yang dihitung dari tanggal kursor awal putaran berjalan), karena sebelumnya model menambatkan penilaiannya ke tanggal kursor putaran pertama sehingga skenario multi-putaran dimodelkan lebih longgar dari perilaku aplikasi sebenarnya (issue #2027).
 - Jendela calon sapuan baris terlambat tidak lagi bisa melewatkan baris yang seharusnya terambil: kueri calon di repositori panggilan dan SMS kini juga menyaring tanggal di bawah tanggal kursor, karena sebelumnya batas 100 calon bisa habis oleh baris yang bukan terlambat sehingga baris terlambat sungguhan di luar jendela terlewati jangkar dan hilang permanen dari penerusan waktu-nyata (issue #2026).
 
 ## [1.6.688] - 2026-11-12

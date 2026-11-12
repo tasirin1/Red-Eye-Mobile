@@ -243,7 +243,13 @@ class CursorAdvanceTest {
                 idCursor = adv.first
                 dateCursor = adv.second
                 idMaxBenar = CursorAdvance.idMaks(idMaxBenar, part)
-                terlambatTerkirim.addAll(part.filter { it.second < dateCursor0 }.map { it.first })
+                // Keanggotaan himpunan terlambat HALAMAN
+                // ini (dihitung dari tanggal kursor awal
+                // putaran), persis diskriminator produksi
+                // (issue #2027: sebelumnya menambat ke
+                // dateCursor0 putaran pertama — asimetris
+                // dengan himpunan halamannya sendiri).
+                terlambatTerkirim.addAll(part.filter { it.first in terlambatHalaman }.map { it.first })
                 terpersist = if (pakaiTopi) {
                     CursorAdvance.jangkarTerbit(idMaxBenar, (terlambatHalaman - terlambatTerkirim).minOrNull())
                 } else {
