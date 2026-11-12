@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Balasan gagal /restart kini memakai syarat mode aman yang persis sama dengan gerbang penyalaan ulangnya, jadi penolakan oleh penjaga 10 detik di jendela sesudah mode aman kedaluwarsa tidak lagi terbaca sebagai penolakan mode aman.
+
 ## [1.6.682] - 2026-11-12
 
 ### Fixed
