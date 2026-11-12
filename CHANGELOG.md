@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.683] - 2026-11-12
+
 ### Fixed
 - Sapuan berkas kecil sementara kini melewatkan satu ronde saat jam perangkat terdeteksi melompat maju, jadi berkas yang sedang diunggah tidak terhapus karena tampak menua seketika.
 - Dua simpanan akuntansi notifikasi gugur di layanan penerus kini punya cadangan instans preferensi seperti jalur lainnya, jadi tidak hilang senyap bila adopsi preferensi sempat gagal.
