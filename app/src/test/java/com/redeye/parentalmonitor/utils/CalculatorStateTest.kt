@@ -251,6 +251,8 @@ class CalculatorStateTest {
         assertEquals("Error", h.state.currentNumber)
         h.run("+")
         assertEquals("", h.state.currentNumber)
+        assertEquals("", h.state.previousNumber)
+        assertEquals("", h.state.operator)
         h.run("5")
         assertEquals("5", h.state.currentNumber)
     }
