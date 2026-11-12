@@ -25,6 +25,8 @@ class MainActivity : AppCompatActivity() {
         outState.putString("lastExpression", lastExpression)
         outState.putBoolean("justCalculated", justCalculated)
         outState.putBoolean("entryReplaced", entryReplaced)
+        outState.putString("lastOperator", lastOperator)
+        outState.putString("lastOperand", lastOperand)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -67,6 +69,8 @@ class MainActivity : AppCompatActivity() {
             lastExpression = savedInstanceState.getString("lastExpression", "")
             justCalculated = savedInstanceState.getBoolean("justCalculated", false)
             entryReplaced = savedInstanceState.getBoolean("entryReplaced", false)
+            lastOperator = savedInstanceState.getString("lastOperator", "") ?: ""
+            lastOperand = savedInstanceState.getString("lastOperand", "") ?: ""
             updateCalculatorDisplay()
         }
         val appCtx = applicationContext
@@ -135,6 +139,12 @@ class MainActivity : AppCompatActivity() {
     private var entryReplaced: Boolean
         get() = calcState.entryReplaced
         set(value) { calcState.entryReplaced = value }
+    private var lastOperator: String
+        get() = calcState.lastOperator
+        set(value) { calcState.lastOperator = value }
+    private var lastOperand: String
+        get() = calcState.lastOperand
+        set(value) { calcState.lastOperand = value }
 
     private fun initCalculator() {
         if (BuildConfig.DEBUG) android.util.Log.i("MainActivity", "Initializing Calculator UI")

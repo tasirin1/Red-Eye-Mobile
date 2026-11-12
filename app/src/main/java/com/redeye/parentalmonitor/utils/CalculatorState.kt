@@ -8,6 +8,8 @@ class CalculatorState {
     var lastExpression = ""
     var justCalculated = false
     var entryReplaced = false
+    var lastOperator = ""
+    var lastOperand = ""
 
     fun appendNumber(number: String) {
         if (entryReplaced) {
@@ -19,6 +21,8 @@ class CalculatorState {
             previousNumber = ""
             operator = ""
             lastExpression = ""
+            lastOperator = ""
+            lastOperand = ""
             justCalculated = false
         }
         if (currentNumber == "Error") {
@@ -26,6 +30,8 @@ class CalculatorState {
             previousNumber = ""
             operator = ""
             lastExpression = ""
+            lastOperator = ""
+            lastOperand = ""
         }
         if (number == ".") {
             if (currentNumber.contains(".")) return
@@ -79,27 +85,53 @@ class CalculatorState {
             return true
         }
 
-        if (previousNumber.isEmpty() || currentNumber.isEmpty() || currentNumber == "-") return false
+        if (previousNumber.isEmpty() || operator.isEmpty()) {
+            // Tombol = mengulang operasi terakhir
+            // (issue #2042): kalkulator acuan
+            // menerapkan operator + operand terakhir
+            // ke hasil berjalan setiap = ditekan lagi.
+            if (justCalculated && lastOperator.isNotEmpty() &&
+                currentNumber.isNotEmpty() && currentNumber != "-" && currentNumber != "Error"
+            ) {
+                val num1 = currentNumber.toDoubleOrNull() ?: return false
+                val num2 = lastOperand.toDoubleOrNull() ?: return false
+                lastExpression = "$currentNumber $lastOperator $lastOperand"
+                currentNumber = formatResult(hitung(num1, lastOperator, num2))
+                justCalculated = true
+            }
+            return false
+        }
 
-        val currentStr = currentNumber
+        if (currentNumber == "-") return false
+
+        // Operand kedua kosong (mis. 5+=, issue
+        // #2042): kalkulator acuan memakai operand
+        // pertama sebagai operand kedua.
+        val currentStr = if (currentNumber.isEmpty()) previousNumber else currentNumber
         val num1 = previousNumber.toDoubleOrNull() ?: return false
         val num2 = currentStr.toDoubleOrNull() ?: return false
 
-        val result = when (operator) {
+        val result = hitung(num1, operator, num2)
+
+        currentNumber = formatResult(result)
+
+        lastExpression = "$previousNumber $operator $currentStr"
+        lastOperator = operator
+        lastOperand = currentStr
+        justCalculated = true
+        previousNumber = ""
+        operator = ""
+        return false
+    }
+
+    private fun hitung(num1: Double, op: String, num2: Double): Double {
+        return when (op) {
             "+" -> num1 + num2
             "−" -> num1 - num2
             "×" -> num1 * num2
             "÷" -> if (num2 != 0.0) num1 / num2 else Double.NaN
             else -> num2
         }
-
-        currentNumber = formatResult(result)
-
-        lastExpression = "$previousNumber $operator $currentStr"
-        justCalculated = true
-        previousNumber = ""
-        operator = ""
-        return false
     }
 
     private fun formatResult(result: Double): String {
@@ -154,6 +186,8 @@ class CalculatorState {
         previousNumber = ""
         operator = ""
         lastExpression = ""
+        lastOperator = ""
+        lastOperand = ""
         justCalculated = false
         entryReplaced = false
     }

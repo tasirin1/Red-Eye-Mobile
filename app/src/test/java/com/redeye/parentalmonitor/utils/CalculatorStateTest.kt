@@ -129,6 +129,43 @@ class CalculatorStateTest {
         assertTrue(h.state.justCalculated)
     }
 
+        @Test
+    fun equalsRepeatsLastOperation() {
+        val h = Harness()
+        h.run("2", "+", "3", "=")
+        assertEquals("5", h.state.currentNumber)
+        h.press("=")
+        assertEquals("8", h.state.currentNumber)
+        h.press("=")
+        assertEquals("11", h.state.currentNumber)
+        assertFalse(h.secret)
+    }
+
+    @Test
+    fun equalsWithMissingSecondOperandUsesFirstOperand() {
+        val h = Harness()
+        h.run("5", "+", "=")
+        assertEquals("10", h.state.currentNumber)
+        h.press("=")
+        assertEquals("15", h.state.currentNumber)
+    }
+
+    @Test
+    fun repeatEqualsUsesNewestOperationAfterNewChain() {
+        val h = Harness()
+        h.run("2", "+", "3", "=", "+", "4", "=")
+        assertEquals("9", h.state.currentNumber)
+        h.press("=")
+        assertEquals("13", h.state.currentNumber)
+    }
+
+    @Test
+    fun digitAfterResultClearsRepeatMemory() {
+        val h = Harness()
+        h.run("2", "+", "3", "=", "7", "=")
+        assertEquals("7", h.state.currentNumber)
+    }
+
     @Test
     fun decimalDivisionFormatsLikeBefore() {
         val h = Harness()
