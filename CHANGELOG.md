@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.693] - 2026-11-13
+
 ### Fixed
 - Keyset model SMS pada harness uji kini mengurutkan (tanggal, id) dan membatasi 100 baris seperti kueri produksi, sehingga komposisi halaman model sama dengan produksi dan skenario yang peka terhadap komposisi halaman terwakili setia (issue #2056).
 - Model sapuan panggilan pada harness uji kini menerapkan saringan batas masa depan pada keyset seperti produksi, menyamakan perlakuan antar model (model SMS sudah menerapkannya): skenario baris bertanggal masa depan kini terwakili bentuk saringannya di semua model (issue #2055).
