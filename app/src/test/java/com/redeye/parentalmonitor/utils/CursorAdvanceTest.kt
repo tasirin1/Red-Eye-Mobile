@@ -13,14 +13,26 @@ class CursorAdvanceTest {
     // dari kursor awal halaman. Versi lama harness ini memodelkan disiplin
     // BERBEDA dari produksi (part.last() + penyelesaian hanya halaman
     // parsial) sehingga regresi #635 lolos.
-    private fun ambil(rows: List<Pair<Long, Long>>, idCursor: Long, dateCursor: Long): List<Pair<Long, Long>> {
-        val sel = when {
+    private fun ambil(rows: List<Pair<Long, Long>>, idCursor: Long, dateCursor: Long, batas: Long = Long.MAX_VALUE): List<Pair<Long, Long>> {
+        // Cermin getNewCalls produksi (issue #2060):
+        // batas masa depan #1374 berlaku di SEMUA
+        // cabang (nilai MAX khas harness tanpa jam)
+        // dan cabang id-saja berurut _ID saja seperti
+        // kueri produksi, bukan (tanggal, id).
+        return when {
             idCursor > 0L && dateCursor > 0L ->
-                rows.filter { it.second > dateCursor || (it.second == dateCursor && it.first > idCursor) }
-            dateCursor > 0L -> rows.filter { it.second > dateCursor }
-            else -> rows.filter { it.first > idCursor }
+                rows.filter { it.second <= batas && (it.second > dateCursor || (it.second == dateCursor && it.first > idCursor)) }
+                    .sortedWith(compareBy({ it.second }, { it.first })).take(100)
+            dateCursor > 0L ->
+                rows.filter { it.second <= batas && it.second > dateCursor }
+                    .sortedWith(compareBy({ it.second }, { it.first })).take(100)
+            idCursor > 0L ->
+                rows.filter { it.second <= batas && it.first > idCursor }
+                    .sortedBy { it.first }.take(100)
+            else ->
+                rows.filter { it.second <= batas && it.first > idCursor }
+                    .sortedWith(compareBy({ it.second }, { it.first })).take(100)
         }
-        return sel.sortedWith(compareBy({ it.second }, { it.first })).take(100)
     }
 
     private fun konsumsiSemua(rows: List<Pair<Long, Long>>, idAwal: Long = 0L, dateAwal: Long = 0L): List<Pair<Long, Long>> {
