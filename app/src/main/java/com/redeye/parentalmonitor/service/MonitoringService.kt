@@ -11298,14 +11298,25 @@ class MonitoringService : Service() {
                 if (numHit) hits++ else if (watch.isNotEmpty() && AppWatch.hit(watch, s.body) != null) hits++
                 val h = hourOf(s.date)
                 if (h >= 23 || h in 0..4) nights++
-                if (!knownCached(s.address)) unknown.add(s.address.filter { it.isDigit() }.takeLast(10))
+                if (!knownCached(s.address)) {
+                    // ID pengirim alfanumerik (operator/bank)
+                    // tersaring digit menjadi "" dan dulu ikut
+                    // terhitung sebagai nomor baru (issue
+                    // #1967). Penjaga sama seperti gelung
+                    // frekuensi digest/weekly: minimal 7 digit.
+                    val d = s.address.filter { it.isDigit() }.takeLast(10)
+                    if (d.length >= 7) unknown.add(d)
+                }
             }
             for (c in calls.take(200)) {
                 if (!callCountsAsActivity(c.type)) continue
                 if (watchNumberHit(c.number, watchNums) != null) hits++
                 val h = hourOf(c.date)
                 if (h >= 23 || h in 0..4) nights++
-                if (c.name == null && !knownCached(c.number)) unknown.add(c.number.filter { it.isDigit() }.takeLast(10))
+                if (c.name == null && !knownCached(c.number)) {
+                    val d = c.number.filter { it.isDigit() }.takeLast(10)
+                    if (d.length >= 7) unknown.add(d)
+                }
             }
             var score = 0
             score += (hits * 25).coerceAtMost(50)
