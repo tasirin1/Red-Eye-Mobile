@@ -70,6 +70,13 @@ class NotificationForwarderService : NotificationListenerService() {
     // bisa mendarat terakhir dan menghapus tanda
     // terbaru.
     private val generasiPenanda = java.util.concurrent.atomic.AtomicLong(0)
+
+    // Pemisah daftar penanda di bidang triple segmen
+    // gabungan (issue #1986): karakter kontrol yang
+    // mustahil muncul di hash Base64 maupun groupKey
+    // platform (formatnya 0|<pkg>|g:<grup>, jadi "|"
+    // justru bawaan dan tak bisa jadi pemisah).
+    private val PEMISAH_PENANDA = "\u0001"
     // Job persist penanda tertunda (issue #1851): lihat
     // jadwalkanPersistPenanda.
     private var markerPersistJob: Job? = null
@@ -1305,13 +1312,14 @@ class NotificationForwarderService : NotificationListenerService() {
                 }
                 val survived = leftover.filterIndexed { idx, _ -> results.getOrElse(idx) { false } }
                 if (survived.isNotEmpty()) {
-                    // Bidang hash/grup segmen gabungan berisi
-                    // banyak nilai berpisah "|" (issue #1982)
-                    // -- uraikan dulu; item biasa tanpa "|"
-                    // terurai menjadi dirinya sendiri.
+                    // Bidang hash/grup segmen gabungan
+                    // berisi banyak nilai berpisah
+                    // PEMISAH_PENANDA (issue #1982/#1986)
+                    // -- uraikan dulu; item biasa tanpa
+                    // pemisah itu terurai menjadi dirinya.
                     markMarkersForwarded(
-                        survived.flatMap { it.third.split('|') }.filter { it.isNotEmpty() }.distinct(),
-                        survived.flatMap { it.second.split('|') }.filter { it.isNotEmpty() }
+                        survived.flatMap { it.third.split(PEMISAH_PENANDA) }.filter { it.isNotEmpty() }.distinct(),
+                        survived.flatMap { it.second.split(PEMISAH_PENANDA) }.filter { it.isNotEmpty() }
                     )
                 }
                 try {
@@ -1363,13 +1371,14 @@ class NotificationForwarderService : NotificationListenerService() {
                 }
                 val survived = sisa.filterIndexed { idx, _ -> results.getOrElse(idx) { false } }
                 if (survived.isNotEmpty()) {
-                    // Bidang hash/grup segmen gabungan berisi
-                    // banyak nilai berpisah "|" (issue #1982)
-                    // -- uraikan dulu; item biasa tanpa "|"
-                    // terurai menjadi dirinya sendiri.
+                    // Bidang hash/grup segmen gabungan
+                    // berisi banyak nilai berpisah
+                    // PEMISAH_PENANDA (issue #1982/#1986)
+                    // -- uraikan dulu; item biasa tanpa
+                    // pemisah itu terurai menjadi dirinya.
                     markMarkersForwarded(
-                        survived.flatMap { it.third.split('|') }.filter { it.isNotEmpty() }.distinct(),
-                        survived.flatMap { it.second.split('|') }.filter { it.isNotEmpty() }
+                        survived.flatMap { it.third.split(PEMISAH_PENANDA) }.filter { it.isNotEmpty() }.distinct(),
+                        survived.flatMap { it.second.split(PEMISAH_PENANDA) }.filter { it.isNotEmpty() }
                     )
                 }
                 try {
@@ -1651,13 +1660,16 @@ class NotificationForwarderService : NotificationListenerService() {
                 synchronized(batchLock) {
                     val sisa = items.drop(index)
                     // Segmen gabungan membawa hash/grup
-                    // penyusunnya digabung "|" (issue #1982):
-                    // kosong seperti dulu membuat salvage tak
-                    // bisa menandainya, jadi notifikasi
+                    // penyusunnya digabung PEMISAH_PENANDA
+                    // (issue #1982, dikoreksi #1986):
+                    // kosong seperti dulu membuat salvage
+                    // tak bisa menandainya, jadi notifikasi
                     // penyusun diteruskan ulang oleh pindai
-                    // sambung-ulang. "|" tak mungkin muncul di
-                    // hash heksadesimal maupun nama paket.
-                    flushInFlight = if (curCount > 0) listOf(Triple(cur.toString(), curHashes.joinToString("|"), curGroups.joinToString("|"))) + sisa else sisa
+                    // sambung-ulang. Bidang ketiga adalah
+                    // groupKey platform, bukan nama paket --
+                    // pemisahnya karakter kontrol yang tak
+                    // ada di kedua alfabet.
+                    flushInFlight = if (curCount > 0) listOf(Triple(cur.toString(), curHashes.joinToString(PEMISAH_PENANDA), curGroups.joinToString(PEMISAH_PENANDA))) + sisa else sisa
                 }
             }
             flushCur()
