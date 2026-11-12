@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.684] - 2026-11-12
+
 ### Fixed
 - Setter tenggat jeda foto kini disimpan seketika (commit) seperti jalur jeda lainnya, menutup residu terakhir keluarga jeda foto: jeda admin dan penolan saat hapus data tidak bisa hilang oleh kematian proses.
 - Tiga jalur simpanan akuntansi notifikasi gugur yang tersisa kini ikut bercadangan instans preferensi, jadi rekonsiliasi batch dan tulisan final tidak menyerah senyap bila adopsi preferensi sempat gagal.
