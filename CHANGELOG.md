@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Baris status Setup kini langsung menyegarkan sesudah kegagalan HTTP pada Tes maupun Simpan, sehingga penanda autentikasi gagal (mis. token dicabut) tampil seketika, bukan menunggu layar dibuka ulang.
 - Menyimpan pengaturan lewat tombol Tes kini ikut memperbarui nilai muatan (status terkonfigurasi dan kedua interval); sebelumnya nilai basi itu bisa menimpa interval yang baru disimpan pada penyimpanan berikutnya.
 - Ekspor cadangan kini membawa PIN akses dari kolom ketikan (teresolusi masker seperti jalur Simpan), bukan selalu PIN tersimpan; sebelumnya PIN hasil impor yang belum disimpan gugur senyap dari berkas cadangan baru.
 - Kabar siap dijemput tidak lagi bisa tertembak dari posisi cache patroli yang bisa berumur sampai 90 menit; jalur patroli kini menggerbang jemput sama seperti jalur kendaraan dan fallback pagar.

@@ -1154,6 +1154,12 @@ class SetupActivity : AppCompatActivity() {
                         // bisa gagal tampil di sebagian perangkat.
                         if (isFinishing || isDestroyed) return@withContext
                         Toast.makeText(this@SetupActivity, getString(R.string.setup_save_failed, outcome.code.toString()), Toast.LENGTH_LONG).show()
+                        // Penanda error kredensial yang baru
+                        // terpasang wajib langsung tampak
+                        // (issue #2018): cabang sukses dan
+                        // luring menyegarkan lewat alur
+                        // lanjutannya, cabang ini berhenti.
+                        updateStatus()
                     }
                     return@launch
                 }
@@ -1768,7 +1774,13 @@ class SetupActivity : AppCompatActivity() {
                         if (isFinishing || isDestroyed) return@withContext
                         Toast.makeText(this@SetupActivity, getString(R.string.setup_test_fail, outcome.code.toString()), Toast.LENGTH_LONG).show()
                     }
-                    if (outcome.fromGetMe) return@launch
+                    // Sesudah when hanya ada penyegaran
+                    // status penutup; return dini khusus
+                    // fromGetMe dulu melompatinya (issue
+                    // #2018) -- persis kasus tersering
+                    // (token dicabut, getMe 401/403) --
+                    // sehingga penanda error kredensial
+                    // tak tampil sampai onResume berikut.
                 }
                 is VerifyOutcome.Error -> {
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
