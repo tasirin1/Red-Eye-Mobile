@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Digest harian kini menghitung agregat pemakaian layar jendela hari-ini satu kali saja (baris paketnya dipakai bersama), bukan dua kali seperti sebelumnya.
 - Indentasi blok pembangun klien long-poll dirapikan (hanya spasi, tanpa perubahan perilaku) agar rantai konfigurasinya terbaca sebagai satu kesatuan.
 - Balasan gagal /restart kini membedakan sebabnya: bila yang menolak adalah mode aman, pesannya menyatakan itu dan menunjuk /resume sebagai jalan keluar, bukan menyuruh mencoba lagi.
 - Kabar "Mode aman berakhir" dari pengawas kini dikirim lewat antrean persisten seperti kabar pengawas lainnya, jadi tidak bisa ikut terbatalkan oleh penyalaan ulang pengawas itu sendiri.

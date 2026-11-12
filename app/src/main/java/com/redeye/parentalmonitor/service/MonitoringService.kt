@@ -10712,14 +10712,22 @@ class MonitoringService : Service() {
         rowsProvider: () -> List<Pair<String, Long>>?,
         val a11yRows: List<A11yMonitor.AppUsage>,
         val firstUnlockMs: Long,
-        dayRowsProvider: () -> List<Pair<String, Long>>?
+        dayPkgRowsProvider: () -> List<Triple<String, String, Long>>?
     ) {
         // rows ikut malas seperti dayRows (issue #1954):
         // jalur /alertness dan fakta harian tak pernah
         // membacanya, jadi agregat 24 jam tak perlu
         // dihitung untuk mereka.
         val rows: List<Pair<String, Long>>? by lazy { rowsProvider() }
-        val dayRows: List<Pair<String, Long>>? by lazy { dayRowsProvider() }
+        // Baris paket jendela hari-ini adalah SATU query
+        // (issue #1966); dayRows turunannya persis seperti
+        // usageRowsBetween memetakan hasil fungsi paket.
+        // Dulu digestHighlights membayar agregat yang sama
+        // dua kali hanya untuk memulihkan nama paket baris
+        // teratas (#1431) -- jendela kemarin sudah
+        // dideduplikasi #1922, jendela hari-ini luput.
+        val dayPkgRows: List<Triple<String, String, Long>>? by lazy { dayPkgRowsProvider() }
+        val dayRows: List<Pair<String, Long>>? by lazy { dayPkgRows?.map { it.second to it.third } }
     }
 
     private fun usageDayData(now: Long, firstUnlockOverride: Long? = null): UsageDayData {
@@ -10727,7 +10735,7 @@ class MonitoringService : Service() {
         val fu = firstUnlockOverride ?: try { firstUnlockTodayMs(now) } catch (_: Exception) { 0L }
         return UsageDayData({ try { usageRows(24) } catch (_: Exception) { null } }, a11yRows, fu) {
             try {
-                usageRowsBetween(com.redeye.parentalmonitor.utils.A11yUsageMath.dayStartWallMillis(now, java.util.TimeZone.getDefault()), now)
+                usagePkgRowsBetween(com.redeye.parentalmonitor.utils.A11yUsageMath.dayStartWallMillis(now, java.util.TimeZone.getDefault()), now)
             } catch (_: Exception) {
                 null
             }
@@ -10789,7 +10797,7 @@ class MonitoringService : Service() {
                         // (issue #1431): dua paket bisa berlabel
                         // sama (kloning/profil kerja) dan nilai
                         // kemarinnya tertukar.
-                        val rowsPkgT = try { usagePkgRowsBetween(dayStart, now) } catch (_: Exception) { null }
+                        val rowsPkgT = data.dayPkgRows
                         val paketTop = rowsPkgT?.firstOrNull()?.takeIf { it.second == topLabel }?.first
                         topYesterdayMs = if (paketTop != null) {
                             rowsPkgY.firstOrNull { it.first == paketTop }?.third ?: 0L
