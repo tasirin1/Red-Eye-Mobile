@@ -431,7 +431,13 @@ object CrashReporter {
                             if (sep >= 0) {
                                 keepRemainder(file, raw, report.substring(sep + 5), savedElapsed0)
                             } else {
-                                try { file.delete() } catch (_: Exception) { }
+                                // Lewat keepRemainder juga
+                                // (issue #1989): delete telanjang
+                                // di luar saveLock menghapus
+                                // laporan baru yang digabungkan
+                                // savePending selama jendela
+                                // jaringan sejak raw dibaca.
+                                keepRemainder(file, raw, "", savedElapsed0)
                             }
                         }
                     }
