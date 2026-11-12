@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Tiga workflow GitHub terakhir yang belum punya batas waktu job (auto-merge, labeler, stale) kini dibatasi 10 menit, jadi job yang menggantung tidak membakar runner sampai 6 jam.
 - Sisa berkas salinan kecil foto dari proses yang mati di tengah unggah kini disapu pada pembuatan salinan berikutnya, jadi tidak menumpuk selamanya di cache.
 - Bitmap foto yang didekode untuk salinan kecil kini langsung dicatat untuk dibersihkan: bila penskalaan kehabisan memori, bitmap besar itu tetap dibebaskan, tidak menggantung.
 - Laporan /alertness tidak lagi menghitung agregat pemakaian 24 jam yang tidak pernah dibacanya; perhitungan itu kini hanya berjalan untuk laporan yang benar-benar memakainya.

@@ -23,6 +23,10 @@ jobs:
   auto-merge:
     name: Auto-merge PR Dependabot
     runs-on: ubuntu-24.04
+    # Batas waktu job (issue #1957): tanpa ini job yang
+    # menggantung membakar runner sampai bawaan GitHub
+    # 360 menit; workflow saudara dibatasi di #1874/#1941.
+    timeout-minutes: 10
     if: github.actor == 'dependabot[bot]'
     steps:
       # Murni API (tanpa checkout): semua perintah gh memakai -R eksplisit.

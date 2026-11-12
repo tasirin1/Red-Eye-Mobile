@@ -12,6 +12,10 @@ jobs:
   label:
     name: Label otomatis berdasarkan path
     runs-on: ubuntu-24.04
+    # Batas waktu job (issue #1957): tanpa ini job yang
+    # menggantung membakar runner sampai bawaan GitHub
+    # 360 menit; workflow saudara dibatasi di #1874/#1941.
+    timeout-minutes: 10
     steps:
       - uses: actions/labeler@bf12e9b00b37c5c0ca2b87b79b2daf7891dbda13 # v7
         with:

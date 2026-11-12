@@ -17,6 +17,10 @@ jobs:
   stale:
     name: Tutup PR tidak aktif
     runs-on: ubuntu-24.04
+    # Batas waktu job (issue #1957): tanpa ini job yang
+    # menggantung membakar runner sampai bawaan GitHub
+    # 360 menit; workflow saudara dibatasi di #1874/#1941.
+    timeout-minutes: 10
     steps:
       - uses: actions/stale@4391f3da665fdf50b6810c1a66712fb9ba21aa93 # v11
         with:
