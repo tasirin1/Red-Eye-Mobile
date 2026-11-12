@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Catatan uji anti-mati kini disimpan seketika (commit) saat uji dimulai dan diakhiri, jadi kematian proses yang justru sedang diuji tidak menghapus buktinya.
 - Pembersihan kode pasangan saat hapus data kini tersimpan seketika (commit), jadi kode yang sudah dibatalkan tidak bisa hidup lagi bila proses mati sebelum simpanan biasa sempat tertulis.
 - Pembersihan SMS tertahan saat hapus data kini memakai satu tulisan commit yang terkunci, bukan empat tulisantak sinkron yang bisa bangkit lagi bila proses mati sebelum tersimpan.
 - Laporan waspada tidak lagi menghitung SMS dari ID pengirim berhuruf (seperti nama operator/bank) sebagai nomor baru kosong yang menaikkan skor.

@@ -1509,6 +1509,11 @@ class PreferencesManager(context: Context) {
     val liveTestBootCount: Long
         get() = prefLong(KEY_LIVE_TEST_BOOT_COUNT, 0L)
 
+    // Kedua penulis keadaan uji memakai commit (issue
+    // #1970): satu-satunya tujuan keadaan ini adalah
+    // selamat dari kematian proses untuk dibaca sesudah
+    // bangkit; apply yang hilang oleh kematian yang justru
+    // sedang diuji membuat uji berjalan senyap tanpa vonis.
     fun beginLiveTest(startedElapsed: Long, startedWall: Long, bootCount: Long = 0L) {
         try {
             sharedPreferences.edit()
@@ -1517,7 +1522,7 @@ class PreferencesManager(context: Context) {
                 .putLong(KEY_LIVE_TEST_STARTED_WALL, startedWall)
                 .putLong(KEY_LIVE_TEST_BOOT_COUNT, bootCount)
                 .putBoolean(KEY_LIVE_TEST_BY_ALARM, false)
-                .apply()
+                .commit()
         } catch (_: Exception) {
         }
     }
@@ -1530,7 +1535,7 @@ class PreferencesManager(context: Context) {
                 .putLong(KEY_LIVE_TEST_STARTED_WALL, 0L)
                 .putLong(KEY_LIVE_TEST_BOOT_COUNT, 0L)
                 .putBoolean(KEY_LIVE_TEST_BY_ALARM, false)
-                .apply()
+                .commit()
         } catch (_: Exception) {
         }
     }
