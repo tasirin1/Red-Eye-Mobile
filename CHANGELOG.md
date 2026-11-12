@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.679] - 2026-11-12
+
 ### Added
 
 - Pesan terakhir saat perangkat dimatikan (keputusan pemilik, paket jejak terakhir): receiver manifes baru ShutdownReceiver menangkap ACTION_SHUTDOWN dan mengantrekan pesan prioritas berisi lokasi terakhir yang tersimpan + level baterai saat dimatikan, mengikuti pola AdminReceiver (antrean persisten + MessageScheduler). Pengiriman adalah upaya terbaik yang balapan dengan proses mati sistem; bila jaringan keburu putus, pesan terkirim pada nyala berikutnya sebagai penanda waktu dan tempat terakhir.
