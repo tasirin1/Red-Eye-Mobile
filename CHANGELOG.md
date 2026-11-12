@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.691] - 2026-11-13
+
 ### Fixed
 - Permintaan izin tangkap layar yang memakai ulang jendela izin yang sama sesudah permintaan sebelumnya selesai kini dinilai dari keadaan bersih: sebelumnya penolakan permintaan kedua tidak pernah dilaporkan dan sisa pengatur waktu lama bisa menutup jendela di tengah dialog, sehingga satu permintaan tangkapan layar hilang tanpa kabar apa pun (issue #2039).
 - Membuat cadangan kini menolak berjalan sebelum kolom selesai dimuat, sama seperti Simpan dan Tes: sebelumnya mengetuk Cadangkan tepat sesudah layar dibuka (sebelum masker PIN tampil) mengekspor berkas tanpa PIN akses secara diam-diam, dan berkas itu berakhir tanpa PIN saat dipulihkan di perangkat lain (issue #2038).
