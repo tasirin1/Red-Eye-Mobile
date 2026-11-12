@@ -15,6 +15,8 @@
     <string name="grant_permissions">Grant all permissions</string>
     <string name="notification_title">Calculator</string>
     <string name="notification_text">Service running</string>
+    <string name="notif_action_pause">Pause</string>
+    <string name="notif_action_resume">Resume</string>
     <string name="channel_name">Calculator</string>
     <string name="channel_name_alerts">Calculator alerts</string>
     <string name="channel_desc">Calculator service status</string>

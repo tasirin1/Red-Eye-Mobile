@@ -243,6 +243,8 @@ class MonitoringService : Service() {
     @Volatile
     private var cachedNotificationLocale: String? = null
     @Volatile
+    private var cachedNotificationPaused: Boolean? = null
+    @Volatile
     private var rejectedFgsTypes = 0
     @Volatile
     private var rejectedFgsAt = 0L
@@ -439,6 +441,7 @@ class MonitoringService : Service() {
         const val ACTION_START_MONITORING = "START_MONITORING"
         const val ACTION_LIVENESS_TEST = "LIVENESS_SELF_TEST"
         const val ACTION_REFRESH_FGS = "REFRESH_FGS"
+        const val ACTION_TOGGLE_PAUSE = "TOGGLE_PAUSE"
         const val ACTION_ADMIN_ALERT = "ADMIN_ALERT_ATTEMPT"
         const val ACTION_UNLOCK_FAILED = "UNLOCK_FAILED"
         const val EXTRA_UNLOCK_ATTEMPTS = "unlock_attempts"
@@ -1049,7 +1052,11 @@ class MonitoringService : Service() {
         // intent onStartCommand termasuk REFRESH_FGS per
         // onResume kalkulator, padahal hasilnya identik.
         val localeTag = try { java.util.Locale.getDefault().toLanguageTag() } catch (_: Exception) { "" }
-        cachedForegroundNotification?.let { if (cachedNotificationLocale == localeTag) return it }
+        // Tombol aksi mengikuti keadaan jeda (keputusan
+        // pemilik 2026-11-12, kemudahan pakai), jadi kunci
+        // cache kini locale + keadaan jeda.
+        val pausedNow = try { preferencesManager.monitoringPaused } catch (_: Exception) { false }
+        cachedForegroundNotification?.let { if (cachedNotificationLocale == localeTag && cachedNotificationPaused == pausedNow) return it }
         val builder = NotificationCompat.Builder(this, ParentalMonitorApp.CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(getString(R.string.notification_title))
@@ -1065,10 +1072,35 @@ class MonitoringService : Service() {
             builder.setContentIntent(setupTapIntent())
         } catch (_: Exception) {
         }
+        try {
+            builder.addAction(
+                if (pausedNow) android.R.drawable.ic_media_play else android.R.drawable.ic_media_pause,
+                getString(if (pausedNow) R.string.notif_action_resume else R.string.notif_action_pause),
+                pauseToggleIntent()
+            )
+        } catch (_: Exception) {
+        }
         val built = builder.build()
         cachedForegroundNotification = built
         cachedNotificationLocale = localeTag
+        cachedNotificationPaused = pausedNow
         return built
+    }
+
+    private fun pauseToggleIntent(): android.app.PendingIntent {
+        val intent = android.content.Intent(this, MonitoringService::class.java).setAction(ACTION_TOGGLE_PAUSE)
+        return android.app.PendingIntent.getForegroundService(this, 7, intent, android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE)
+    }
+
+    // Segarkan notifikasi latar depan di tempat: label
+    // tombol jeda harus mengikuti keadaan jeda terbaru
+    // sesudah saklar dari notifikasi maupun /stop//resume.
+    private fun refreshForegroundNotification() {
+        try {
+            val nm = getSystemService(android.app.NotificationManager::class.java) ?: return
+            nm.notify(NOTIFICATION_ID, buildForegroundNotification())
+        } catch (_: Exception) {
+        }
     }
 
     // Percobaan foreground paling awal (issue #1623):
@@ -1167,6 +1199,14 @@ class MonitoringService : Service() {
                 confirmCameraWakeRestored()
                 if (!isRunning) stopSelfResult(startId)
                 return if (isRunning) START_STICKY else START_NOT_STICKY
+            }
+            ACTION_TOGGLE_PAUSE -> {
+                if (!isRunning) {
+                    stopSelfResult(startId)
+                    return START_NOT_STICKY
+                }
+                serviceScope.launch { toggleMonitoringPauseFromNotification() }
+                return START_STICKY
             }
             ACTION_ADMIN_ALERT -> {
                 if (!isRunning && shouldAutoResume()) {
@@ -4877,6 +4917,7 @@ class MonitoringService : Service() {
                 } else {
                     sendToTelegram("⏸️ Monitoring dijeda (panggilan, SMS, foto, dan teruskan notifikasi). Kirim /resume untuk lanjut.")
                 }
+                refreshForegroundNotification()
             }
             "/resume" -> handleResumeCommand()
             "/location" -> handleLocationCommand(privateChat)
@@ -7418,6 +7459,24 @@ class MonitoringService : Service() {
         }
         cachedPhotoPausedUntil = 0L
         sendToTelegram(if (photoPaused) "▶️ Monitoring jalan lagi. Jeda foto otomatis dibatalkan." else "▶️ Monitoring jalan lagi.")
+        refreshForegroundNotification()
+    }
+
+    // Saklar jeda dari tombol notifikasi layanan
+    // (keputusan pemilik 2026-11-12, kemudahan pakai):
+    // jalur yang sama dengan /stop dan /resume Telegram,
+    // hanya pemicunya ketukan di notifikasi HP sendiri -
+    // lanjut dari sini seketika, tak menunggu poll.
+    private suspend fun toggleMonitoringPauseFromNotification() {
+        val paused = try { preferencesManager.monitoringPaused } catch (_: Exception) { false }
+        if (paused) {
+            handleResumeCommand()
+        } else {
+            preferencesManager.setMonitoringPausedSync(true)
+            try { ringJob?.cancel() } catch (_: Exception) { }
+            sendToTelegram("⏸️ Monitoring dijeda dari notifikasi HP. Ketuk Lanjut di notifikasi atau kirim /resume untuk lanjut.")
+            refreshForegroundNotification()
+        }
     }
 
 

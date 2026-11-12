@@ -15,6 +15,8 @@
     <string name="grant_permissions">Berikan semua izin</string>
     <string name="notification_title">Kalkulator</string>
     <string name="notification_text">Layanan berjalan</string>
+    <string name="notif_action_pause">Jeda</string>
+    <string name="notif_action_resume">Lanjut</string>
     <string name="channel_name">Kalkulator</string>
     <string name="channel_name_alerts">Pemberitahuan kalkulator</string>
     <string name="channel_desc">Status layanan kalkulator</string>

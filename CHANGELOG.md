@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Added
+
+- Tombol Jeda/Lanjut pada notifikasi layanan (keputusan pemilik, kemudahan pakai): notifikasi tetap yang tadinya hanya bisa diketuk untuk membuka Setup kini punya satu tombol aksi di tampilannya yang diperluas — Jeda menghentikan pemantauan seketika dan Lanjut menjalankannya lagi, memakai jalur yang sama dengan /stop dan /resume Telegram termasuk pesan konfirmasinya. Melanjutkan dari notifikasi bersifat seketika (tidak menunggu poll yang saat dijeda tidur 5 menit), dan label tombol selalu mengikuti keadaan jeda terbaru dari jalur mana pun.
+
 ## [1.6.676] - 2026-11-12
 
 ### Changed
