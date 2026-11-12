@@ -698,6 +698,24 @@ class SendMessageWorker(
         }
     }
 
+    // Pencatatan potongan pesan yang ditolak permanen
+    // (issue #2040, diperluas #2047): dipanggil di
+    // SETIAP jalan keluar yang menyelesaikan pesan pada
+    // run ini -- ekor tangga vonis bukan satu-satunya
+    // jalan Sent; return dini kredensial berganti dan
+    // tenggat serta jalur batal juga mengakhiri pesan
+    // (asal dihapus, sisa terantre sebagai pesan baru),
+    // dan potongan yang sudah tertolak pada run itu
+    // hilang permanen di semua jalan tersebut.
+    private fun catatPotonganTertolak(jumlah: Int) {
+        if (jumlah <= 0) return
+        try {
+            com.redeye.parentalmonitor.data.MessageQueue.getInstance(applicationContext)
+                .noteRejectedDrops(jumlah.toLong())
+        } catch (_: Exception) {
+        }
+    }
+
     private suspend fun sendChunked(message: String, botToken: String, chatId: String, retryCount: Int = 0, origId: String? = null, deadlineAt: Long = Long.MAX_VALUE, priority: Boolean = false, runGen: Long = -1L, chunksSent: Int = 0): SendOutcome {
         val parts = mutableListOf<String>()
         var rest = message
@@ -764,6 +782,7 @@ class SendMessageWorker(
             if ((curToken.isNotEmpty() && curToken != botToken) || (curChat.isNotEmpty() && curChat != chatId)) {
                 if (!queueRemainder(idx)) return SendOutcome.Failed
                 if (!removeOrigin()) return SendOutcome.Failed
+                catatPotonganTertolak(rejected)
                 try {
                     MessageScheduler.scheduleMessageSend(applicationContext)
                 } catch (_: Exception) {
@@ -775,6 +794,7 @@ class SendMessageWorker(
                 val queued = queueRemainder(idx)
                 if (!queued) return SendOutcome.Failed
                 if (!removeOrigin()) return SendOutcome.Failed
+                catatPotonganTertolak(rejected)
                 try {
                     MessageScheduler.scheduleMessageSend(applicationContext)
                 } catch (_: Exception) {
@@ -792,6 +812,7 @@ class SendMessageWorker(
                             val queued = queueRemainder(idx + 1)
                             if (queued) {
                                 removeOrigin()
+                                catatPotonganTertolak(rejected)
                                 try {
                                     MessageScheduler.scheduleMessageSend(applicationContext)
                                 } catch (_: Exception) {
@@ -799,6 +820,7 @@ class SendMessageWorker(
                             }
                         } else {
                             removeOrigin()
+                            catatPotonganTertolak(rejected)
                         }
                         throw e
                     }
@@ -915,13 +937,7 @@ class SendMessageWorker(
         // untuk dicoba lagi utuh -- potongannya belum
         // hilang -- dan vonis Rejected sudah menghitung
         // pesannya sekali di tingkat pesan.
-        if (vonis == SendOutcome.Sent && rejected > 0) {
-            try {
-                com.redeye.parentalmonitor.data.MessageQueue.getInstance(applicationContext)
-                    .noteRejectedDrops(rejected.toLong())
-            } catch (_: Exception) {
-            }
-        }
+        if (vonis == SendOutcome.Sent) catatPotonganTertolak(rejected)
         return vonis
     }
 
