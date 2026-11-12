@@ -15692,6 +15692,17 @@ class MonitoringService : Service() {
                     bitmap = kecil
                 }
             }
+            // Sapu temp kecil_* yatim dari proses yang mati
+            // di tengah unggah (issue #1956): tak ada penyapu
+            // lain untuk awalan ini. Ambang 1 jam jauh di atas
+            // umur unggah terpanjang (callTimeout 600 dtk),
+            // jadi temp yang sedang dipakai tak tersentuh.
+            try {
+                val batasYatim = System.currentTimeMillis() - 3_600_000L
+                cacheDir.listFiles()?.forEach { f ->
+                    if (f.name.startsWith("kecil_") && f.lastModified() < batasYatim) deleteQuietly(f)
+                }
+            } catch (_: Exception) { }
             val tujuan = File(cacheDir, "kecil_" + sumber.name)
             tujuanRef = tujuan
             val ok = java.io.FileOutputStream(tujuan).use { bmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 80, it) }
