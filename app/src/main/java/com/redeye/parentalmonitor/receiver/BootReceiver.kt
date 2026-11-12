@@ -243,10 +243,12 @@ class BootReceiver : BroadcastReceiver() {
             if (updatedPart != null && updatedPart != context.packageName) return
         }
         val appContext = context.applicationContext
-        try {
-            com.redeye.parentalmonitor.utils.Liveness.schedule(appContext)
-        } catch (_: Exception) {
-        }
+        // Alarm Liveness TIDAK dipasang di sini lagi
+        // (issue #2025): pemasangan pindah ke
+        // handleBootLocked sesudah gerbang dedup — siaran
+        // boot duplikat yang berhenti di dedup dulu
+        // memasang ulang alarm yang baru dibatalkan
+        // cabang mati pada handle pertama.
         // goAsync gagal TIDAK membuang peristiwa boot
         // (issue #1635): pola receiver saudara
         // (Liveness/TimeChange) adalah pendingResult=null
@@ -301,6 +303,16 @@ class BootReceiver : BroadcastReceiver() {
             if (!updated && MonitoringService.isRunning && lastFullBoot != 0L && nowBoot >= lastFullBoot && nowBoot - lastFullBoot < 10 * 60_000L) return
         } catch (_: Exception) {
         }
+        // Alarm Liveness dipasang di sini, sesudah gerbang
+        // dedup (issue #2025; sebelumnya tanpa syarat di
+        // onReceive): handle yang lolos dedup memang akan
+        // menilai keadaan mati/hidup di bawah — cabang mati
+        // membatalkan alarm ini lagi di pemanggilan yang
+        // sama, jadi hasil bersihnya tetap tanpa alarm.
+        try {
+            com.redeye.parentalmonitor.utils.Liveness.schedule(context)
+        } catch (_: Exception) {
+        }
         if (!updated && MonitoringService.isRunning) {
             markHandled(context, nowBoot)
             return
@@ -332,8 +344,9 @@ class BootReceiver : BroadcastReceiver() {
                 MessageScheduler.cancelWatchdog(context)
             } catch (_: Exception) {
             }
-            // Alarm Liveness yang terpasang tanpa syarat di
-            // onReceive ikut dibatalkan (issue #1274): pola
+            // Alarm Liveness yang terpasang di atas
+            // (sesudah gerbang dedup) ikut dibatalkan
+            // (issue #1274): pola
             // #1245 di BootRestartWorker — perangkat yang
             // pemantauannya sengaja dimatikan tak boleh
             // dibangunkan alarm yang tak seharusnya ada.
