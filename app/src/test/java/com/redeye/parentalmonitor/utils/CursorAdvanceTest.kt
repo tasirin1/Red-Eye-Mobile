@@ -91,7 +91,13 @@ class CursorAdvanceTest {
                 rows.addAll(sisipan)
                 disisipkan = true
             }
-            val utama = rows.filter { it.second > dateCursor || (it.second == dateCursor && it.first > idCursor) }
+            // Batas masa depan #1374 diterapkan pada
+            // keyset seperti produksi (issue #2055):
+            // harness tanpa jam, jadi nilai batasnya
+            // Long.MAX_VALUE -- yang disamakan adalah
+            // BENTUK saringannya (nilai yang sama juga
+            // diteruskan ke terlambat di bawah).
+            val utama = rows.filter { it.second <= Long.MAX_VALUE && (it.second > dateCursor || (it.second == dateCursor && it.first > idCursor)) }
                 .sortedWith(compareBy({ it.second }, { it.first })).take(100)
             // Calon sapuan disaring tanggal kursor
             // SEBELUM batas 100 (issue #2044), meniru
@@ -231,7 +237,10 @@ class CursorAdvanceTest {
         var putaran = 0
         while (putaran < 10) {
             putaran++
-            val utama = baris.filter { it.second > dateCursor || (it.second == dateCursor && it.first > idCursor) }
+            // Batas masa depan #1374 seperti produksi
+            // (issue #2055), nilai Long.MAX_VALUE khas
+            // harness tanpa jam.
+            val utama = baris.filter { it.second <= Long.MAX_VALUE && (it.second > dateCursor || (it.second == dateCursor && it.first > idCursor)) }
                 .sortedWith(compareBy({ it.second }, { it.first })).take(100)
             val calon = baris.filter { it.first > terpersist && it.second < dateCursor }
                 .sortedBy { it.first }.take(100)

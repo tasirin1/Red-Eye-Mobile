@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Model sapuan panggilan pada harness uji kini menerapkan saringan batas masa depan pada keyset seperti produksi, menyamakan perlakuan antar model (model SMS sudah menerapkannya): skenario baris bertanggal masa depan kini terwakili bentuk saringannya di semua model (issue #2055).
 - Komentar penjelasan plafon watchdog dikoreksi ke angka yang terbukti: siklus data maksimum sebenarnya 1440 menit (regangan idle ter-coerce agar tidak melewati basis), bukan 5760 menit seperti tertulis sebelumnya; perilaku tidak berubah (issue #2054).
 - Uji format integer negatif besar tidak lagi vakum: sebelumnya token minusnya ASCII sehingga tidak pernah memicu perhitungan dan string hasil terbentuk secara tekstual; kini memakai operator minus yang sebenarnya dan memverifikasi ekspresi hitungnya, sehingga regresi format hasil negatif benar-benar tertangkap (issue #2053).
 - Tautan penautan tidak lagi sesekali memicu perintah "simpan dulu" yang palsu tepat saat layar selesai memuat: sebelumnya teks kolom ditangkap sebelum pemeriksaan selesai-muat di dalam pekerjaannya, sehingga nilai kosong pra-muat bisa terbawa walau muat sudah selesai (issue #2052).
