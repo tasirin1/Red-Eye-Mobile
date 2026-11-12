@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.681] - 2026-11-12
+
 ### Fixed
 - Uji penolakan PIN salah pada impor cadangan diperketat: kini wajib gagal karena verifikasi tag enkripsi, bukan sekadar pengecualian apa pun.
 - Uji retensi jurnal crash diperketat: asersi lamanya selalu lolos lewat jalan pintas, kini entri yang bertahan dan yang terpangkas dibuktikan satu-satu.
