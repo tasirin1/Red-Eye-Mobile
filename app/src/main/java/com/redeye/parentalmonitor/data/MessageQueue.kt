@@ -962,18 +962,39 @@ class MessageQueue private constructor(context: Context) {
             cached = kosong
             return kosong
         }
-        val json = try {
-            sharedPreferences?.getString(KEY_QUEUE, null)
+        var json: String? = null
+        var bacaUtamaMelempar = false
+        try {
+            json = sharedPreferences?.getString(KEY_QUEUE, null)
         } catch (e: Exception) {
-            android.util.Log.w("MessageQueue", "Queue read failed, falling back to volatile: ${com.redeye.parentalmonitor.utils.Redact.token(e.message)}")
-            volatileOnly = true
-            keepUnpersistedDropsLocked()
-            cached = null
-            try {
-                com.redeye.parentalmonitor.utils.MessageScheduler.scheduleMessageSendNext(appContext, 60_000L)
-            } catch (_: Exception) {
+            // Lemparan baca utama (issue #2069): dekripsi
+            // bisa gagal pada SATU nilai ini sementara
+            // nilai cadangan tetap sah -- jangan langsung
+            // jatuh ke volatile; coba cadangan dulu dan
+            // biarkan tangga parse/salvage di bawah
+            // berjalan atas isinya. Hanya bila cadangan
+            // juga gagal baca/kosong barulah jatuh ke
+            // volatile, dan kehilangannya dicatat sebagai
+            // batas bawah corrupt, selaras doktrin kedua
+            // blob tak terbaca di tangga parse.
+            bacaUtamaMelempar = true
+            android.util.Log.w("MessageQueue", "Queue read failed, trying backup value: ${com.redeye.parentalmonitor.utils.Redact.token(e.message)}")
+        }
+        if (bacaUtamaMelempar) {
+            val bakJson = try { sharedPreferences?.getString(KEY_QUEUE_BAK, null) } catch (_: Exception) { null }
+            if (!bakJson.isNullOrBlank()) {
+                json = bakJson
+            } else {
+                try { noteCorruptDrops(1L) } catch (_: Exception) { }
+                volatileOnly = true
+                keepUnpersistedDropsLocked()
+                cached = null
+                try {
+                    com.redeye.parentalmonitor.utils.MessageScheduler.scheduleMessageSendNext(appContext, 60_000L)
+                } catch (_: Exception) {
+                }
+                return mutableListOf()
             }
-            return mutableListOf()
         }
         var parsedOk = false
         val loaded: MutableList<QueuedMessage> = try {

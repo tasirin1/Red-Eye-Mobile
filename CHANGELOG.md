@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Fixed
+
+- Antrean pesan tersimpan tidak lagi musnah senyap bila dekripsi nilai utamanya gagal: nilai cadangan kini dicoba lewat tangga penyelamatan yang sama, dan kehilangan dicatat sebagai corrupt bila kedua nilai gagal baca (issue #2069).
+
 ## [1.6.695] - 2026-11-13
 
 ### Fixed
