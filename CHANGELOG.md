@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.688] - 2026-11-12
+
 ### Fixed
 - Siaran boot duplikat tidak lagi memasang ulang alarm Liveness pada perangkat yang pemantauannya sengaja dimatikan: pemasangan alarm yang dulu tanpa syarat di awal penerima boot kini pindah ke dalam penanganan boot sesudah gerbang dedup, karena duplikat siaran khas OEM yang berhenti di gerbang dedup dulu memasang lagi alarm yang baru saja dibatalkan cabang mati pada penanganan pertama dan menimbulkan satu bangun sia-sia beberapa menit kemudian (issue #2025).
 - Penanda jadwal pengiriman kini juga tidak diturunkan oleh penerbitan delay positif: sebelumnya penanda masa depan yang masih hidup (mis. jadwal ulang 30 menit) bisa ditimpa nilai lebih dekat (mis. 15 detik dari run yang tertolak), sehingga pesan mendesak berikutnya memilih menempel di belakang ekor antrean tertunda ketimbang menggantinya dan ikut menunggu sampai ±30 menit — fungsi `nilaiTerbitPenanda` kini mempertahankan penanda masa depan untuk semua delay, dan kasus uji yang dulu mengunci perilaku menimpa sudah direvisi (issue #2024).
