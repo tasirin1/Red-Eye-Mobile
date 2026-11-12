@@ -2011,7 +2011,13 @@ class SetupActivity : AppCompatActivity() {
                     var dialogAksesTampil = false
                     try {
                         val hilang = ArrayList<String>()
-                        if (!com.redeye.parentalmonitor.service.ShotAccessibilityService.isEnabled(this@SetupActivity)) hilang.add(getString(R.string.setup_access_a11y))
+                        // Terhubung, bukan hanya tercantum
+                        // (issue #1978, standar #1629 yang
+                        // dipakai baris status): layanan yang
+                        // tercantum tetapi belum ter-bind
+                        // jalurnya mati -- dialog ini ada
+                        // untuk memperingatkan persis itu.
+                        if (!(com.redeye.parentalmonitor.service.ShotAccessibilityService.isEnabled(this@SetupActivity) && com.redeye.parentalmonitor.service.ShotAccessibilityService.isBound())) hilang.add(getString(R.string.setup_access_a11y))
                         if (!isNotificationAccessGranted()) hilang.add(getString(R.string.setup_access_notif))
                         if (!com.redeye.parentalmonitor.utils.UsageAccess.granted(this@SetupActivity)) hilang.add(getString(R.string.setup_access_usage))
                         val adminOn2 = try { (getSystemService(DEVICE_POLICY_SERVICE) as android.app.admin.DevicePolicyManager).isAdminActive(android.content.ComponentName(this@SetupActivity, com.redeye.parentalmonitor.receiver.AdminReceiver::class.java)) } catch (_: Exception) { false }
