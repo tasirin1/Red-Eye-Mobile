@@ -11040,7 +11040,15 @@ class MonitoringService : Service() {
                 else if (watch.isNotEmpty() && AppWatch.hit(watch, s.body) != null) hits++
             }
             try {
-                for (c in calls.take(200)) if (watchNumberHit(c.number, watchNums) != null) hits++
+                for (c in calls.take(200)) {
+                    // Penjaga aktivitas (issue #2035,
+                    // residu #2033): panggilan yang
+                    // ditolak/diblokir dari nomor pantau
+                    // bukan interaksi anak — sama seperti
+                    // sendWaspada dan laporan mingguan.
+                    if (!callCountsAsActivity(c.type)) continue
+                    if (watchNumberHit(c.number, watchNums) != null) hits++
+                }
             } catch (_: Exception) {
             }
             val level = batteryLevel()
