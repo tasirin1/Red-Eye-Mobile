@@ -262,7 +262,32 @@ class MessageQueue private constructor(context: Context) {
             } catch (e: Exception) {
                 sharedPreferences = null
                 volatileOnly = true
-                keepUnpersistedDropsLocked()
+                // Reset sudah menghapus cakram era lama
+                // (issue #2041): hitungan yang belum
+                // terpersist adalah milik era yang mati
+                // itu -- mengkonversinya terhadap baseline
+                // cakram yang terhapus (cara
+                // keepUnpersistedDropsLocked di jalur masuk
+                // volatile biasa) mewariskan hitungan
+                // hantu ke era baru. Mulai segar seperti
+                // cabang sukses; penanda wipe sengaja
+                // dipertahankan sebagai gerbang gabungan
+                // bila penghapusan cakram ternyata gagal
+                // senyap.
+                overflowDrops.set(0L)
+                expiredDrops.set(0L)
+                priorityDrops.set(0L)
+                exhaustedDrops.set(0L)
+                rejectedDrops.set(0L)
+                corruptDrops.set(0L)
+                persistedOverflowDrops = 0L
+                persistedExpiredDrops = 0L
+                persistedPriorityDrops = 0L
+                persistedExhaustedDrops = 0L
+                persistedRejectedDrops = 0L
+                persistedCorruptDrops = 0L
+                clearTakenUnpersistedLocked()
+                dropsDirty = false
                 android.util.Log.w("MessageQueue", "Queue reopen failed, using volatile: ${com.redeye.parentalmonitor.utils.Redact.token(e.message)}")
             }
         }

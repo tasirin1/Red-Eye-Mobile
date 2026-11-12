@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Kegagalan membuka ulang antrean sesudah reset penyimpanan tidak lagi mewariskan hitungan pesan terbuang hantu dari era sebelum reset: sebelumnya penghitung dikonversi terhadap patokan cakram yang baru saja dihapus, sehingga angka yang belum sempat tersimpan ikut terbaca sebagai milik era baru dan total terbuang membengkak (issue #2041).
 - Potongan pesan panjang yang ditolak permanen kini selalu tercatat dalam hitungan terbuang bila pesan selesai diproses: sebelumnya potongan yang dibuang di tengah pesan hilang dari akuntansi setiap kali vonis akhir pesan bukan penolakan (mis. potongan berikutnya kena batas laju), sehingga pemilik menerima pesan bercelah tanpa catatan kehilangan (issue #2040).
 
 ## [1.6.691] - 2026-11-13
