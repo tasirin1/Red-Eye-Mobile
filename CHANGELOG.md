@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Kode pasangan kini ditulis di bawah satu kunci yang sama di semua jalur: kode yang sudah dibersihkan saat adopsi pemilik atau ganti kredensial tidak bisa bangkit lagi oleh balapan penulisan.
 - Penghapusan log audit kini ditulis ke cakram seketika (commit), jadi log yang sudah dihapus tidak bisa bangkit lagi bila proses mati sebelum tulisan asinkron selesai.
 - Penanda notifikasi yang diselamatkan saat layanan notifikasi berhenti kini ditulis ke cakram saat itu juga, jadi notifikasi yang sama tidak diteruskan ulang sesudah layanan tersambung lagi.
 - Balasan /recover kini jujur saat mode aman aktif: loop berat dilaporkan masih ditahan mode aman, bukan diklaim sudah dihidupkan ulang.

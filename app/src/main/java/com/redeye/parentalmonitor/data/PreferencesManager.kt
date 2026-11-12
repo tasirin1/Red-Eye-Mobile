@@ -1807,7 +1807,12 @@ class PreferencesManager(context: Context) {
                     .putLong(KEY_CRED_ERROR_AT, 0L)
                     .putLong(KEY_CRED_ERROR_ELAPSED, 0L)
                 if (ownerId != ownerUserId || newChatId != chatId) bumpCredentialGeneration(editor)
-                editor.commit()
+                // Commit yang membersihkan kode pasangan wajib
+                // terserialkan dengan ensureOwnerPairCode
+                // (issue #1951): kunci pasangan diambil di dalam
+                // kunci kredensial di semua situs, tak pernah
+                // sebaliknya, jadi tak ada jalan buntu.
+                synchronized(pairCodeLock) { editor.commit() }
             }
         } catch (_: Exception) {
             false
@@ -1823,7 +1828,7 @@ class PreferencesManager(context: Context) {
                     .putLong(KEY_OWNER_PAIR_AT, 0L)
                     .putString(KEY_COMMANDS_TOKEN_HASH, "")
                 if (ownerUserId != 0L) bumpCredentialGeneration(editor)
-                editor.commit()
+                synchronized(pairCodeLock) { editor.commit() }
             }
         } catch (_: Exception) {
             false
@@ -1831,7 +1836,9 @@ class PreferencesManager(context: Context) {
     }
 
     fun setOwnerPairCode(value: String) {
-        sharedPreferences.edit().putString(KEY_OWNER_PAIR_CODE, value).apply()
+        synchronized(pairCodeLock) {
+            sharedPreferences.edit().putString(KEY_OWNER_PAIR_CODE, value).apply()
+        }
     }
 
     fun ensureOwnerPairCode(): String {
@@ -2960,7 +2967,7 @@ class PreferencesManager(context: Context) {
                 // ke sini, jadi di sana ini no-op.
                 editor.putString(KEY_RESTORE_CONFIRMED_JSON, "")
                 editor.putLong(KEY_RESTORE_CONFIRMED_DEADLINE, 0L)
-                editor.commit()
+                synchronized(pairCodeLock) { editor.commit() }
             } catch (_: Exception) {
                 false
             }
