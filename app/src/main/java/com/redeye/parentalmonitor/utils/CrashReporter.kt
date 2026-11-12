@@ -127,7 +127,10 @@ object CrashReporter {
                 val file = journalFile(context.applicationContext)
                 val lama = if (file.exists()) CrashLoopGate.parse(file.readText()) else emptyList()
                 val baru = CrashLoopGate.catat(lama, System.currentTimeMillis())
-                file.writeText(CrashLoopGate.serialkan(baru))
+                // Tulis atomik tmp+rename seperti laporan
+                // pending (issue #1939): writeText langsung
+                // bisa tersobek dan mengosongkan jurnal.
+                writeReportFile(file, CrashLoopGate.serialkan(baru))
             }
         } catch (_: Exception) {
         }
