@@ -1309,10 +1309,24 @@ class NotificationForwarderService : NotificationListenerService() {
                 }
             }
             if (sisa.isNotEmpty()) {
+                // Penandaan per item seperti salvageBatch
+                // (issue #1972): jalur ini dulu hanya
+                // mengantrekan pesan tanpa menandai, jadi
+                // item yang selamat terkirim tetapi id/grupnya
+                // tak tercatat di mana pun dan diteruskan
+                // ulang oleh pindai sambung-ulang.
+                var results: List<Boolean> = emptyList()
                 try {
-                    queue().addMessages(sisa.map { it.first })
+                    results = queue().addMessagesPerItem(sisa.map { it.first })
                     queue().flushSync()
                 } catch (_: Exception) {
+                }
+                val survived = sisa.filterIndexed { idx, _ -> results.getOrElse(idx) { false } }
+                if (survived.isNotEmpty()) {
+                    markMarkersForwarded(
+                        survived.map { it.third }.filter { it.isNotEmpty() }.distinct(),
+                        survived.map { it.second }.filter { it.isNotEmpty() }
+                    )
                 }
                 try {
                     MessageScheduler.scheduleMessageSend(this)
