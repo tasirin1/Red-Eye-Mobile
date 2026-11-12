@@ -16069,6 +16069,23 @@ class MonitoringService : Service() {
                 }?.forEach { deleteQuietly(it) }
             } catch (_: Exception) {
             }
+            // Sapuan kecil_* yatim di cacheDir (issue #1962):
+            // penyapu di dalam buatSalinanFotoKecil hanya
+            // berjalan bila jalur salinan kecil terpicu lagi
+            // (foto besar + jaringan terukur/daya rendah);
+            // yatim kematian proses/Error di perangkat yang
+            // menetap di Wi-Fi tak terukur bisa permanen.
+            // Prune berjalan di banyak jalur kirim/patroli,
+            // jadi sapuan di sini tak bergantung pemicu itu.
+            // Ambang 1 jam sama: jauh di atas jendela pakai
+            // temp yang hidup (callTimeout 600 dtk).
+            try {
+                val batasYatim = System.currentTimeMillis() - 3_600_000L
+                cacheDir.listFiles { file ->
+                    file.isFile && file.name.startsWith("kecil_") && file.lastModified() < batasYatim
+                }?.forEach { deleteQuietly(it) }
+            } catch (_: Exception) {
+            }
             // Korban dipilih berdasar umur SEBENARNYA dari nama
             // berkas (issue #891): urutan lastModified — termasuk
             // daftar known dari flush — ditulis ulang oleh rotasi
