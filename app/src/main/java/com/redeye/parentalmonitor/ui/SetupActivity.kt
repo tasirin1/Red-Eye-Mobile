@@ -982,6 +982,7 @@ class SetupActivity : AppCompatActivity() {
                 try { com.redeye.parentalmonitor.utils.ScreenCapture.revoke() } catch (_: Exception) { }
                 try { prefs.pendingMsgDrops = 0 } catch (_: Exception) { }
                 try { com.redeye.parentalmonitor.service.NotificationForwarderService.resetDropCounters(prefs) } catch (_: Exception) { }
+                try { com.redeye.parentalmonitor.service.NotificationForwarderService.clearForwardedMarkers(prefs) } catch (_: Exception) { }
                 try { prefs.setMonitoringPausedSync(false) } catch (_: Exception) { }
                 try { prefs.photoPausedUntil = 0L } catch (_: Exception) { }
                 try { prefs.patrolEnabled = false } catch (_: Exception) { }

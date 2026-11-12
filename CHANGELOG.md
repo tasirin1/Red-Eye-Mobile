@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Hapus kredensial kini ikut membersihkan penanda notifikasi yang sudah diteruskan (di penyimpanan dan di ingatan layanan), jadi pemilik baru sesudah setup ulang tidak kehilangan notifikasi lama yang tertahan penanda usang.
 - Umur cache label SIM kini diukur dengan jam monoton, jadi kemunduran jam perangkat tidak lagi membuat label basi dipakai tanpa batas.
 - Pembersihan log audit kini hanya mengosongkan cermin ingatannya bila simpanan di cakram benar-benar berhasil, jadi log yang dibersihkan tidak bangkit lagi pada penambahan berikutnya.
 - Penolakan permanen laporan crash kini membuang laporan lewat jalur berkunci yang sama seperti keberhasilan, jadi laporan baru yang masuk selama pengiriman tidak ikut terhapus.

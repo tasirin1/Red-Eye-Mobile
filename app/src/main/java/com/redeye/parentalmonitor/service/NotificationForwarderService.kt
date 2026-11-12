@@ -316,6 +316,30 @@ class NotificationForwarderService : NotificationListenerService() {
                 try { prefs.setPendingNotifDropsSync(0, 0L) } catch (_: Exception) { }
             }
         }
+
+        // Pembersihan penanda diteruskan untuk wipe
+        // (issue #1992), pola yang sama dengan
+        // resetDropCounters: peta instance yang hidup
+        // dikosongkan langsung di bawah kuncinya, lalu
+        // kunci preferensi dibuang. Potret job persist
+        // yang terlanjur terbang membawa isi lama,
+        // tetapi job yang sama menimpa dengan potret
+        // kosong pada putaran berikutnya (konvergen).
+        fun clearForwardedMarkers(prefs: PreferencesManager) {
+            val inst = activeInstance
+            if (inst != null) {
+                synchronized(inst.groupForwarded) {
+                    synchronized(inst.forwardedIds) {
+                        inst.groupForwarded.clear()
+                        inst.forwardedIds.clear()
+                        inst.groupForwardedView = emptyMap()
+                        inst.forwardedIdsView = emptySet()
+                        generasiPenanda.incrementAndGet()
+                    }
+                }
+            }
+            try { prefs.clearForwardedMarkersSync() } catch (_: Exception) { }
+        }
     }
 
     override fun onCreate() {

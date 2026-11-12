@@ -2036,6 +2036,26 @@ class PreferencesManager(context: Context) {
     // menghidupkan lagi tanda yang sudah tergantikan.
     private var generasiPenandaTertulis = -1L
 
+    // Pembersihan penanda untuk wipe (issue #1992):
+    // kedua kunci dibuang dalam satu commit dan
+    // penjaga generasi dinolkan di kunci yang sama,
+    // agar potret sah berikutnya dari layanan yang
+    // masih berjalan tidak tertolak sebagai basi.
+    fun clearForwardedMarkersSync(): Boolean {
+        synchronized(prefsRmwLock) {
+            val ok = try {
+                sharedPreferences.edit()
+                    .remove(KEY_NOTIF_GROUP_FORWARDED)
+                    .remove(KEY_FORWARDED_NOTIF_IDS)
+                    .commit()
+            } catch (_: Exception) {
+                false
+            }
+            if (ok) generasiPenandaTertulis = -1L
+            return ok
+        }
+    }
+
     fun setForwardedMarkersSync(groupValues: List<String>, idValues: List<String>, generasi: Long): Boolean {
         synchronized(prefsRmwLock) {
             if (generasi < generasiPenandaTertulis) return true
