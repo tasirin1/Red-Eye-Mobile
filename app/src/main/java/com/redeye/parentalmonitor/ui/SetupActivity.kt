@@ -1608,6 +1608,17 @@ class SetupActivity : AppCompatActivity() {
     }
 
     private fun backupSettings() {
+        // Gerbang muat yang sama dengan Simpan/Tes
+        // (issue #2038): tanpa ini, ekspor di jendela
+        // pemuat (sebelum masker terpasang) membaca
+        // kolom PIN yang masih kosong dan berkas
+        // tertulis tanpa PIN akses secara senyap —
+        // medan lain punya fallback tersimpan, PIN
+        // satu-satunya yang menelan nilai kolom mentah.
+        if (!fieldsLoaded) {
+            Toast.makeText(this, getString(R.string.setup_loading), Toast.LENGTH_SHORT).show()
+            return
+        }
         val uiToken = botTokenInput.text.toString().trim()
         val uiChat = chatIdInput.text.toString().trim()
         val uiPin = accessPinInput.text.toString().trim()
