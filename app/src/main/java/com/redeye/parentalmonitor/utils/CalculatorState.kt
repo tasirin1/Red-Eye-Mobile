@@ -119,6 +119,16 @@ class CalculatorState {
         lastOperator = operator
         lastOperand = currentStr
         justCalculated = true
+        // Entri tertelan perhitungan ini (issue
+        // #2059): persen pada operand kedua memasang
+        // entryReplaced, tetapi perhitungan sungguhan
+        // yang mengonsumsinya menjadikan hasilnya
+        // hasil biasa -- flag basi akan mematikan
+        // pengulangan = berikutnya. Kasus persen pada
+        // HASIL tidak melewati jalur ini (cabang
+        // pasangan-kosong lebih dulu), jadi
+        // perlindungan ab45901e tidak terbuka.
+        entryReplaced = false
         previousNumber = ""
         operator = ""
         return false

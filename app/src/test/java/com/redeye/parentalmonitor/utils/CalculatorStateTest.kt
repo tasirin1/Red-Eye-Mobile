@@ -224,6 +224,31 @@ class CalculatorStateTest {
     // negatif sebesar pasangan positifnya tampil utuh,
     // bukan notasi ilmiah terbulatkan.
     @Test
+    fun persenOperandKeduaLaluUlangSamaDengan() {
+        // Regresi #2059: persen pada operand kedua
+        // dikonsumsi perhitungan sungguhan, jadi =
+        // berikutnya wajib mengulang operasi terakhir
+        // seperti jalur tanpa persen (200+20== -> 240).
+        val h = Harness()
+        h.run("200", "+", "10", "%", "=")
+        assertEquals("220", h.state.currentNumber)
+        h.run("=")
+        assertEquals("240", h.state.currentNumber)
+        assertEquals("220 + 20", h.state.lastExpression)
+    }
+
+    @Test
+    fun persenOperandKeduaMinusLaluUlangSamaDengan() {
+        // Pasangan simetris #2059 untuk pengurangan:
+        // 200 - 10% = 180, = lagi -> 160.
+        val h = Harness()
+        h.run("200", "−", "10", "%", "=")
+        assertEquals("180", h.state.currentNumber)
+        h.run("=")
+        assertEquals("160", h.state.currentNumber)
+    }
+
+    @Test
     fun negativeHugeIntegerShowsInFull() {
         val h = Harness()
         h.run("0", "−", "999999999999", "=")
