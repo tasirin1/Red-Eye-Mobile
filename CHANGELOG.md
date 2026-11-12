@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Penghapusan daftar aplikasi dikenal saat menghapus kredensial kini menolkan cermin himpunannya di memori juga, sehingga daftar pra-hapus tidak lagi ditulis balik oleh penyemaian pada start berikutnya.
+
 ## [1.6.685] - 2026-11-12
 
 ### Fixed
