@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Salinan foto kecil yang gagal ditulis di tengah jalan kini ikut dihapus: lemparan saat menulis tidak lagi meninggalkan berkas temp separuh di cacheDir yang tak pernah dibersihkan siapa pun (issue #1942).
 - Workflow pemindaian secret (gitleaks) kini punya batas waktu job 15 menit; tanpa itu bawaan GitHub 360 menit membiarkan job yang menggantung membakar kuota runner (issue #1941).
 - Uji gerbang crash-loop `tigaTersebarTidakAman` kini benar-benar menguji cek rentang: fixture lama kehilangan satu entri oleh saringan validitas sehingga lulus lewat syarat jumlah; fixture baru hanya bisa gagal lewat rentang gugus (terbukti diskriminatif terhadap mutan tanpa cek rentang) (issue #1940).
 - Jurnal crash untuk gerbang mode aman kini ditulis atomik (temp lalu rename) lewat penulis laporan yang sama, bukan lagi writeText langsung yang bisa tersobek dan mengosongkan jurnal saat proses dibunuh di tengah tulis (issue #1939).

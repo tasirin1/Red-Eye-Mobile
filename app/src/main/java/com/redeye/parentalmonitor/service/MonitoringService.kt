@@ -15653,6 +15653,7 @@ class MonitoringService : Service() {
     // (perilaku lama). Berkas asli tak pernah diubah.
     private fun buatSalinanFotoKecil(sumber: File): File? {
         var bitmap: android.graphics.Bitmap? = null
+        var tujuanRef: File? = null
         return try {
             val opsi = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
             android.graphics.BitmapFactory.decodeFile(sumber.absolutePath, opsi)
@@ -15672,6 +15673,7 @@ class MonitoringService : Service() {
             }
             bitmap = bmp
             val tujuan = File(cacheDir, "kecil_" + sumber.name)
+            tujuanRef = tujuan
             val ok = java.io.FileOutputStream(tujuan).use { bmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 80, it) }
             if (!ok || !tujuan.exists() || tujuan.length() == 0L || tujuan.length() >= sumber.length()) {
                 deleteQuietly(tujuan)
@@ -15680,6 +15682,10 @@ class MonitoringService : Service() {
                 tujuan
             }
         } catch (_: Exception) {
+            // Temp separuh tertulis ikut dibuang (issue #1942):
+            // cabang gagal biasa menghapusnya, tetapi lemparan
+            // di tengah tulis melompat ke sini.
+            try { tujuanRef?.let { deleteQuietly(it) } } catch (_: Exception) { }
             null
         } finally {
             try { bitmap?.recycle() } catch (_: Exception) { }
