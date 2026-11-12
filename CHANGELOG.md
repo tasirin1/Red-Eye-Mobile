@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Pembersihan log audit kini konsisten di dalam proses walau tulis cakram sempat gagal: log yang sudah dibersihkan tidak lagi bangkit utuh oleh entri audit berikutnya.
 - Segmen notifikasi gabungan yang diantrekan ulang sesudah kegagalan kini mempertahankan penanda semua penyusunnya, jadi pengiriman ulangnya tidak lagi menimbulkan duplikat saat listener memindai ulang.
 - Tulisan final akuntansi notifikasi gugur kini gagal bersih bila pengambilan instans preferensi ikut gagal, tidak lagi berisiko melempar pengecualian keluar dari penangan kegagalan coroutine.
 - Pembersihan penanda notifikasi saat hapus kredensial kini menaikkan lantai generasi penjaga, jadi potret penanda lama yang sedang terbang tidak bisa menulis balik penanda pra-hapus sesudahnya.

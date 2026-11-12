@@ -1310,19 +1310,25 @@ class PreferencesManager(context: Context) {
 
     fun clearAuditLog() {
         synchronized(auditLock) {
-            // Cermin dinolkan hanya bila commit berhasil
-            // (issue #1990): commit yang gagal
-            // mengembalikan false tanpa melempar, dan
-            // cermin yang terlanjur nol membuat
-            // appendAudit berikutnya memuat ulang log
-            // lama dari preferensi -- yang dibersihkan
-            // bangkit utuh.
-            val ok = try {
+            // Cermin SELALU dinolkan (issue #2002,
+            // mengoreksi premis #1990): kontrak cermin
+            // adalah peta in-memory, dan commit()
+            // menerapkan penghapusan ke peta in-memory
+            // lebih dulu -- nilai false-nya hanya
+            // melaporkan kegagalan tulis cakram, tanpa
+            // rollback. Mempertahankan cermin lama pada
+            // commit false membuat appendAudit berikutnya
+            // menulis ulang seluruh log pra-bersih dari
+            // cermin dan flush-nya memermanenkannya ke
+            // cakram. Sisa yang tak terhapuskan dari sini:
+            // bila tulis cakram memang gagal, salinan
+            // cakram lama dapat bangkit sesudah proses
+            // mati; keadaan in-memory tetap bersih.
+            try {
                 sharedPreferences.edit().remove(KEY_AUDIT_LOG).commit()
             } catch (_: Exception) {
-                false
             }
-            if (ok) auditMirror = null
+            auditMirror = null
         }
     }
 
