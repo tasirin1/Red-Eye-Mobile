@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Laporan crash baru yang tergabung selama jendela pengiriman laporan tertolak kini berumur segar, tidak lagi mewarisi cap lahir laporan tertolak yang bisa membuatnya terbuang gerbang usia sebelum terkirim.
+
 ## [1.6.684] - 2026-11-12
 
 ### Fixed

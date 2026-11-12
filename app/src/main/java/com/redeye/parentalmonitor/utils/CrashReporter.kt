@@ -437,7 +437,19 @@ object CrashReporter {
                                 // laporan baru yang digabungkan
                                 // savePending selama jendela
                                 // jaringan sejak raw dibaca.
-                                keepRemainder(file, raw, "", savedElapsed0)
+                                // Cap usia 0L, bukan
+                                // savedElapsed0 (issue #1997):
+                                // sisa kosong berarti tak ada
+                                // isi laporan tertolak yang
+                                // bertahan -- yang ditulis ulang
+                                // hanya laporan baru hasil
+                                // gabungan, jadi umurnya mulai
+                                // segar seperti lima situs
+                                // saudara; mewarisi cap lahir
+                                // laporan tertolak bisa membuat
+                                // gerbang buang 7 hari membuang
+                                // laporan baru sebelum terkirim.
+                                keepRemainder(file, raw, "", 0L)
                             }
                         }
                     }
