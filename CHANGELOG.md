@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Jangkar sapuan baris terlambat kini ditopi saat halaman gabungan terputus di tengah: halaman urut tanggal-ID tetapi jangkar adalah maksimum ID awalan terkirim, jadi baris terlambat ber-ID kecil di potongan belakang terlewati selamanya bila potongan awal sudah memajukan jangkar melewatinya (antrean penuh atau potongan gugur) — nilai jangkar terbit per potongan kini dibatasi tepat di bawah ID baris terlambat terkecil yang belum terkirim lewat fungsi murni baru `CursorAdvance.jangkarTerbit`, berlaku di siklus panggilan dan SMS; baris terlambat yang sudah terkirim di atas batas terpilih ulang satu kali (duplikat terbatas, dipilih ketimbang kehilangan) (issue #2021).
 - SMS yang ditahan SMSC (store-and-forward) lalu tiba sesudah SMS yang lebih baru tersinkron kini terambil sapuan baris terlambat sisi SMS dan tetap diteruskan: DATE SMS adalah cap SMSC sedangkan baris disisipkan saat tiba ber-ID tertinggi, jadi keyset tak pernah memilihnya lagi dan pesan hilang senyap dari penerusan waktu-nyata — penanda ID maksimum SMS baru, kueri sapuan di `getNewSms`, dan disiplin tulis rangkap-tiga di siklus, sinkron awal, dan situs perbaikan menutupnya, cermin perbaikan sisi panggilan sebelumnya (issue #2020).
 
 ## [1.6.687] - 2026-11-12

@@ -205,6 +205,94 @@ class CursorAdvanceTest {
         assertTrue(konsumsiSapuanSms(baris, 50L, 1000L, 0L).isEmpty())
     }
 
+    // Model konsumsi sapuan dengan halaman terputus +
+    // topi jangkar terbit (issue #2021): dua variabel
+    // jangkar seperti produksi — maksimum benar di memori
+    // siklus berjalan, nilai terbit (tertopi) yang
+    // terpersist dan menjadi awal siklus berikut.
+    private fun konsumsiSapuanTerputus(
+        baris: List<Pair<Long, Long>>,
+        idCursor0: Long,
+        dateCursor0: Long,
+        idMax0: Long,
+        putusSesudahPotongan: Int,
+        pakaiTopi: Boolean
+    ): List<Pair<Long, Long>> {
+        var idCursor = idCursor0
+        var dateCursor = dateCursor0
+        var terpersist = idMax0
+        val terkirim = mutableListOf<Pair<Long, Long>>()
+        var putaran = 0
+        while (putaran < 10) {
+            putaran++
+            val utama = baris.filter { it.second > dateCursor || (it.second == dateCursor && it.first > idCursor) }
+                .sortedWith(compareBy({ it.second }, { it.first })).take(100)
+            val calon = baris.filter { it.first > terpersist }
+                .sortedBy { it.first }.take(100)
+            val telat = calon.filter { CursorAdvance.terlambat(it.first, it.second, dateCursor, terpersist, Long.MAX_VALUE) }
+            val page = if (telat.isEmpty()) utama else (telat + utama).sortedWith(compareBy({ it.second }, { it.first }))
+            if (page.isEmpty()) break
+            val terlambatHalaman = page.filter { it.second < dateCursor }.map { it.first }.toSet()
+            val terlambatTerkirim = mutableSetOf<Long>()
+            var idMaxBenar = terpersist
+            val potongan = page.chunked(10)
+            for ((indeks, part) in potongan.withIndex()) {
+                if (putaran == 1 && indeks >= putusSesudahPotongan) break
+                terkirim.addAll(part)
+                val adv = CursorAdvance.penyelesaian(idCursor, dateCursor, part)
+                idCursor = adv.first
+                dateCursor = adv.second
+                idMaxBenar = CursorAdvance.idMaks(idMaxBenar, part)
+                terlambatTerkirim.addAll(part.filter { it.second < dateCursor0 }.map { it.first })
+                terpersist = if (pakaiTopi) {
+                    CursorAdvance.jangkarTerbit(idMaxBenar, (terlambatHalaman - terlambatTerkirim).minOrNull())
+                } else {
+                    idMaxBenar
+                }
+            }
+        }
+        return terkirim
+    }
+
+    @Test
+    fun jangkarTerbitMenghormatiSisaTerlambat() {
+        assertEquals(120L, CursorAdvance.jangkarTerbit(120L, null))
+        assertEquals(94L, CursorAdvance.jangkarTerbit(120L, 95L))
+        assertEquals(90L, CursorAdvance.jangkarTerbit(90L, 95L))
+        assertEquals(120L, CursorAdvance.jangkarTerbit(120L, 121L))
+    }
+
+    @Test
+    fun halamanTerputusDenganTopiBarisTerlambatTetapTerkirim() {
+        // Sepuluh baris terlambat (tanggal 900-909, id besar)
+        // di potongan pertama; baris terlambat ber-id 95
+        // bertanggal 915 duduk di potongan kedua. Halaman
+        // terputus sesudah potongan pertama.
+        val baris = listOf(
+            101L to 900L, 103L to 901L, 105L to 902L, 107L to 903L, 109L to 904L,
+            111L to 905L, 113L to 906L, 115L to 907L, 117L to 908L, 120L to 909L,
+            95L to 915L
+        )
+        val terkirim = konsumsiSapuanTerputus(baris, 50L, 1000L, 50L, 1, pakaiTopi = true)
+        // Baris sudut terkirim tepat satu kali; duplikat
+        // terbatas pada awalan terlambat yang terputus.
+        assertEquals(1, terkirim.count { it == (95L to 915L) })
+        assertEquals(21, terkirim.size)
+    }
+
+    @Test
+    fun halamanTerputusTanpaTopiBarisTerlambatHilang() {
+        // Kontrol negatif terhadap disiplin lama: jangkar
+        // maksimum apa adanya melewati baris 95 selamanya.
+        val baris = listOf(
+            101L to 900L, 103L to 901L, 105L to 902L, 107L to 903L, 109L to 904L,
+            111L to 905L, 113L to 906L, 115L to 907L, 117L to 908L, 120L to 909L,
+            95L to 915L
+        )
+        val terkirim = konsumsiSapuanTerputus(baris, 50L, 1000L, 50L, 1, pakaiTopi = false)
+        assertTrue(terkirim.none { it == (95L to 915L) })
+    }
+
     @Test
     fun sisipanTerlambatTerkirimTepatSekali() {
         // Panggilan tunggu (id 10, tanggal 2000) sudah terkirim dan

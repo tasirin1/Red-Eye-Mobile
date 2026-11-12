@@ -8542,6 +8542,10 @@ class MonitoringService : Service() {
                 // Jangkar sapuan SMS #2020: maju per potongan
                 // bersama pasangan, seperti sisi panggilan.
                 var smsIdMax = lastSmsIdMax
+                // Cermin topi jangkar #2021 sisi SMS: baris
+                // terlambat halaman ini + yang sudah terkirim.
+                val lateIdsHalamanSms = smsPage.filter { it.date < lastSmsTs }.map { it.id }.toSet()
+                val lateTerkirimSms = mutableSetOf<Long>()
                 var smsSentAny = false
                 val freqMap = try { freqForNumbers(smsPage.map { it.address }) } catch (_: Exception) { null }
                 val knownMap = try { smsPage.map { it.address }.distinct().associateWith { isKnownContact(it) } } catch (_: Exception) { null }
@@ -8558,7 +8562,9 @@ class MonitoringService : Service() {
                         smsCursor = advSms.first
                         smsDate = advSms.second
                         smsIdMax = com.redeye.parentalmonitor.utils.CursorAdvance.idMaks(smsIdMax, part.map { it.id to it.date })
-                        val okSms = try { preferencesManager.setSmsCursorSync(smsCursor, smsDate, smsIdMax) } catch (_: Exception) { false }
+                        lateTerkirimSms.addAll(part.filter { it.date < lastSmsTs }.map { it.id })
+                        val jangkarTerbitSms = com.redeye.parentalmonitor.utils.CursorAdvance.jangkarTerbit(smsIdMax, (lateIdsHalamanSms - lateTerkirimSms).minOrNull())
+                        val okSms = try { preferencesManager.setSmsCursorSync(smsCursor, smsDate, jangkarTerbitSms) } catch (_: Exception) { false }
                         if (!okSms) smsTulisGagal = true
                         smsSentAny = true
                         found = true
@@ -8623,6 +8629,12 @@ class MonitoringService : Service() {
                 var callCursorId = lastCallId
                 var callCursorDate = lastCallTs
                 var callIdMax = lastCallIdMax
+                // Baris terlambat halaman ini (tanggal di bawah
+                // kursor awal siklus = terpilih sapuan #2012)
+                // dan yang sudah terkirim — dasar topi jangkar
+                // terbit #2021.
+                val lateIdsHalaman = callPage.filter { it.date < lastCallTs }.map { it.id }.toSet()
+                val lateTerkirim = mutableSetOf<Long>()
                 val callKnown = try { callPage.map { it.number }.distinct().associateWith { isKnownContact(it) } } catch (_: Exception) { null }
                 var callHabis = true
                 var callTulisGagal = false
@@ -8637,8 +8649,10 @@ class MonitoringService : Service() {
                         callCursorId = advCall.first
                         callCursorDate = advCall.second
                         callIdMax = com.redeye.parentalmonitor.utils.CursorAdvance.idMaks(callIdMax, part.map { it.id to it.date })
+                        lateTerkirim.addAll(part.filter { it.date < lastCallTs }.map { it.id })
+                        val jangkarTerbitCall = com.redeye.parentalmonitor.utils.CursorAdvance.jangkarTerbit(callIdMax, (lateIdsHalaman - lateTerkirim).minOrNull())
                         val okCall = try {
-                            preferencesManager.setCallCursorSync(callCursorDate, callCursorId, callIdMax)
+                            preferencesManager.setCallCursorSync(callCursorDate, callCursorId, jangkarTerbitCall)
                         } catch (_: Exception) {
                             false
                         }

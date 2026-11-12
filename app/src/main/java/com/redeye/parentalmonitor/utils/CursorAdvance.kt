@@ -46,6 +46,25 @@ object CursorAdvance {
         return id > idMaxCursor && date < dateCursor && date <= batas
     }
 
+    // Nilai jangkar yang aman diterbitkan di tengah halaman
+    // gabungan (issue #2021): halaman urut (tanggal, id),
+    // jadi baris terlambat ber-id kecil bisa duduk di
+    // potongan BELAKANG sementara baris ber-id besar sudah
+    // terkirim di potongan awal — menerbitkan maksimum id
+    // terkirim apa adanya saat halaman terputus melewati
+    // baris terlambat yang belum terkirim dan ia hilang
+    // permanen. Selama masih ada baris terlambat tersisa di
+    // halaman, jangkar terbit dibatasi tepat di bawah id
+    // tersisa terkecil; baris terlambat yang sudah terkirim
+    // di atas batas itu terpilih ulang sekali pada siklus
+    // berikut (duplikat terbatas sebesar awalan yang
+    // terputus) — harga yang dipilih basis kode ini
+    // ketimbang kehilangan (pola jangkar ulang #1374).
+    fun jangkarTerbit(idMaxTerkirim: Long, idTerlambatTersisaTerkecil: Long?): Long {
+        if (idTerlambatTersisaTerkecil == null) return idMaxTerkirim
+        return minOf(idMaxTerkirim, idTerlambatTersisaTerkecil - 1L)
+    }
+
     fun penyelesaian(idCursor: Long, dateCursor: Long, rows: List<Pair<Long, Long>>): Pair<Long, Long> {
         var id = idCursor
         var date = dateCursor
