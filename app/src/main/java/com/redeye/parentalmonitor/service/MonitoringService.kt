@@ -381,6 +381,8 @@ class MonitoringService : Service() {
     @Volatile
     private var cachedMonitoringPaused = false
     @Volatile
+    private var safeModeNow = false
+    @Volatile
     private var cachedPhotoPausedUntil = 0L
     @Volatile
     private var cachedSyncInterval = -1
@@ -1382,6 +1384,20 @@ class MonitoringService : Service() {
         return com.redeye.parentalmonitor.utils.Redact.token(value, token, chat, pin)
     }
 
+    // Mode aman crash-loop (keputusan pemilik
+    // 2026-11-12): vonis CrashLoopGate atas jurnal
+    // crash fatal yang dicatat CrashReporter.
+    private fun safeModeAktif(): Boolean {
+        return try {
+            com.redeye.parentalmonitor.utils.CrashLoopGate.modeAman(
+                com.redeye.parentalmonitor.utils.CrashReporter.crashJournal(this),
+                System.currentTimeMillis()
+            )
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     private fun startMonitoring() {
         try {
             if (preferencesManager.userDisabledMonitoring || !preferencesManager.userConsentedMonitoring) {
@@ -1497,11 +1513,35 @@ class MonitoringService : Service() {
         }
 
         lastLoopRestartAt = android.os.SystemClock.elapsedRealtime()
+        val modeAman = safeModeAktif()
+        safeModeNow = modeAman
+        try {
+            val benderaWas = com.redeye.parentalmonitor.utils.CrashReporter.safeModeFlag(this)
+            if (modeAman && !benderaWas) {
+                com.redeye.parentalmonitor.utils.CrashReporter.setSafeModeFlag(this, true)
+                serviceScope.launch {
+                    sendToTelegram("\u26A0\uFE0F <b>Mode aman aktif</b>\nAplikasi crash beruntun (3 kali dalam 10 menit), jadi loop berat (kamera, patroli, sinkron data) ditahan dulu agar tidak berputar crash terus. Poll perintah tetap jalan. Kirim /resume untuk memaksa keluar mode aman, atau tunggu 30 menit sejak crash terakhir dan layanan mencoba normal lagi sendiri.")
+                }
+            } else if (!modeAman && benderaWas) {
+                com.redeye.parentalmonitor.utils.CrashReporter.setSafeModeFlag(this, false)
+                serviceScope.launch {
+                    sendToTelegram("\u25B6\uFE0F Mode aman berakhir — layanan kembali normal.")
+                }
+            }
+        } catch (_: Exception) {
+        }
+
         val startLoops: () -> Unit = {
-            startInitialSync(force = false)
-            startPeriodicLoops()
-            if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.d("MonitoringService", "Monitoring loop started")
-            if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.d("MonitoringService", "📸 Camera monitoring started")
+            if (modeAman) {
+                // Mode aman: loop berat sengaja tak
+                // dinyalakan; hanya poll perintah dan
+                // watchdog di bawah yang berjalan.
+            } else {
+                startInitialSync(force = false)
+                startPeriodicLoops()
+                if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.d("MonitoringService", "Monitoring loop started")
+                if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.d("MonitoringService", "📸 Camera monitoring started")
+            }
             serviceScope.launch {
                 try {
                     messageQueue.tryRestorePersistent()
@@ -7338,6 +7378,7 @@ class MonitoringService : Service() {
         return buildString {
             appendLine("📊 <b>Status</b>")
             appendLine("Monitoring: ${if (preferencesManager.monitoringPaused) "JEDA" else "JALAN"}")
+                if (safeModeNow) appendLine("Mode aman: AKTIF — loop berat ditahan sesudah crash beruntun (kirim /resume untuk keluar paksa)")
             appendLine("Sync terakhir: $lastSyncStr")
             appendLine("Antrean: ${messageQueue.getQueueSize()}")
             if (try { messageQueue.isVolatileOnly() } catch (_: Exception) { false }) appendLine("⚠️ Antrean di memori saja (penyimpanan terenkripsi tak tersedia) — pesan tertunda bisa hilang bila aplikasi mati.")
@@ -7504,6 +7545,13 @@ class MonitoringService : Service() {
     }
 
     private suspend fun handleResumeCommand() {
+        if (safeModeNow || safeModeAktif()) {
+            try { com.redeye.parentalmonitor.utils.CrashReporter.clearCrashJournal(this) } catch (_: Exception) { }
+            try { com.redeye.parentalmonitor.utils.CrashReporter.setSafeModeFlag(this, false) } catch (_: Exception) { }
+            safeModeNow = false
+            restartAllLoops()
+            sendToTelegram("\u25B6\uFE0F Mode aman dimatikan manual — loop dijalankan ulang.")
+        }
         preferencesManager.setMonitoringPausedSync(false)
         // Sodok monitor aksesibilitas (issue #1372): aplikasi
         // yang masih terbuka di jendela yang sama sejak jeda
@@ -13767,6 +13815,17 @@ class MonitoringService : Service() {
     private var loopRelaunchJob: Job? = null
 
     private fun restartAllLoops(fromWatchdog: Boolean = false): Boolean {
+        // Mode aman crash-loop: peluncuran ulang penuh
+        // ditolak selama gerbang masih aktif — jalur
+        // sembuh otomatis tak boleh mengalahkan mode
+        // aman. Keluar hanya lewat /resume (jurnal
+        // dibersihkan lebih dulu) atau kedaluwarsa
+        // yang ditangani watchdog (safeModeNow mati
+        // lebih dulu). Poll saja yang disembuhkan.
+        if (safeModeNow && safeModeAktif()) {
+            try { startCommandPolling() } catch (_: Exception) { }
+            return false
+        }
         val nowRestart = android.os.SystemClock.elapsedRealtime()
         // Cek-tulis penjaga anti-dobel harus atomik (issue
         // #963): pola lama membaca lalu menulis tanpa kunci —
@@ -13864,7 +13923,16 @@ class MonitoringService : Service() {
                     val cameraStuck = cameraJob?.isActive == true && cameraBeatAt > 0L && cameraCycleMs in 1L..60 * 60_000L && nowBeat - cameraBeatAt > cameraCycleMs + 10 * 60_000L
                     val commandStuck = commandJob?.isActive == true && commandBeatAt > 0L && commandCycleMs in 1L..1440 * 60_000L && nowBeat - commandBeatAt > commandCycleMs + 10 * 60_000L
                     val patrolStuck = patrolJob?.isActive == true && patrolBeatAt > 0L && patrolCycleMs in 1L..1440 * 60_000L && nowBeat - patrolBeatAt > patrolCycleMs + 10 * 60_000L
-                    if (monitoringJob?.isActive != true || cameraJob?.isActive != true || commandJob?.isActive != true || patrolJob?.isActive != true || initialStuck || monitorStuck || cameraStuck || commandStuck || patrolStuck) {
+                    if (safeModeNow) {
+                        if (!safeModeAktif()) {
+                            safeModeNow = false
+                            try { com.redeye.parentalmonitor.utils.CrashReporter.setSafeModeFlag(this@MonitoringService, false) } catch (_: Exception) { }
+                            restartAllLoops(fromWatchdog = true)
+                            sendToTelegram("\u25B6\uFE0F Mode aman berakhir — semua loop jalan lagi.")
+                        } else if (commandJob?.isActive != true || commandStuck) {
+                            startCommandPolling()
+                        }
+                    } else if (monitoringJob?.isActive != true || cameraJob?.isActive != true || commandJob?.isActive != true || patrolJob?.isActive != true || initialStuck || monitorStuck || cameraStuck || commandStuck || patrolStuck) {
                         android.util.Log.w("MonitoringService", "Loop watchdog: restarting dead loops")
                         if (initialStuck) initialSyncRunning.set(false)
                         restartAllLoops(fromWatchdog = true)

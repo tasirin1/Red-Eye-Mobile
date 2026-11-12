@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Added
+
+- Mode aman anti crash-loop (keputusan pemilik, stabilitas): CrashReporter kini mencatat jurnal cap waktu crash fatal (hanya dari handler uncaught; laporan latar non-fatal tidak dihitung), dan gerbang murni CrashLoopGate menilai mode aman aktif bila 3 crash terakhir berjarak ≤10 menit dan crash terakhir belum lewat 30 menit. Dalam mode aman, loop berat (sinkron awal, loop pemantau/kamera/patroli) tidak dinyalakan — hanya poll perintah dan watchdog yang berjalan — dan pemilik menerima satu pesan Telegram saat masuk dan saat keluar mode aman. Watchdog menghormati mode aman (hanya menyembuhkan poll; kedaluwarsa memulihkan semua loop), restartAllLoops menolak peluncuran ulang penuh selama mode aman aktif, /resume membersihkan jurnal dan memaksa keluar, dan /status menampilkan baris mode aman selama aktif.
+
 ## [1.6.677] - 2026-11-12
 
 ### Added

@@ -15,6 +15,8 @@ import java.io.File
 object CrashReporter {
 
     private const val PENDING_FILE = "crash_pending.txt"
+    private const val JOURNAL_FILE = "crash_journal.txt"
+    private const val FLAG_FILE = "safe_mode_active.flag"
     private const val MAX_CHARS = 3500
     private const val MAX_FRAMES = 25
     private const val MAX_CAUSES = 4
@@ -26,6 +28,10 @@ object CrashReporter {
         val appContext = context.applicationContext
         val previous = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, error ->
+            try {
+                noteCrash(appContext)
+            } catch (_: Exception) {
+            }
             try {
                 saveNow(appContext, thread, error)
             } catch (_: Exception) {
@@ -103,6 +109,67 @@ object CrashReporter {
 
     private fun pendingFile(context: Context): File {
         return File(context.filesDir, PENDING_FILE)
+    }
+
+    private fun journalFile(context: Context): File {
+        return File(context.filesDir, JOURNAL_FILE)
+    }
+
+    // Jurnal crash untuk gerbang mode aman (CrashLoopGate):
+    // satu baris cap waktu epoch per crash FATAL (proses
+    // mati) — dipanggil hanya dari handler uncaught;
+    // laporan latar non-fatal (saveNow background) tidak
+    // dihitung, jadi mode aman tak terpicu kegagalan
+    // korutin yang tak membunuh proses.
+    fun noteCrash(context: Context) {
+        try {
+            synchronized(saveLock) {
+                val file = journalFile(context.applicationContext)
+                val lama = if (file.exists()) CrashLoopGate.parse(file.readText()) else emptyList()
+                val baru = CrashLoopGate.catat(lama, System.currentTimeMillis())
+                file.writeText(CrashLoopGate.serialkan(baru))
+            }
+        } catch (_: Exception) {
+        }
+    }
+
+    fun crashJournal(context: Context): List<Long> {
+        return try {
+            synchronized(saveLock) {
+                val file = journalFile(context.applicationContext)
+                if (file.exists()) CrashLoopGate.parse(file.readText()) else emptyList()
+            }
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    fun clearCrashJournal(context: Context) {
+        try {
+            synchronized(saveLock) {
+                journalFile(context.applicationContext).delete()
+            }
+        } catch (_: Exception) {
+        }
+    }
+
+    // Bendera mode aman aktif: keberadaan berkas = aktif.
+    // Dipakai layanan untuk memberi tahu transisi masuk/
+    // keluar tepat sekali, bukan tiap proses mulai.
+    fun safeModeFlag(context: Context): Boolean {
+        return try {
+            File(context.applicationContext.filesDir, FLAG_FILE).exists()
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    fun setSafeModeFlag(context: Context, aktif: Boolean) {
+        try {
+            val file = File(context.applicationContext.filesDir, FLAG_FILE)
+            if (aktif) file.writeText("1") else file.delete()
+        } catch (_: Exception) {
+        }
     }
 
     private val saveLock = Any()
