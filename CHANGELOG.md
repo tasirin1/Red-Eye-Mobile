@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Fungsi bersih-semua dan cabang pemulihan Error pada operator, balik tanda, dan persen kalkulator penyamaran kini mempunyai cakupan uji: sebelumnya tombol C dipetakan harness tetapi tidak pernah ditekan satu pun uji, sehingga regresi yang menyisakan ingatan operasi terakhir sesudah dibersihkan tidak akan tertangkap (issue #2062).
 - Cabang titik desimal pada masukan kalkulator penyamaran kini mempunyai cakupan uji: titik ganda ditolak, titik di awal menjadi 0 koma, penjumlahan desimal dua operand, dan titik sesudah hasil memulai entri baru -- sebelumnya tidak ada satu pun uji yang memakai token titik (issue #2061).
 - Model pengambilan riwayat panggilan pada harness uji kini menerapkan saringan batas masa depan di semua cabangnya dan mengurutkan cabang id-saja menurut id saja, persis kueri produksi: sebelumnya baris bertanggal masa depan terkonsumsi model tetapi ditunda produksi, dan komposisi halaman cabang id-saja bisa berbeda (issue #2060).
 - Tombol sama-dengan pada kalkulator penyamaran kini mengulang operasi terakhir juga sesudah persen dipakai pada operand kedua: sebelumnya bendera entri-terganti yang basi tidak dibersihkan perhitungan yang mengonsumsinya, sehingga pengulangan mati diam-diam hanya pada jalur itu (issue #2059).

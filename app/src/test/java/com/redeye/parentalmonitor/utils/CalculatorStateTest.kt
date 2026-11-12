@@ -224,6 +224,49 @@ class CalculatorStateTest {
     // negatif sebesar pasangan positifnya tampil utuh,
     // bukan notasi ilmiah terbulatkan.
     @Test
+    fun clearMenghapusSemuaTermasukIngatanPengulangan() {
+        // Cakupan #2062: C menolkan semua bidang
+        // termasuk ingatan operasi terakhir #2042 --
+        // = sesudahnya tidak boleh mengulang operasi
+        // yang sudah dibersihkan pengguna.
+        val h = Harness()
+        h.run("2", "+", "3", "=")
+        assertEquals("5", h.state.currentNumber)
+        h.run("C")
+        assertEquals("", h.state.currentNumber)
+        assertEquals("", h.state.lastExpression)
+        h.run("=")
+        assertEquals("", h.state.currentNumber)
+    }
+
+    @Test
+    fun errorLaluOperatorMembersihkanKeadaan() {
+        // Cakupan #2062: cabang pemulihan Error di
+        // kepala setOperator membersihkan keadaan,
+        // lalu masukan biasa berjalan normal.
+        val h = Harness()
+        h.run("1", "÷", "0", "=")
+        assertEquals("Error", h.state.currentNumber)
+        h.run("+")
+        assertEquals("", h.state.currentNumber)
+        h.run("5")
+        assertEquals("5", h.state.currentNumber)
+    }
+
+    @Test
+    fun errorLaluToggleDanPersenMembersihkanKeadaan() {
+        // Cakupan #2062: cabang pemulihan Error di
+        // toggleSign dan percent sama-sama
+        // membersihkan keadaan lebih dulu.
+        val h = Harness()
+        h.run("1", "÷", "0", "=", "±")
+        assertEquals("", h.state.currentNumber)
+        val h2 = Harness()
+        h2.run("1", "÷", "0", "=", "%")
+        assertEquals("", h2.state.currentNumber)
+    }
+
+    @Test
     fun titikDesimalGandaDitolak() {
         // Cakupan #2061: titik kedua pada entri yang
         // sama diabaikan penjaga titik ganda.
