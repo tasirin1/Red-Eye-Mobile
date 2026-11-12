@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Menyimpan pengaturan lewat tombol Tes kini ikut memperbarui nilai muatan (status terkonfigurasi dan kedua interval); sebelumnya nilai basi itu bisa menimpa interval yang baru disimpan pada penyimpanan berikutnya.
 - Ekspor cadangan kini membawa PIN akses dari kolom ketikan (teresolusi masker seperti jalur Simpan), bukan selalu PIN tersimpan; sebelumnya PIN hasil impor yang belum disimpan gugur senyap dari berkas cadangan baru.
 - Kabar siap dijemput tidak lagi bisa tertembak dari posisi cache patroli yang bisa berumur sampai 90 menit; jalur patroli kini menggerbang jemput sama seperti jalur kendaraan dan fallback pagar.
 - Menghapus kredensial kini menolkan kursor SMS sepenuhnya (id dan cap waktu); sebelumnya cap waktu lama bertahan sehingga SMS yang tiba sebelum penghapusan tetapi belum tersinkron terlewat permanen di era baru.

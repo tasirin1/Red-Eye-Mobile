@@ -1872,6 +1872,17 @@ class SetupActivity : AppCompatActivity() {
             oldChatLama = try { prefs.chatId } catch (_: Exception) { "" }
             val saved = try { prefs.saveCredentials(token, chatId, syncInterval, cameraInterval, restoreOwnerOverride(token, chatId), accessPin) } catch (_: Exception) { false }
             if (saved) {
+                // Medan muatan ikut diperbarui (issue
+                // #2017): tanpa ini simpan berikutnya
+                // menilai dari nilai basi -- fallback
+                // interval bisa menimpa interval yang
+                // baru disimpan lewat Tes, dan penjaga
+                // hasStored tetap menilai belum ada
+                // tersimpan. Cabang Simpan menugaskan
+                // ketiganya pada titik yang sama.
+                loadedConfigured = true
+                loadedSyncInterval = syncInterval
+                loadedCameraInterval = cameraInterval
                 clearPendingRestore()
                 simpanUsernameBotTeruji(token)
             }
