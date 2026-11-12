@@ -235,6 +235,8 @@ class CalculatorStateTest {
         h.run("C")
         assertEquals("", h.state.currentNumber)
         assertEquals("", h.state.lastExpression)
+        assertEquals("", h.state.lastOperator)
+        assertEquals("", h.state.lastOperand)
         h.run("=")
         assertEquals("", h.state.currentNumber)
     }
