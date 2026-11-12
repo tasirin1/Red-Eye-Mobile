@@ -7297,9 +7297,13 @@ class MonitoringService : Service() {
             return
         }
         try { synchronized(pingRate) { pingRate[pingKey] = nowPing } } catch (_: Exception) { }
+        // Aksi menyalakan ulang loop adalah mutasi (issue #1947):
+        // nilai kesegaran sama seperti gerbang perintah mutasi --
+        // balasan Pong sendiri tetap dibaca-saja dan selalu dijawab.
+        val pingSegar = sentAtSec <= 0L || serverNowSec() - sentAtSec <= MUTATING_MAX_AGE_SEC
         when (arg.substringBefore(" ").lowercase(java.util.Locale.ROOT)) {
             "camera", "photo" -> {
-                if (cameraJob?.isActive != true && pingRestartDue()) {
+                if (cameraJob?.isActive != true && pingSegar && pingRestartDue()) {
                     restartCameraLoop()
                     pingRestartMark()
                 }
@@ -7312,7 +7316,7 @@ class MonitoringService : Service() {
                 val initialStuck = initialSyncRunning.get() && initialSyncJob?.isActive != true
                 val loopsOk = monitoringJob?.isActive == true && cameraJob?.isActive == true && commandJob?.isActive == true && patrolJob?.isActive == true && !initialStuck
                 var restarted = false
-                if (!loopsOk && pingRestartDue()) {
+                if (!loopsOk && pingSegar && pingRestartDue()) {
                     restarted = restartAllLoops()
                     if (restarted) pingRestartMark()
                 }
