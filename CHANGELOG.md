@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Potongan pesan tertolak tidak lagi tercatat prematur saat penanda kemajuan pengiriman gagal tersimpan secara senyap: sebelumnya bendera tersimpan hanya menandai tidak adanya pengecualian padahal fungsi penanda bisa menyatakan gagal lewat nilai kembali, sehingga potongan yang sama bisa tercatat dua kali pada run lanjutan (issue #2057).
+
 ## [1.6.693] - 2026-11-13
 
 ### Fixed

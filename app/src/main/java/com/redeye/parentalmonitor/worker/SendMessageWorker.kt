@@ -807,8 +807,15 @@ class SendMessageWorker(
                     var kemajuanTersimpan = false
                     try {
                         if (origId != null) {
-                            messageQueue.noteChunkProgress(origId, idx + 1)
-                            kemajuanTersimpan = true
+                            // Nilai kembali WAJIB dihormati
+                            // (issue #2057): false tanpa
+                            // lemparan berarti kemajuan TIDAK
+                            // tersimpan (item hilang, mode
+                            // volatile berbalik, persist
+                            // gagal 3x) -- mencatat potongan
+                            // tertolak saat itu membuatnya
+                            // tercatat prematur lalu ganda.
+                            kemajuanTersimpan = messageQueue.noteChunkProgress(origId, idx + 1)
                         }
                     } catch (_: Exception) {
                     }
