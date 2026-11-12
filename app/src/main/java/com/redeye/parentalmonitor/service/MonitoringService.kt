@@ -7569,6 +7569,12 @@ class MonitoringService : Service() {
     }
 
     private suspend fun handleResumeCommand() {
+        // Cabang mode aman menjawab sendiri dengan dua varian
+        // jujur (issue #1960): pesan penutup umum di ujung
+        // fungsi tak boleh menimpanya -- pada varian ditahan
+        // ia mengklaim monitoring jalan padahal loop masih
+        // ditahan, pada varian berhasil ia duplikat nyaris sama.
+        var pesanModeAman = false
         if (safeModeNow || safeModeAktif()) {
             try { com.redeye.parentalmonitor.utils.CrashReporter.clearCrashJournal(this) } catch (_: Exception) { }
             try { com.redeye.parentalmonitor.utils.CrashReporter.setSafeModeFlag(this, false) } catch (_: Exception) { }
@@ -7583,6 +7589,7 @@ class MonitoringService : Service() {
             } else {
                 sendToTelegram("\u25B6\uFE0F Mode aman dimatikan manual. Penyalaan ulang loop ditahan penjaga restart sesaat — pengawas akan menyalakannya dalam beberapa menit.")
             }
+            pesanModeAman = true
         }
         preferencesManager.setMonitoringPausedSync(false)
         // Sodok monitor aksesibilitas (issue #1372): aplikasi
@@ -7596,7 +7603,7 @@ class MonitoringService : Service() {
         } catch (_: Exception) {
         }
         cachedPhotoPausedUntil = 0L
-        sendToTelegram(if (photoPaused) "▶️ Monitoring jalan lagi. Jeda foto otomatis dibatalkan." else "▶️ Monitoring jalan lagi.")
+        if (!pesanModeAman) sendToTelegram(if (photoPaused) "▶️ Monitoring jalan lagi. Jeda foto otomatis dibatalkan." else "▶️ Monitoring jalan lagi.")
         refreshForegroundNotification()
     }
 

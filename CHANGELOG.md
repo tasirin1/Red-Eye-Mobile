@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- /resume sesudah mode aman tidak lagi ditutup pesan umum "Monitoring jalan lagi": balasan jujurnya (loop jalan / masih ditahan penjaga) kini menjadi satu-satunya pesan, jadi tidak ada klaim bertentangan atau ganda.
+
 ## [1.6.681] - 2026-11-12
 
 ### Fixed
