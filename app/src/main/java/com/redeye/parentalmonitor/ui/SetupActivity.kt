@@ -950,10 +950,12 @@ class SetupActivity : AppCompatActivity() {
             val gelombang2Jalan = configMutex.withLock {
                 if (saveSeq.get() != myClear) return@withLock false
                 try { prefs.setCredentialError("", 0L) } catch (_: Exception) { }
-                try { prefs.pendingSmsNumber = "" } catch (_: Exception) { }
-                try { prefs.pendingSmsText = "" } catch (_: Exception) { }
-                try { prefs.pendingSmsAt = 0L } catch (_: Exception) { }
-                try { prefs.pendingSmsOwner = "" } catch (_: Exception) { }
+                // Satu tulisan commit terkunci, bukan empat
+                // setter apply() (issue #1968): kelas
+                // kebangkitan #1950 -- proses mati sebelum
+                // flush bisa menghidupkan lagi SMS tertahan
+                // yang sudah dibersihkan gelombang ini.
+                try { prefs.writeSmsPendingSync("", "", 0L, "") } catch (_: Exception) { }
                 try { prefs.pendingPromptCmd = "" } catch (_: Exception) { }
                 try { prefs.setPendingPrompt("", 0L) } catch (_: Exception) { }
                 try { prefs.clearRingStateSync() } catch (_: Exception) { }

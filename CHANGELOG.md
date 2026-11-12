@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Pembersihan SMS tertahan saat hapus data kini memakai satu tulisan commit yang terkunci, bukan empat tulisantak sinkron yang bisa bangkit lagi bila proses mati sebelum tersimpan.
 - Laporan waspada tidak lagi menghitung SMS dari ID pengirim berhuruf (seperti nama operator/bank) sebagai nomor baru kosong yang menaikkan skor.
 - Digest harian kini menghitung agregat pemakaian layar jendela hari-ini satu kali saja (baris paketnya dipakai bersama), bukan dua kali seperti sebelumnya.
 - Indentasi blok pembangun klien long-poll dirapikan (hanya spasi, tanpa perubahan perilaku) agar rantai konfigurasinya terbaca sebagai satu kesatuan.
