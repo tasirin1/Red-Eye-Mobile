@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Potongan pesan panjang yang ditolak permanen kini selalu tercatat dalam hitungan terbuang bila pesan selesai diproses: sebelumnya potongan yang dibuang di tengah pesan hilang dari akuntansi setiap kali vonis akhir pesan bukan penolakan (mis. potongan berikutnya kena batas laju), sehingga pemilik menerima pesan bercelah tanpa catatan kehilangan (issue #2040).
+
 ## [1.6.691] - 2026-11-13
 
 ### Fixed

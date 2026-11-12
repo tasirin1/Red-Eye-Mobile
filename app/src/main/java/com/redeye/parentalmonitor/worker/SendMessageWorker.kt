@@ -884,10 +884,11 @@ class SendMessageWorker(
                 }
             }
         }
-        if (rateAfter > 0L) return SendOutcome.RateLimited(rateAfter)
-        if (authCode != 0) return SendOutcome.AuthFailed(authCode)
-        if (remainderQueued) return SendOutcome.Sent
-        if (failed > 0) return if (failedKept) SendOutcome.Sent else SendOutcome.Failed
+        val vonis = when {
+            rateAfter > 0L -> SendOutcome.RateLimited(rateAfter)
+            authCode != 0 -> SendOutcome.AuthFailed(authCode)
+            remainderQueued -> SendOutcome.Sent
+            failed > 0 -> if (failedKept) SendOutcome.Sent else SendOutcome.Failed
         // Sisa potongan yang GAGAL diantrekan ulang (issue
         // #1515): vonis Rejected akan membuang pesan asal
         // & menghitungnya 'ditolak HTTP 4xx', padahal sebab
@@ -903,8 +904,25 @@ class SendMessageWorker(
         // kegagalan sementara. Kasus #1515 di atas berbeda:
         // di sana tak ada potongan yang ditolak Telegram,
         // yang gagal adalah antre LOKAL-nya.
-        if (rejected > 0) return if (failedKept) SendOutcome.Sent else SendOutcome.Rejected
-        return SendOutcome.Sent
+            rejected > 0 -> if (failedKept) SendOutcome.Sent else SendOutcome.Rejected
+            else -> SendOutcome.Sent
+        }
+        // Potongan tertolak hanya dicatat saat vonis
+        // Sent (issue #2040): pesan selesai diproses run
+        // ini (terkirim, atau sisanya terantre sebagai
+        // pesan baru) sehingga potongan tertolak hilang
+        // permanen. Vonis lain mempertahankan pesan
+        // untuk dicoba lagi utuh -- potongannya belum
+        // hilang -- dan vonis Rejected sudah menghitung
+        // pesannya sekali di tingkat pesan.
+        if (vonis == SendOutcome.Sent && rejected > 0) {
+            try {
+                com.redeye.parentalmonitor.data.MessageQueue.getInstance(applicationContext)
+                    .noteRejectedDrops(rejected.toLong())
+            } catch (_: Exception) {
+            }
+        }
+        return vonis
     }
 
     private suspend fun sendDropNotice(count: Int, botToken: String, chatId: String, sample: String = "", detail: String = ""): Boolean {
