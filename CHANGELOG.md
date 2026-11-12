@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Perintah /log tidak lagi berjalan di jalur baca-saja: handler-nya menghapus laporan crash tertunda sesudah terkirim, jadi ia kembali ke jalur perintah umum.
+
 ## [1.6.680] - 2026-11-12
 
 ### Fixed
