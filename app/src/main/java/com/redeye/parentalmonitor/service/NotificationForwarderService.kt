@@ -1804,8 +1804,18 @@ class NotificationForwarderService : NotificationListenerService() {
         // Cadangan getInstance (issue #1995, pola
         // #1975/#1984): tulisan final akuntansi gugur
         // tak boleh menyerah hanya karena adopsi
-        // prefsRef sempat gagal.
-        val prefs = prefsRef ?: PreferencesManager.getInstance(this@NotificationForwarderService)
+        // prefsRef sempat gagal. Pengambilan instans
+        // dibungkus try (issue #2000): kedua pemanggil
+        // fungsi ini adalah penangan tangkap coroutine
+        // tanpa bungkus, jadi kegagalan ganda (prefsRef
+        // kosong DAN getInstance ikut melempar) tak
+        // boleh lolos ke penangan tak-tertangkap dari
+        // dalam penangan kegagalan itu sendiri.
+        val prefs = try {
+            prefsRef ?: PreferencesManager.getInstance(this@NotificationForwarderService)
+        } catch (_: Exception) {
+            return
+        }
         for (attempt in 1..3) {
             val written = try {
                 synchronized(dropWriteLock) {

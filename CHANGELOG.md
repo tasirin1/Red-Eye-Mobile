@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Tulisan final akuntansi notifikasi gugur kini gagal bersih bila pengambilan instans preferensi ikut gagal, tidak lagi berisiko melempar pengecualian keluar dari penangan kegagalan coroutine.
 - Pembersihan penanda notifikasi saat hapus kredensial kini menaikkan lantai generasi penjaga, jadi potret penanda lama yang sedang terbang tidak bisa menulis balik penanda pra-hapus sesudahnya.
 - Penjaga loncatan jam kini mencatat loncatan kedua yang terjadi di dalam jendela tahan sapuan dan memperpanjang tahanannya, menutup celah berkas sementara terhapus di tengah unggah sesudah dua loncatan waktu berurutan.
 - Laporan crash baru yang tergabung selama jendela pengiriman laporan tertolak kini berumur segar, tidak lagi mewarisi cap lahir laporan tertolak yang bisa membuatnya terbuang gerbang usia sebelum terkirim.
