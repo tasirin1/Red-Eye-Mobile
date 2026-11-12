@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Indentasi blok pembangun klien long-poll dirapikan (hanya spasi, tanpa perubahan perilaku) agar rantai konfigurasinya terbaca sebagai satu kesatuan.
 - Balasan gagal /restart kini membedakan sebabnya: bila yang menolak adalah mode aman, pesannya menyatakan itu dan menunjuk /resume sebagai jalan keluar, bukan menyuruh mencoba lagi.
 - Kabar "Mode aman berakhir" dari pengawas kini dikirim lewat antrean persisten seperti kabar pengawas lainnya, jadi tidak bisa ikut terbatalkan oleh penyalaan ulang pengawas itu sendiri.
 - Berkas sementara salinan foto kecil yang yatim kini juga disapu oleh pembersih cache foto berkala, bukan hanya saat salinan kecil berikutnya dibuat, jadi sisa dari proses yang mati di tengah jalan tidak menetap selamanya di perangkat yang selalu memakai Wi-Fi tak terukur.
