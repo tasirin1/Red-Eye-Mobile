@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.692] - 2026-11-13
+
 ### Fixed
 - Pencarian riwayat nomor tidak lagi menandai hasil sebagai terpotong bila jumlah kecocokan persis sebesar batas tampil: kedua kueri langsung kini menyonde satu baris ekstra seperti jalur ringkasan, sehingga total tepat 50 tampil sebagai hasil utuh, bukan "50+" (issue #2045).
 - Harness uji sapuan kursor kini meniru jendela calon produksi secara setia: calon sapuan disaring dengan tanggal kursor sebelum batas 100 baris seperti seleksi SQL sejak perbaikan jendela sapuan sebelumnya, sehingga baris terlambat di luar 100 calon pertama tidak lagi hilang dari model dan kelas cacat itu bisa dibuktikan lagi lewat uji (issue #2044).

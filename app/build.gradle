@@ -21,8 +21,8 @@ android {
         ]
         minSdk 29
         targetSdk 36
-        versionCode 718
-        versionName "1.6.691"
+        versionCode 719
+        versionName "1.6.692"
 
         // Interval sync default: hanya dari CI via -PSYNC_INTERVAL / env SYNC_INTERVAL.
         // Kredensial bot TIDAK pernah dibake ke APK; satu-satunya sumber adalah
