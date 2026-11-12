@@ -14016,7 +14016,18 @@ class MonitoringService : Service() {
                             safeModeNow = false
                             try { com.redeye.parentalmonitor.utils.CrashReporter.setSafeModeFlag(this@MonitoringService, false) } catch (_: Exception) { }
                             restartAllLoops(fromWatchdog = true)
-                            sendToTelegram("\u25B6\uFE0F Mode aman berakhir — semua loop jalan lagi.")
+                            // Lewat antrean, bukan kirim sebaris
+                            // (issue #1963): restartAllLoops
+                            // memasang watchdog baru yang
+                            // membatalkan job watchdog INI; kirim
+                            // sebaris yang menggantung di jaringan
+                            // akan mati oleh CancellationException
+                            // dan kabar berakhirnya mode aman
+                            // hilang. replyLater berbasis antrean
+                            // persisten, kebal pembatalan itu --
+                            // sama seperti cabang watchdog di
+                            // bawahnya.
+                            replyLater("\u25B6\uFE0F Mode aman berakhir — semua loop jalan lagi.")
                         } else if (commandJob?.isActive != true || commandStuck) {
                             startCommandPolling()
                         }

@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Kabar "Mode aman berakhir" dari pengawas kini dikirim lewat antrean persisten seperti kabar pengawas lainnya, jadi tidak bisa ikut terbatalkan oleh penyalaan ulang pengawas itu sendiri.
 - Berkas sementara salinan foto kecil yang yatim kini juga disapu oleh pembersih cache foto berkala, bukan hanya saat salinan kecil berikutnya dibuat, jadi sisa dari proses yang mati di tengah jalan tidak menetap selamanya di perangkat yang selalu memakai Wi-Fi tak terukur.
 - Salinan foto kecil yang gagal di tengah tulis karena kehabisan memori kini ikut membuang berkas sementaranya (sebelumnya hanya kegagalan biasa yang membersihkan), dan pengirim jatuh ke berkas asal seperti jalur gagal lainnya.
 - /resume sesudah mode aman tidak lagi ditutup pesan umum "Monitoring jalan lagi": balasan jujurnya (loop jalan / masih ditahan penjaga) kini menjadi satu-satunya pesan, jadi tidak ada klaim bertentangan atau ganda.
