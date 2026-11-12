@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Permintaan izin tangkap layar yang memakai ulang jendela izin yang sama sesudah permintaan sebelumnya selesai kini dinilai dari keadaan bersih: sebelumnya penolakan permintaan kedua tidak pernah dilaporkan dan sisa pengatur waktu lama bisa menutup jendela di tengah dialog, sehingga satu permintaan tangkapan layar hilang tanpa kabar apa pun (issue #2039).
 - Membuat cadangan kini menolak berjalan sebelum kolom selesai dimuat, sama seperti Simpan dan Tes: sebelumnya mengetuk Cadangkan tepat sesudah layar dibuka (sebelum masker PIN tampil) mengekspor berkas tanpa PIN akses secara diam-diam, dan berkas itu berakhir tanpa PIN saat dipulihkan di perangkat lain (issue #2038).
 - Penanda penghapusan antrean yang tertunda dari era sebelum reset penyimpanan tidak lagi terbawa ke era baru: sebelumnya penanda basi itu membuat pemulihan dari mode volatile sesudah reset melewatkan hitungan terbuang yang sah dari cakram baru, sehingga total terbuang tercatat lebih kecil dari sebenarnya (issue #2037).
 - Pemulihan hitungan pesan terbuang saat antrean berada di mode volatile tidak lagi berpotensi terhitung dua kali sesudah penyimpanan pulih: sebelumnya pengembalian angka yang gagal terkirim ikut menolkan penanda ambilan-belum-terpersist, sehingga gabungan saat pulih menambahkan angka yang sama sekali lagi dari cakram dan total terbuang membengkak dalam proses yang sama (issue #2036).

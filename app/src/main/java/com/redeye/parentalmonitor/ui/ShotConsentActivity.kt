@@ -69,6 +69,19 @@ class ShotConsentActivity : Activity() {
             }
             return
         }
+        // Pemakaian ulang instance sesudah hasil
+        // pertama selesai (issue #2039): permintaan
+        // baru wajib mulai dari keadaan bersih —
+        // tanpa reset ini outcomeHandled yang sudah
+        // true menelan laporan penolakan/timeout
+        // permintaan kedua, dan jaring pengaman
+        // masih memakai sisa pengatur waktu lama.
+        outcomeHandled = false
+        try {
+            safetyHandler.removeCallbacks(safetyFinish)
+            safetyHandler.postDelayed(safetyFinish, SAFETY_MS)
+        } catch (_: Exception) {
+        }
         launchConsent()
     }
 
