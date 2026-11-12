@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Penanda penghapusan antrean yang tertunda dari era sebelum reset penyimpanan tidak lagi terbawa ke era baru: sebelumnya penanda basi itu membuat pemulihan dari mode volatile sesudah reset melewatkan hitungan terbuang yang sah dari cakram baru, sehingga total terbuang tercatat lebih kecil dari sebenarnya (issue #2037).
 - Pemulihan hitungan pesan terbuang saat antrean berada di mode volatile tidak lagi berpotensi terhitung dua kali sesudah penyimpanan pulih: sebelumnya pengembalian angka yang gagal terkirim ikut menolkan penanda ambilan-belum-terpersist, sehingga gabungan saat pulih menambahkan angka yang sama sekali lagi dari cakram dan total terbuang membengkak dalam proses yang sama (issue #2036).
 
 ## [1.6.690] - 2026-11-13

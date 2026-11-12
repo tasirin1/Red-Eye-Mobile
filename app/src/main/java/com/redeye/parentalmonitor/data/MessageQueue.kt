@@ -251,6 +251,13 @@ class MessageQueue private constructor(context: Context) {
                 volatileOnly = false
                 restoreFailLogged = false
                 clearTakenUnpersistedLocked()
+                // Penanda wipe-volatile era SEBELUM reset
+                // tak boleh ikut (issue #2037): penghitung
+                // baru saja direkonstruksi dari cakram era
+                // baru, jadi sisa penanda itu hanya akan
+                // membuat gabungan pulih berikutnya
+                // melewatkan isi cakram sah era ini.
+                dropWipePendingVolatile = false
                 loadDropCountsLocked(add = false)
             } catch (e: Exception) {
                 sharedPreferences = null
