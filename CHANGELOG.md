@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Potongan pesan tertolak tidak lagi tercatat bila penghapusan pesan asal gagal diam-diam pada jalur batas laju, gagal autentikasi, atau pembatalan: sebelumnya hasil penghapusan dibuang sehingga ekor tetap mencatat, padahal asal yang selamat akan mencoba lagi dan mencatat potongan yang sama untuk kedua kalinya (issue #2058).
 - Potongan pesan tertolak tidak lagi tercatat prematur saat penanda kemajuan pengiriman gagal tersimpan secara senyap: sebelumnya bendera tersimpan hanya menandai tidak adanya pengecualian padahal fungsi penanda bisa menyatakan gagal lewat nilai kembali, sehingga potongan yang sama bisa tercatat dua kali pada run lanjutan (issue #2057).
 
 ## [1.6.693] - 2026-11-13

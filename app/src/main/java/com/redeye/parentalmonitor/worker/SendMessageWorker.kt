@@ -761,6 +761,13 @@ class SendMessageWorker(
         var failed = 0
         var failedKept = false
         var remainderQueued = false
+        // Bukti hapus asal untuk jalur sisa (issue
+        // #2058): ekor hanya boleh mencatat potongan
+        // tertolak atas nama remainderQueued bila
+        // pesan asal BENAR terhapus; asal yang selamat
+        // dari penghapusan tetap pembawa potongan itu
+        // dan akan menghitungnya pada run-nya sendiri.
+        var asalTerhapus = false
         var rejected = 0
         // Lanjutkan dari kemajuan persisten (issue #1682):
         // nilai di luar rentang sehat diperlakukan sebagai
@@ -836,16 +843,16 @@ class SendMessageWorker(
                         if (idx + 1 < parts.size) {
                             val queued = queueRemainder(idx + 1)
                             if (queued) {
-                                removeOrigin()
-                                catatPotonganTertolak(rejected)
+                                // Catat hanya bila asal
+                                // benar terhapus (#2058).
+                                if (removeOrigin()) catatPotonganTertolak(rejected)
                                 try {
                                     MessageScheduler.scheduleMessageSend(applicationContext)
                                 } catch (_: Exception) {
                                 }
                             }
                         } else {
-                            removeOrigin()
-                            catatPotonganTertolak(rejected)
+                            if (removeOrigin()) catatPotonganTertolak(rejected)
                         }
                         throw e
                     }
@@ -865,7 +872,7 @@ class SendMessageWorker(
                             NetworkUtils.noteRateLimited(outcome.retryAfterSecs)
                         } catch (_: Exception) {
                         }
-                        removeOrigin()
+                        asalTerhapus = removeOrigin()
                         rateAfter = outcome.retryAfterSecs
                         break
                     }
@@ -895,7 +902,7 @@ class SendMessageWorker(
                         // sebagai Sent. handleAuthOrRate memasang ulang
                         // penanda yang sama. Pesan asal dibuang di sini
                         // karena sisanya sudah terantre sebagai pesan baru.
-                        removeOrigin()
+                        asalTerhapus = removeOrigin()
                         authCode = outcome.code
                         break
                     }
@@ -956,17 +963,18 @@ class SendMessageWorker(
         }
         // Potongan tertolak dicatat saat pesan selesai
         // diproses run ini (issue #2040, diperluas
-        // #2048): vonis Sent, ATAU sisa sudah terantre
-        // sebagai pesan baru (remainderQueued -- pada
-        // vonis RateLimited/AuthFailed pun pesan asal
-        // sudah dihapus di cabang itu, jadi potongan
-        // tertolak hilang permanen walau vonisnya bukan
-        // Sent). Vonis tanpa sisa terantre
-        // mempertahankan pesan untuk dicoba lagi utuh --
-        // potongannya belum hilang -- dan vonis Rejected
-        // sudah menghitung pesannya sekali di tingkat
-        // pesan.
-        if (vonis == SendOutcome.Sent || remainderQueued) catatPotonganTertolak(rejected)
+        // #2048, dikoreksi #2058): vonis Sent, ATAU sisa
+        // sudah terantre sebagai pesan baru DAN pesan
+        // asal terbukti terhapus (remainderQueued +
+        // asalTerhapus -- tanpa bukti hapus itu asal
+        // yang selamat akan mencoba lagi potongan yang
+        // sama dan mencatatnya sendiri, jadi mencatat
+        // di sini berarti hitung ganda). Vonis tanpa
+        // sisa terantre mempertahankan pesan untuk
+        // dicoba lagi utuh -- potongannya belum hilang
+        // -- dan vonis Rejected sudah menghitung
+        // pesannya sekali di tingkat pesan.
+        if (vonis == SendOutcome.Sent || (remainderQueued && asalTerhapus)) catatPotonganTertolak(rejected)
         return vonis
     }
 
