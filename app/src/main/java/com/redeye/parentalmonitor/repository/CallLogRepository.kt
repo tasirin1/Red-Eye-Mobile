@@ -38,7 +38,11 @@ class CallLogRepository(private val context: Context) {
     private fun labelSim(accountId: String?): String {
         if (accountId.isNullOrEmpty()) return ""
         val tersimpan = petaSim
-        val peta = if (tersimpan != null && System.currentTimeMillis() - petaSimAt <= 600_000L) tersimpan else try {
+        // Umur cache diukur jam monoton (issue #1991):
+        // jam dinding yang mundur membuat selisih negatif
+        // dan cache basi abadi -- celah #1971 dari arah
+        // berlawanan. elapsedRealtime hanya maju.
+        val peta = if (tersimpan != null && android.os.SystemClock.elapsedRealtime() - petaSimAt <= 600_000L) tersimpan else try {
             val sm = context.getSystemService(android.telephony.SubscriptionManager::class.java)
             val daftar = try { sm?.activeSubscriptionInfoList } catch (_: Exception) { null }
             val bangun = HashMap<String, String>()
@@ -57,7 +61,7 @@ class CallLogRepository(private val context: Context) {
                 // panggilan berikutnya wajib mencoba lagi.
                 if (bangun.isNotEmpty()) {
                     petaSim = bangun
-                    petaSimAt = System.currentTimeMillis()
+                    petaSimAt = android.os.SystemClock.elapsedRealtime()
                 }
             }
             bangun
