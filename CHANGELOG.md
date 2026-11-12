@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Toast jalur Simpan tidak lagi menyalahkan format chat ID untuk semua kegagalan resolusi @username: resolusi kini lewat verifikasi kredensial yang teratribusi per sebab (kode HTTP, bukan-anggota, jaringan) seperti jalur Tes, dan id efektif hasil resolusi dipakai untuk menyimpan (issue #2070).
 - Antrean pesan tersimpan tidak lagi musnah senyap bila dekripsi nilai utamanya gagal: nilai cadangan kini dicoba lewat tangga penyelamatan yang sama, dan kehilangan dicatat sebagai corrupt bila kedua nilai gagal baca (issue #2069).
 
 ## [1.6.695] - 2026-11-13

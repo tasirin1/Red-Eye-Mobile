@@ -504,19 +504,6 @@ class SetupActivity : AppCompatActivity() {
         }
     }
 
-    private suspend fun resolveChatId(token: String, chatId: String): String {
-        if (!chatId.startsWith("@")) return chatId
-        return try {
-            val enc = try { java.net.URLEncoder.encode(chatId, "UTF-8") } catch (_: Exception) { chatId }
-            val resp = TelegramClient.api.getChat("https://api.telegram.org/bot$token/getChat?chat_id=$enc")
-            val id = try { resp.body()?.result?.asJsonObject?.get("id")?.asLong } catch (_: Exception) { null }
-            if (!resp.isSuccessful) NetworkUtils.tutupBadanError(resp)
-            if (resp.isSuccessful && resp.body()?.ok == true && id != null && id != 0L) id.toString() else ""
-        } catch (_: Exception) {
-            ""
-        }
-    }
-
     private fun redactToken(value: String?): String {
         val raw = value ?: return ""
         if (raw.isEmpty()) return ""
@@ -1127,19 +1114,6 @@ class SetupActivity : AppCompatActivity() {
             val token = input.token
             var chatId = input.chatId
             val storedAccessPin = try { prefs.accessPin } catch (_: Exception) { "" }
-            if (chatId.startsWith("@")) {
-                val resolved = resolveChatId(token, chatId)
-                if (resolved.isEmpty()) {
-                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                        if (isFinishing || isDestroyed) return@withContext
-                        Toast.makeText(this@SetupActivity, getString(R.string.setup_bad_chat), Toast.LENGTH_SHORT).show()
-                    }
-                    return@launch
-                } else {
-                    chatId = resolved
-                }
-            }
-            val accessPin = if (rawAccessPin == STORED_MASK) restoreAccessPin(token, chatId, storedAccessPin) else rawAccessPin
             if (mySave != saveSeq.get()) return@launch
             var verified = true
             var verifyDetail = ""
@@ -1167,9 +1141,20 @@ class SetupActivity : AppCompatActivity() {
                     verified = false
                     verifyDetail = outcome.detail
                 }
-                is VerifyOutcome.Success -> Unit
+                is VerifyOutcome.Success -> {
+                    // Resolusi @username tinggal di
+                    // verifyCredentials (issue #2070): id
+                    // efektif dari getChat diadopsi di sini
+                    // agar semua kegagalan resolusi
+                    // teratribusi per sebab (kode HTTP,
+                    // bukan-anggota, jaringan) seperti
+                    // jalur Tes, bukan runtuh menjadi
+                    // toast format chat ID.
+                    chatId = outcome.effectiveChatId
+                }
             }
             if (mySave != saveSeq.get()) return@launch
+            val accessPin = if (rawAccessPin == STORED_MASK) restoreAccessPin(token, chatId, storedAccessPin) else rawAccessPin
             if (!verified) {
                 val storedToken = try { prefs.botToken } catch (_: Exception) { "" }
                 val storedChat = try { prefs.chatId } catch (_: Exception) { "" }
