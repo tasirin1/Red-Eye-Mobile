@@ -986,7 +986,9 @@ class PreferencesManager(context: Context) {
 
     var photoPauseSource: Int
         get() = prefInt(KEY_PHOTO_PAUSE_SOURCE, 0)
-        set(value) = sharedPreferences.edit().putInt(KEY_PHOTO_PAUSE_SOURCE, value).commit()
+        set(value) {
+            sharedPreferences.edit().putInt(KEY_PHOTO_PAUSE_SOURCE, value).commit()
+        }
 
     fun setPhotoPause(until: Long, source: Int) {
         try {
@@ -1506,7 +1508,9 @@ class PreferencesManager(context: Context) {
     // oleh #1970, label ini tertinggal.
     var liveTestByAlarm: Boolean
         get() = prefBoolean(KEY_LIVE_TEST_BY_ALARM, false)
-        set(value) = sharedPreferences.edit().putBoolean(KEY_LIVE_TEST_BY_ALARM, value).commit()
+        set(value) {
+            sharedPreferences.edit().putBoolean(KEY_LIVE_TEST_BY_ALARM, value).commit()
+        }
 
     // Pasangan dinding cap mulai uji (issue #1020): deteksi
     // reboot tak lagi hanya dari elapsed — uji yang dimulai
