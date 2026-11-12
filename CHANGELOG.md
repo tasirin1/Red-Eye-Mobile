@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Added
+
+- Peringatan baterai kritis + lokasi terakhir (keputusan pemilik, paket jejak terakhir): tingkat baru pada cek baterai — pada ≤5% dan tidak mengisi daya, peringatan yang dikirim membawa lokasi terakhir yang tersimpan (cache, GPS sengaja tidak dinyalakan pada baterai sekarat) beserta tautan peta, akurasi, dan umur posisi, dengan cap jeda 6 jam terpisah dari peringatan biasa ≤15% agar tidak tertahan jeda 24 jamnya.
+
 ## [1.6.678] - 2026-11-12
 
 ### Added

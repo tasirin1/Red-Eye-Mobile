@@ -545,6 +545,7 @@ class MonitoringService : Service() {
         private const val PHOTO_PAUSE_ADMIN = 1
         private const val PHOTO_PAUSE_UNKNOWN = 2
         private const val LOW_BATTERY_LEVEL = 15
+        private const val CRITICAL_BATTERY_LEVEL = 5
         private const val DATA_SAVER_CHECK_WINDOW_MS = 15_000L
         private const val VEHICLE_MIN_SPEED_MPS = 8.3f
         private const val VEHICLE_MAX_SPEED_MPS = 55f
@@ -9887,8 +9888,17 @@ class MonitoringService : Service() {
         if (try { preferencesManager.monitoringPaused } catch (_: Exception) { false }) return
         if (awaitingOwnerLogin()) return
         val level = batteryLevel()
-        if (level < 0 || level > LOW_BATTERY_LEVEL) return
+        if (level < 0) return
         if (isCharging()) return
+        // Tingkat kritis lebih dulu (jejak terakhir,
+        // keputusan pemilik 2026-11-12): pada <=5% yang
+        // dikirim peringatan berlokasi dengan cap jeda
+        // sendiri, bukan teks biasa di bawah.
+        if (level <= CRITICAL_BATTERY_LEVEL) {
+            kirimPeringatanBateraiKritis(level)
+            return
+        }
+        if (level > LOW_BATTERY_LEVEL) return
         val now = System.currentTimeMillis()
         val last = try { preferencesManager.batteryAlertAt } catch (_: Exception) { 0L }
         if (last > now) {
@@ -9912,6 +9922,42 @@ class MonitoringService : Service() {
         if (terkirim) {
             try { preferencesManager.batteryAlertAt = now } catch (_: Exception) { }
             if (throttled) lowPowerNotified = true
+        }
+    }
+
+    // Peringatan baterai kritis + lokasi terakhir
+    // (keputusan pemilik 2026-11-12): lokasi diambil
+    // dari cache terakhir yang tersimpan — GPS sengaja
+    // TIDAK dinyalakan pada baterai sekarat. Jeda 6 jam
+    // dengan pola jam-mundur yang sama dengan tingkat
+    // biasa; cap ditulis hanya sesudah kirim berhasil.
+    private suspend fun kirimPeringatanBateraiKritis(level: Int) {
+        val now = System.currentTimeMillis()
+        val last = try { preferencesManager.batteryCriticalAlertAt } catch (_: Exception) { 0L }
+        if (last > now) {
+            try { preferencesManager.batteryCriticalAlertAt = now } catch (_: Exception) { }
+            return
+        }
+        if (last in 1..now && now - last < 6 * 60 * 60_000L) return
+        val pasangan = lastSentLatLon()
+        val lokasiBaris = if (pasangan != null) {
+            val umurMs = try { now - preferencesManager.lastLocAt } catch (_: Exception) { -1L }
+            val umur = when {
+                umurMs < 0L -> ""
+                umurMs < 60_000L -> " (baru saja)"
+                umurMs < 60 * 60_000L -> " (tercatat " + (umurMs / 60_000L) + " mnt lalu)"
+                else -> " (tercatat " + (umurMs / (60 * 60_000L)) + " jam lalu)"
+            }
+            val acc = try { preferencesManager.lastLocAccM } catch (_: Exception) { -1f }
+            val accTeks = if (acc > 0f) " " + BS + "u00B1" + acc.toInt() + " m" else ""
+            "\n" + BS + "uD83D" + BS + "uDCCD Lokasi terakhir: https://maps.google.com/?q=" + pasangan.first + "," + pasangan.second + accTeks + umur
+        } else ""
+        val terkirim = sendToTelegramStatus(
+            BS + "uD83D" + BS + "uDD0B <b>Baterai kritis: tinggal " + level + "%.</b>" + lokasiBaris +
+            "\nHP bisa mati kapan saja - ini jejak terakhirnya sebelum gelap."
+        ) != SendStatus.DROPPED
+        if (terkirim) {
+            try { preferencesManager.batteryCriticalAlertAt = now } catch (_: Exception) { }
         }
     }
 

@@ -553,6 +553,7 @@ class PreferencesManager(context: Context) {
         private const val KEY_PATROL_LAST_AT = "patrol_last_at"
         private const val KEY_PATROL_LAST_ELAPSED = "patrol_last_elapsed"
         private const val KEY_BATTERY_ALERT_AT = "battery_alert_at"
+        private const val KEY_BATTERY_CRITICAL_ALERT_AT = "battery_critical_alert_at"
         private const val KEY_LAST_LOC_LAT = "last_loc_lat_e6"
         private const val KEY_LAST_LOC_LON = "last_loc_lon_e6"
         private const val KEY_LAST_LOC_AT = "last_loc_at"
@@ -2063,6 +2064,14 @@ class PreferencesManager(context: Context) {
     var batteryAlertAt: Long
         get() = prefLong(KEY_BATTERY_ALERT_AT, 0L)
         set(value) = sharedPreferences.edit().putLong(KEY_BATTERY_ALERT_AT, value).apply()
+
+    // Cap peringatan baterai kritis (jejak terakhir,
+    // keputusan pemilik 2026-11-12): terpisah dari cap
+    // peringatan biasa agar tingkat kritis tak tertahan
+    // jeda 24 jam tingkat biasa.
+    var batteryCriticalAlertAt: Long
+        get() = prefLong(KEY_BATTERY_CRITICAL_ALERT_AT, 0L)
+        set(value) = sharedPreferences.edit().putLong(KEY_BATTERY_CRITICAL_ALERT_AT, value).apply()
 
     val lastLocLatE6: Long
         get() = prefLong(KEY_LAST_LOC_LAT, Long.MIN_VALUE)
