@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Pencarian riwayat nomor tidak lagi menandai hasil sebagai terpotong bila jumlah kecocokan persis sebesar batas tampil: kedua kueri langsung kini menyonde satu baris ekstra seperti jalur ringkasan, sehingga total tepat 50 tampil sebagai hasil utuh, bukan "50+" (issue #2045).
 - Harness uji sapuan kursor kini meniru jendela calon produksi secara setia: calon sapuan disaring dengan tanggal kursor sebelum batas 100 baris seperti seleksi SQL sejak perbaikan jendela sapuan sebelumnya, sehingga baris terlambat di luar 100 calon pertama tidak lagi hilang dari model dan kelas cacat itu bisa dibuktikan lagi lewat uji (issue #2044).
 - Watchdog kini tetap bisa memulihkan loop kamera/data yang macet saat perangkat diam lama: sebelumnya batas atas rentang penilaian macet (60/1440 menit) lebih kecil dari siklus sah hasil regangan hemat daya (240/5760 menit), sehingga loop yang menggantung justru pada keadaan diam tidak pernah dinilai macet dan tidak pernah direstart (issue #2043).
 - Kalkulator penyamaran kini bertingkah seperti kalkulator biasa untuk tombol sama-dengan: menekan = lagi mengulang operasi terakhir (2+3= lalu = menjadi 8, lalu 11) dan bentuk 5+= menghitung memakai operand pertama sebagai operand kedua (hasil 10); sebelumnya = kedua dan seterusnya membeku tanpa menghitung apa pun (issue #2042).

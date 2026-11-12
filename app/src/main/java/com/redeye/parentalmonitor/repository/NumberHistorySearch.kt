@@ -29,14 +29,19 @@ class NumberHistorySearch<T>(
             val altPlus = "+$wantAlt"
             if (altPlus !in variants) variants.add(altPlus)
         }
-        val exactRows = query("(" + variants.joinToString(" OR ") { "${numberColumn} = ?" } + ") AND ${dateColumn} <= ?", (variants + now.toString()).toTypedArray(), "${dateColumn} DESC, ${idColumn} DESC", safeLimit)
+        // Sonde limit+1 untuk bendera terpotong yang
+        // jujur (issue #2045, doktrin yang sama dengan
+        // #1661/#1664 di ringkasan): total tepat sebesar
+        // limit adalah hasil UTUH, bukan terpotong --
+        // hanya baris sonde yang membuktikan sebaliknya.
+        val exactRows = query("(" + variants.joinToString(" OR ") { "${numberColumn} = ?" } + ") AND ${dateColumn} <= ?", (variants + now.toString()).toTypedArray(), "${dateColumn} DESC, ${idColumn} DESC", safeLimit + 1)
         val exactMatched = filterByNumber(exactRows, norm, wantAlt)
-        if (exactMatched.isNotEmpty()) return NumberHistoryResult(exactMatched.take(safeLimit), truncated = exactRows.size >= safeLimit)
+        if (exactMatched.isNotEmpty()) return NumberHistoryResult(exactMatched.take(safeLimit), truncated = exactRows.size > safeLimit)
         if (norm.length < 10) return NumberHistoryResult(emptyList())
         val fuzzy = com.redeye.parentalmonitor.utils.PhoneNumbers.fuzzyLikePattern(norm)
-        val rows = query("${numberColumn} LIKE ? ESCAPE '\\' AND ${dateColumn} <= ?", arrayOf(fuzzy, now.toString()), "${dateColumn} DESC, ${idColumn} DESC", safeLimit)
+        val rows = query("${numberColumn} LIKE ? ESCAPE '\\' AND ${dateColumn} <= ?", arrayOf(fuzzy, now.toString()), "${dateColumn} DESC, ${idColumn} DESC", safeLimit + 1)
         val matched = filterByNumber(rows, norm, wantAlt)
-        if (matched.isNotEmpty()) return NumberHistoryResult(matched.take(safeLimit), truncated = rows.size >= safeLimit)
+        if (matched.isNotEmpty()) return NumberHistoryResult(matched.take(safeLimit), truncated = rows.size > safeLimit)
         val cutoff = now - 365L * 24 * 60 * 60_000L
         var upperDate = now
         var upperId = Long.MAX_VALUE

@@ -8,8 +8,9 @@ import org.junit.Test
 // Issue #1672: NumberHistorySearch adalah logika murni
 // by-design (kueri diinjeksi sebagai lambda) tetapi tak
 // punya uji sama sekali. Uji ini memaku kontraknya:
-// varian persis 0xx/+62xx, bendera terpotong pada tepat
-// limit, jalur fuzzy hanya untuk nomor >=10 digit, dan
+// varian persis 0xx/+62xx, bendera terpotong jujur ala
+// sonde limit+1 (total tepat limit = utuh), jalur fuzzy
+// hanya untuk nomor >=10 digit, dan
 // pengumpulan kecocokan lintas halaman (issue #1000).
 // Lapisan Android tak disentuh: satu-satunya sentuhan
 // framework di kelas ini adalah Log.w pada jalur pindai
@@ -118,6 +119,19 @@ class NumberHistorySearchTest {
         val hasil = pencarian(kueri).search("081234567890", limit = 3)
         assertEquals(3, hasil.items.size)
         assertTrue(hasil.truncated)
+    }
+
+    @Test
+    fun persisTepatLimitTidakTerpotong() {
+        // Regresi #2045: total kecocokan TEPAT sebesar
+        // limit adalah hasil utuh -- bendera terpotong
+        // hanya sah bila baris sonde limit+1 benar-benar
+        // kembali dari kueri.
+        val data = (1..3).map { Baris("081234567890", kini - it * 1_000L, it.toLong()) }
+        val kueri = KueriPalsu(data)
+        val hasil = pencarian(kueri).search("081234567890", limit = 3)
+        assertEquals(3, hasil.items.size)
+        assertFalse(hasil.truncated)
     }
 
     @Test
