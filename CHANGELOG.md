@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.680] - 2026-11-12
+
 ### Fixed
 
 - Penyalaan ulang gelung poll kini selalu membatalkan job poll lama sebelum menggantinya: dua situs penyembuhan mode aman memanggilnya telanjang, dan job macet di tengah long-poll sebelumnya bertabrakan getUpdates dengan job baru sampai kena 409 (issue #1944).
