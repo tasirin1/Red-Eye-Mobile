@@ -10510,26 +10510,41 @@ class MonitoringService : Service() {
             // diabaikan utuh; fix berikutnya dinilai terhadap
             // jangkar yang sama sehingga koreksinya lolos.
             val fixWall = if (fixAtMs > 0L) fixAtMs else System.currentTimeMillis()
-            if (lastFenceFixAtMs > 0L && fixWall > lastFenceFixAtMs) {
-                val lompat = ReportFormat.distanceMeters(lastFenceFixLat, lastFenceFixLon, lat, lon)
-                val dtDtk = (fixWall - lastFenceFixAtMs) / 1000.0
-                if (lompat > 300f && dtDtk > 0.0 && lompat / dtDtk > 60.0) {
-                    android.util.Log.w("MonitoringService", "Fix pagar dicurigai glitch (lompat ${lompat.toInt()} m dalam ${dtDtk.toInt()} dtk) — diabaikan")
-                    return
+            // Uji + pembaruan jangkar satu ruas berkunci
+            // (issue #2032): tiga medan jangkar dulu dibaca
+            // dan ditulis berurutan tanpa kunci padahal
+            // fungsi ini dipanggil serentak dari beberapa
+            // coroutine — selingan menghasilkan titik
+            // hantu campuran dua fix dengan cap mundur.
+            val glitch = synchronized(fenceLock) {
+                var ditolak = false
+                if (lastFenceFixAtMs > 0L && fixWall > lastFenceFixAtMs) {
+                    val lompat = ReportFormat.distanceMeters(lastFenceFixLat, lastFenceFixLon, lat, lon)
+                    val dtDtk = (fixWall - lastFenceFixAtMs) / 1000.0
+                    if (lompat > 300f && dtDtk > 0.0 && lompat / dtDtk > 60.0) {
+                        android.util.Log.w("MonitoringService", "Fix pagar dicurigai glitch (lompat ${lompat.toInt()} m dalam ${dtDtk.toInt()} dtk) — diabaikan")
+                        ditolak = true
+                    }
                 }
+                if (!ditolak) {
+                    // Jangkar hanya MAJU (issue #1554):
+                    // fix basi (cache <=30 mnt / kendaraan
+                    // <=10 mnt) yang lebih tua dari jangkar
+                    // tak boleh memundurkannya — dt yang
+                    // membengkak membuat glitch berikutnya
+                    // lolos uji kecepatan. Fix basi sendiri
+                    // tetap dinilai pagar seperti biasa;
+                    // yang ditolak hanya pembaruan
+                    // jangkarnya.
+                    if (fixWall >= lastFenceFixAtMs) {
+                        lastFenceFixLat = lat
+                        lastFenceFixLon = lon
+                        lastFenceFixAtMs = fixWall
+                    }
+                }
+                ditolak
             }
-            // Jangkar hanya MAJU (issue #1554): fix basi
-            // (cache <=30 mnt / kendaraan <=10 mnt) yang
-            // lebih tua dari jangkar tak boleh memundur-
-            // kannya — dt yang membengkak membuat glitch
-            // berikutnya lolos uji kecepatan. Fix basi
-            // sendiri tetap dinilai pagar seperti biasa;
-            // yang ditolak hanya pembaruan jangkarnya.
-            if (fixWall >= lastFenceFixAtMs) {
-                lastFenceFixLat = lat
-                lastFenceFixLon = lon
-                lastFenceFixAtMs = fixWall
-            }
+            if (glitch) return
             // Pagar bersarang (issue #853): sekolah di dalam radius
             // rumah membuat transisi keluar rumah tak pernah terjadi,
             // jadi fakta berangkat harian hilang; dan dua pagar
