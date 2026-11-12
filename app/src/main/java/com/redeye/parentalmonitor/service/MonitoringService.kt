@@ -15213,15 +15213,31 @@ class MonitoringService : Service() {
     @Volatile private var contohJamDinding = 0L
     @Volatile private var contohJamElapsed = 0L
 
+    // Penanda loncatan terakhir (issue #1993): sesudah
+    // loncatan terdeteksi, sapuan ditahan sampai jam
+    // monoton berjalan satu jendela ambang penuh --
+    // penjaga sekali-ronde saja tak cukup, karena
+    // contoh yang ditimpa pasca-loncatan membuat
+    // sapuan berikutnya buta dan temp pra-loncatan
+    // yang masih diunggah tampak menua seketika.
+    @Volatile private var lompatanTerakhirElapsed = -1L
+
     private fun jamDindingMelompatMaju(): Boolean {
         val w = System.currentTimeMillis()
         val e = android.os.SystemClock.elapsedRealtime()
+        if (lompatanTerakhirElapsed >= 0L && e - lompatanTerakhirElapsed < 3_600_000L) {
+            contohJamDinding = w
+            contohJamElapsed = e
+            return true
+        }
         val w0 = contohJamDinding
         val e0 = contohJamElapsed
         contohJamDinding = w
         contohJamElapsed = e
         if (w0 == 0L) return false
-        return (w - w0) - (e - e0) > 300_000L
+        val melompat = (w - w0) - (e - e0) > 300_000L
+        if (melompat) lompatanTerakhirElapsed = e
+        return melompat
     }
 
     private fun pruneDitundaJamMundur(awalan: List<String>, akhiran: String): Boolean {

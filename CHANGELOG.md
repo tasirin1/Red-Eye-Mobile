@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Penjaga loncatan jam untuk sapuan berkas sementara kini menahan sapuan selama satu jendela penuh sesudah loncatan terdeteksi, bukan hanya satu ronde, jadi berkas yang sedang diunggah tetap aman dari sapuan kedua.
 - Hapus kredensial kini ikut membersihkan penanda notifikasi yang sudah diteruskan (di penyimpanan dan di ingatan layanan), jadi pemilik baru sesudah setup ulang tidak kehilangan notifikasi lama yang tertahan penanda usang.
 - Umur cache label SIM kini diukur dengan jam monoton, jadi kemunduran jam perangkat tidak lagi membuat label basi dipakai tanpa batas.
 - Pembersihan log audit kini hanya mengosongkan cermin ingatannya bila simpanan di cakram benar-benar berhasil, jadi log yang dibersihkan tidak bangkit lagi pada penambahan berikutnya.
