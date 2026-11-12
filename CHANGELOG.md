@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Penghitung kematian proses (liveness) kini disimpan seketika (commit) saat bertambah dan saat ditandai terlapor, jadi laporannya tidak kekurangan atau kelebihan satu karena simpanan yang hilang.
 - Label pemicu uji anti-mati kini disimpan seketika (commit) seperti bagian keadaan uji lainnya, jadi vonis sesudah bangkit tidak membaca label pemicu yang basi.
 - Jeda foto kini disimpan seketika (commit) saat dipasang, jadi kematian proses tidak bisa membatalkan jeda yang diminta pengguna.
 - Dialog peringatan akses mati sesudah mulai monitoring kini menilai Aksesibilitas dengan standar yang sama seperti baris status (tercantum DAN terhubung), jadi layanan yang belum terikat ikut diperingatkan.

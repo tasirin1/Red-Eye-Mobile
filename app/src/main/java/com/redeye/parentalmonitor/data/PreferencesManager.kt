@@ -1440,6 +1440,10 @@ class PreferencesManager(context: Context) {
     // (issue #924): baca-ubah-tulis tanpa kunci berhadapan
     // dengan penolan penghitung di markLivenessReported bisa
     // membuat laporan kill dobel atau hilang.
+    // Keduanya commit, bukan apply (issue #1981):
+    // penghitung ini ada justru untuk dibaca sesudah
+    // kematian proses -- flush yang hilang membuat
+    // kenaikan tak tercatat atau tanda terlapor bangkit.
     fun incrementLivenessKills(): Int {
         synchronized(prefsRmwLock) {
             val unreported = prefInt(KEY_LIVENESS_KILLS_UNREPORTED, 0) + 1
@@ -1447,7 +1451,7 @@ class PreferencesManager(context: Context) {
                 sharedPreferences.edit()
                     .putInt(KEY_LIVENESS_KILLS, prefInt(KEY_LIVENESS_KILLS, 0) + 1)
                     .putInt(KEY_LIVENESS_KILLS_UNREPORTED, unreported)
-                    .apply()
+                    .commit()
             } catch (_: Exception) {
             }
             return unreported
@@ -1460,7 +1464,7 @@ class PreferencesManager(context: Context) {
                 sharedPreferences.edit()
                     .putLong(KEY_LIVENESS_REPORT_AT, reportAt)
                     .putInt(KEY_LIVENESS_KILLS_UNREPORTED, 0)
-                    .apply()
+                    .commit()
             } catch (_: Exception) {
             }
         }
