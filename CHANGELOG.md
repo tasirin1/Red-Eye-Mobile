@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Mode aman anti crash-loop tidak lagi bisa ditembus perintah biasa: sebelumnya /night, aksi ping foto, dan perubahan preferensi dapat menyalakan ulang loop kamera/patroli di tengah mode aman (jalur restart per-loop tidak punya gerbang yang dimiliki jalur restart penuh), sehingga crash-loop dapat berlanjut sementara status tetap menampilkan mode aman; kini kedua jalur restart itu menolak selama mode aman aktif (issue #2046).
+
 ## [1.6.692] - 2026-11-13
 
 ### Fixed

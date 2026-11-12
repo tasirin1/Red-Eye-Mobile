@@ -1749,6 +1749,13 @@ class MonitoringService : Service() {
     }
 
     private fun restartCameraLoop() {
+        // Mode aman crash-loop (issue #2046): loop berat
+        // tidak dinyalakan ulang selama mode aman aktif --
+        // gerbang yang sama dengan restartAllLoops, dipasang
+        // di fungsi ini agar semua pintu (listener pref,
+        // /night, aksi ping foto) tertutup sekaligus. Keluar
+        // hanya lewat /resume atau kedaluwarsa gerbang.
+        if (safeModeNow && safeModeAktif()) return
         relaunchAfterJoin(cameraJob, { startCameraLoop() }, { cameraJob },
             { cameraRelaunchJob }, { cameraRelaunchTarget },
             { job -> cameraRelaunchJob = job; cameraRelaunchTarget = cameraJob })
@@ -1867,6 +1874,8 @@ class MonitoringService : Service() {
     }
 
     private fun restartPatrolLoop() {
+        // Gerbang mode aman yang sama (issue #2046).
+        if (safeModeNow && safeModeAktif()) return
         relaunchAfterJoin(patrolJob, { startPatrolLoop() }, { patrolJob },
             { patrolRelaunchJob }, { patrolRelaunchTarget },
             { job -> patrolRelaunchJob = job; patrolRelaunchTarget = patrolJob })
