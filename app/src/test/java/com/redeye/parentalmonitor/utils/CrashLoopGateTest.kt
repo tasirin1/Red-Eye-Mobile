@@ -25,8 +25,14 @@ class CrashLoopGateTest {
     @Test
     fun tigaTersebarTidakAman() {
         // Tiga crash berjauhan bukan loop: tak boleh memicu.
-        val jurnal = listOf(0L, 20 * menit, 25 * menit)
-        assertFalse(CrashLoopGate.modeAman(jurnal, 26 * menit))
+        // Fixture dipilih agar SATU-SATUNYA alasan false adalah
+        // cek rentang: ketiga entri sah (dalam 1..now), jumlah
+        // cukup, dan crash terakhir masih segar (1 menit) --
+        // mutan modeAman tanpa cek rentang mengembalikan true
+        // di sini (issue #1940; fixture lama berentri 0L gugur
+        // oleh saringan jumlah sebelum rentang dinilai).
+        val jurnal = listOf(75 * menit, 76 * menit, 99 * menit)
+        assertFalse(CrashLoopGate.modeAman(jurnal, 100 * menit))
     }
 
     @Test

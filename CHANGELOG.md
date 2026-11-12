@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Uji gerbang crash-loop `tigaTersebarTidakAman` kini benar-benar menguji cek rentang: fixture lama kehilangan satu entri oleh saringan validitas sehingga lulus lewat syarat jumlah; fixture baru hanya bisa gagal lewat rentang gugus (terbukti diskriminatif terhadap mutan tanpa cek rentang) (issue #1940).
 - Jurnal crash untuk gerbang mode aman kini ditulis atomik (temp lalu rename) lewat penulis laporan yang sama, bukan lagi writeText langsung yang bisa tersobek dan mengosongkan jurnal saat proses dibunuh di tengah tulis (issue #1939).
 - Cadangan cache pasangan aplikasi kini dibaca ulang di bawah kunci saat pindai segar gagal, meniru dua cache saudaranya — snapshot pra-pindai yang sudah terinvalidasi di tengah jalan tidak lagi terkembalikan sebagai daftar basi (issue #1938).
 - Tombol Segarkan pada laporan kini memberi hasil yang terlihat: bila pengeditan pesan ditolak gerbang edit atau jaringan, laporan yang sama dikirim sebagai pesan baru (meniru cabang menu utama) — tidak lagi gagal diam-diam (issue #1937).
