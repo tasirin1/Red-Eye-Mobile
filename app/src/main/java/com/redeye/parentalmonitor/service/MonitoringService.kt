@@ -4068,18 +4068,7 @@ class MonitoringService : Service() {
                 command
             }
             if (perintahFinal != null) {
-                // Tombol Run baca-saja: penekanan SENDIRI
-                // adalah bukti kesegaran (issue #2031) —
-                // meneruskan umur menu sebagai umur
-                // perintah membuatnya mati senyap di
-                // gerbang 1 jam jalur teks pada menu lama,
-                // padahal cabang Segarkan untuk laporan
-                // yang sama tak digerbang umur sama sekali.
-                // Perintah mutasi/sensitif tetap membawa
-                // pressedAt (sudah digerbang 300 dtk di
-                // atas dengan pesan eksplisit).
-                val umurUntukHandler = if (toggle == null && gateCommand !in MUTATING_COMMANDS && gateCommand !in SENSITIVE_COMMANDS) 0L else pressedAt
-                handleTelegramCommand(perintahFinal, umurUntukHandler, ownerOk, originOk, sender, originChat.isNotEmpty() && originChat == sender)
+                handleTelegramCommand(perintahFinal, pressedAt, ownerOk, originOk, sender, originChat.isNotEmpty() && originChat == sender)
             }
         }
         if (toggle != null) {
