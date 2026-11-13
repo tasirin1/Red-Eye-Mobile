@@ -102,4 +102,11 @@ class CrashLoopGateTest {
         val hasil = CrashLoopGate.catat(jurnal, t)
         assertEquals(jurnal, hasil)
     }
+
+    @Test
+    fun catatEntriBerumurTepatSehariDipertahankan() {
+        val t = 1_700_000_000_000L
+        val hasil = CrashLoopGate.catat(listOf(t - CrashLoopGate.SIMPAN_MS), t)
+        assertEquals(listOf(t - CrashLoopGate.SIMPAN_MS, t), hasil)
+    }
 }
