@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Fixed
+
+- Uji baru mengunci sisi luar batas jendela simpan jurnal crash: entri berumur tepat 24 jam lebih 1 milidetik terbuang saat pencatatan, melengkapi kunci sisi tepat 24 jam sebelumnya.
+
 ## [1.6.710] - 2026-11-14
 
 ### Fixed
