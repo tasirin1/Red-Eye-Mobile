@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Uji baru mengunci batas rentang pemicu mode aman: gugus crash berentang tepat 10 menit tetap memicu mode aman sesuai doktrin sumbernya.
 - Uji baru mengunci indeks pivot mode aman CrashLoopGate: rentang dinilai dari crash ketiga terakhir, jadi tiga crash tersebar 19 menit tidak lagi berisiko dinilai gugus rapat pemicu mode aman palsu.
 - Uji baru mengunci kesetaraan batas predikat baris terlambat: baris bertanggal tepat di batas masa depan tetap diterima (kedua repository meloloskannya di SQL), bukan tertunda satu siklus sapuan.
 - Uji baru mengunci batas atas pengambilan log pada toleransi masa depan tepat 15 menit: perubahan tanda atau angka toleransi kini ketahuan uji, bukan lagi berisiko menggeser sinkron log panggilan/SMS secara senyap.

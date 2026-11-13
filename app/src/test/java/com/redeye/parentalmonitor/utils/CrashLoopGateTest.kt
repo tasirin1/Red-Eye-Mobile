@@ -78,4 +78,12 @@ class CrashLoopGateTest {
         val jurnal = listOf(80 * menit, 95 * menit, 99 * menit)
         assertFalse(CrashLoopGate.modeAman(jurnal, 100 * menit))
     }
+
+    @Test
+    fun modeAmanRentangPersisSepuluhMenitMemicu() {
+        val t = 1_700_000_000_000L
+        val menit = 60_000L
+        val jurnal = listOf(t - 19 * menit, t - 10 * menit, t - 9 * menit)
+        assertTrue(CrashLoopGate.modeAman(jurnal, t))
+    }
 }
