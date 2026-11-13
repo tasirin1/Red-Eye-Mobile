@@ -74,6 +74,16 @@ class CalculatorStateTest {
     }
 
     @Test
+    fun backspaceOnNegativeEntryKeepsSign() {
+        val h = Harness()
+        // Backspace pada entri negatif 2 digit
+        // (issue #2110): tanda minus di depan bertahan;
+        // yang dibuang suffix hanya "-" sisa di akhir.
+        h.run("5", "+", "\u00b1", "1", "2", "\u232b")
+        assertEquals("-1", h.state.currentNumber)
+    }
+
+    @Test
     fun backspaceOnTwoDigitEntryDropsOneDigit() {
         val h = Harness()
         // Ambang panjang backspace (issue #2109): entri
