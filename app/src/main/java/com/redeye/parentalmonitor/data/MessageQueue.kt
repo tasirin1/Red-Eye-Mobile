@@ -995,14 +995,34 @@ class MessageQueue private constructor(context: Context) {
                 json = bakJson
             } else {
                 try { noteCorruptDrops(1L) } catch (_: Exception) { }
-                volatileOnly = true
-                keepUnpersistedDropsLocked()
-                cached = null
-                try {
-                    com.redeye.parentalmonitor.utils.MessageScheduler.scheduleMessageSendNext(appContext, 60_000L)
+                // Perbaiki nilai rusak di tempat (issue
+                // #2074): tulis antrean kosong yang sah
+                // menimpa kedua nilai, meniru ujung tangga
+                // parse -- bacaan berikutnya lalu melihat
+                // antrean kosong yang sehat, bukan
+                // menabrak kerusakan yang sama dan
+                // mencatat corrupt berulang pada setiap
+                // siklus pulih. Bila tulis perbaikan
+                // gagal (penyimpanan sungguh tak bisa
+                // dipakai), barulah jatuh ke volatile
+                // seperti sebelumnya; json tetap null
+                // sehingga aliran di bawah memuat antrean
+                // kosong.
+                val pulih = try {
+                    persistLocked(mutableListOf(), force = true, syncOnMain = true, replaceBackup = true)
                 } catch (_: Exception) {
+                    false
                 }
-                return mutableListOf()
+                if (!pulih) {
+                    volatileOnly = true
+                    keepUnpersistedDropsLocked()
+                    cached = null
+                    try {
+                        com.redeye.parentalmonitor.utils.MessageScheduler.scheduleMessageSendNext(appContext, 60_000L)
+                    } catch (_: Exception) {
+                    }
+                    return mutableListOf()
+                }
             }
         }
         var parsedOk = false

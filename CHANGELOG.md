@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Nilai antrean yang rusak di kedua salinan kini diperbaiki di tempat dengan tulisan kosong yang sah sesudah dicatat, sehingga bacaan berikutnya tidak menabrak kerusakan yang sama dan mencatat corrupt berulang pada setiap siklus pulih (issue #2074).
 - Catatan corrupt dari bacaan antrean yang gagal total tidak lagi terhapus oleh rollback pemulihan penyimpanan: kategori corrupt dikecualikan dari pemulihan potret karena ia merekam fakta keadaan nilai tersimpan (issue #2073).
 - Pencarian riwayat nomor tidak lagi menyatakan pindai tuntas saat halaman penuh berakhir tepat di tanggal batas: kecocokan bertanggal sama di halaman berikutnya kini tetap terpindai, atau hasil jujur terpotong bila plafon halaman tercapai (issue #2072).
 
