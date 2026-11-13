@@ -86,4 +86,11 @@ class CrashLoopGateTest {
         val jurnal = listOf(t - 19 * menit, t - 10 * menit, t - 9 * menit)
         assertTrue(CrashLoopGate.modeAman(jurnal, t))
     }
+
+    @Test
+    fun catatMembuangEntriMasaDepan() {
+        val t = 1_700_000_000_000L
+        val hasil = CrashLoopGate.catat(listOf(t + 25 * 3_600_000L), t)
+        assertEquals(listOf(t), hasil)
+    }
 }
