@@ -458,4 +458,10 @@ class CursorAdvanceTest {
         val terkonsumsi = konsumsiSemua(rows, 9999L, 1000L)
         assertEquals(setOf(500L to 3000L, 200L to 4000L), terkonsumsi.toSet())
     }
+
+    @Test
+    fun batasAtasMenambahToleransiLimaBelasMenit() {
+        assertEquals(1_700_000_900_000L, CursorAdvance.batasAtas(1_700_000_000_000L))
+        assertEquals(900_000L, CursorAdvance.batasAtas(0L))
+    }
 }
