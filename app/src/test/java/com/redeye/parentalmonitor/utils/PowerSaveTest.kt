@@ -72,4 +72,9 @@ class PowerSaveTest {
         assertTrue(PowerSave.patrolPakaiCache(true, 100_000L, 100_000L, 60_000L))
         assertTrue(PowerSave.patrolPakaiCache(true, 0L, 100L, 0L))
     }
+
+    @Test
+    fun kameraLonggarGerakKesetaraanGerakDiterima() {
+        assertTrue(PowerSave.kameraLonggarGerak(true, 100_000L, 100_000L, true))
+    }
 }
