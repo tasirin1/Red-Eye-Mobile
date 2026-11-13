@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Uji pendamping negatif mengunci suku tanda minus pada cek luapan digit pasca-pembulatan formatResult (issue #2100).
 - Model uji sapuan panggilan kini memakai gerbang jangkar non-positif yang sama dengan produksi, sejajar model SMS (issue #2099).
 
 ## [1.6.700] - 2026-11-13

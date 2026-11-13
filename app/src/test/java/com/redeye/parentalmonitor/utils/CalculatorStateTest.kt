@@ -306,6 +306,19 @@ class CalculatorStateTest {
     }
 
     @Test
+    fun luapanDigitNegatifSesudahPembulatanTampilIlmiah() {
+        val h = Harness()
+        // Pasangan negatif #2068: hasil membulat naik
+        // ke 12 digit; suku tanda minus pada cek
+        // luapan pasca-pembulatan yang mendorongnya
+        // ke notasi ilmiah — tanpa suku itu hasilnya
+        // 13 karakter polos, meluber dari anggaran
+        // tampilan.
+        h.run("0", "\u2212", "99999999999.5", "=")
+        assertEquals("-1.00000E+11", h.state.currentNumber)
+    }
+
+    @Test
     fun luapanDigitSesudahPembulatanTampilIlmiah() {
         // Cakupan #2068: cabang luapan digit PASCA
         // pembulatan (12 digit menjadi 13) beralih
