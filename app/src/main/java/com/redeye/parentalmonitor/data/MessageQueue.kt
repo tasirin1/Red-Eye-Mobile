@@ -283,6 +283,15 @@ class MessageQueue private constructor(context: Context) {
 
     fun reopenAfterStorageReset() {
         synchronized(lock) {
+            // Era buku besar berganti di sini sama
+            // seperti clearQueue (issue #2084): tanpa
+            // kenaikan generasi, semua gerbang anti-hantu
+            // yang membaca queueGeneration() (reportDrops
+            // #822, pencatatan tertunda #2071, genStale)
+            // buta terhadap reset di tengah run dan
+            // catatan era lama bisa masuk buku besar era
+            // baru sebagai angka hantu.
+            generationCounter.incrementAndGet()
             cached = null
             synchronized(persistMutex) { lastWrittenJson = null; lastWrittenIds = null }
             volatileQueue.clear()
