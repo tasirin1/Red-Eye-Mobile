@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.708] - 2026-11-13
+
 ### Fixed
 
 - Uji baru mengunci faktor margin hysteresis pagar pada radius besar (400 m): margin keluar 15% radius (60 m, di atas lantai 30 m), jadi state tidak mudah berbalik "keluar" hanya oleh jitter GPS di tepi pagar besar.
