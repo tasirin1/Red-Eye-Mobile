@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.702] - 2026-11-13
+
 ### Fixed
 
 - Uji baru mengunci reset entryReplaced di kepala setOperator lewat urutan persen, operator, ubah tanda, digit (issue #2102).
