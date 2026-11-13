@@ -1456,7 +1456,14 @@ class MessageQueue private constructor(context: Context) {
                 prefs = currentPrefs
                 version = pending.first
                 snapshot = pending.second
-                if (dropsDirty) persistDropCountsLocked()
+                // Penghitung drop tidak ditulis sebelum
+                // snapshot antrean: bila proses mati sesudah
+                // commit penghitung tetapi sebelum snapshot
+                // tercakram, antrean lama dibaca lagi dan
+                // batch yang sama dicatat kedua kalinya
+                // (issue #2111). Sesudah snapshot berhasil,
+                // putaran drain berikutnya menulis penghitung
+                // lewat cabang khusus-penghitung di atas.
             }
             if (!writeSnapshot(prefs, snapshot, version)) {
                 var delayMs = 0L
@@ -1486,7 +1493,7 @@ class MessageQueue private constructor(context: Context) {
             }
             synchronized(lock) {
                 drainFailCount = 0
-                if (pendingSnapshot == null && !persistDirty) {
+                if (pendingSnapshot == null && !persistDirty && !dropsDirty) {
                     persistQueued.set(false)
                     return
                 }

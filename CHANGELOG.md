@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Fixed
+
+- Drain persist kini menulis snapshot antrean sebelum penghitung drop, jadi kematian proses di antara keduanya tidak lagi membuat batch kedaluwarsa/eviksi yang sama terhitung dua kali (issue #2111).
+
 ## [1.6.705] - 2026-11-13
 
 ### Fixed
