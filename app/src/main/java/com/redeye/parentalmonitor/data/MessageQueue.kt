@@ -58,6 +58,13 @@ class MessageQueue private constructor(context: Context) {
     // rollback catch restore. Direset di pintu masuk
     // tryRestorePersistent; semua akses di bawah lock.
     private var expiredPruneSelamaRestore = 0L
+    // Porsi catatan prune restore yang SUDAH digabungkan
+    // ke kunci expired di cakram di tengah restore
+    // (issue #2096): dikurangkan oleh gabungan
+    // loadDropCountsLocked agar tidak terhitung dua
+    // kali; hilang bersama proses pun aman karena
+    // cakramnya sudah memuat jumlahnya.
+    private var expiredPruneTerpersistRestore = 0L
 
     private var persistedOverflowDrops = 0L
     private var persistedExpiredDrops = 0L
@@ -292,6 +299,7 @@ class MessageQueue private constructor(context: Context) {
             // catatan era lama bisa masuk buku besar era
             // baru sebagai angka hantu.
             generationCounter.incrementAndGet()
+            expiredPruneTerpersistRestore = 0L
             cached = null
             synchronized(persistMutex) { lastWrittenJson = null; lastWrittenIds = null }
             volatileQueue.clear()
@@ -525,6 +533,16 @@ class MessageQueue private constructor(context: Context) {
                 // ambilnya gagal — angka itu sudah terlaporkan,
                 // jadi dikurangi lewat penanda terambil agar
                 // tak bangkit sebagai laporan ganda.
+                // Porsi prune restore yang sudah terpersist
+                // di cakram (issue #2096) dikurangkan dari
+                // addend expired: jumlahnya sudah terwakili
+                // di penghitung memori lewat catatan prune
+                // itu sendiri, jadi menambahkannya lagi dari
+                // isi cakram akan menghitung dua kali.
+                // Lapangan dinolkan di sini karena gabungan
+                // inilah satu-satunya konsumennya.
+                val pruneTerpersist = expiredPruneTerpersistRestore
+                expiredPruneTerpersistRestore = 0L
                 if (dropWipePendingVolatile) {
                     // Wipe yang gagal di mode volatile menang
                     // atas isi cakram (issue #1298): jangan
@@ -534,7 +552,7 @@ class MessageQueue private constructor(context: Context) {
                     dropWipePendingVolatile = false
                 } else {
                     overflowDrops.addAndGet((overflow - takenUnpersistedOverflowDrops).coerceAtLeast(0L))
-                    expiredDrops.addAndGet((expired - takenUnpersistedExpiredDrops).coerceAtLeast(0L))
+                    expiredDrops.addAndGet((expired - takenUnpersistedExpiredDrops - pruneTerpersist).coerceAtLeast(0L))
                     priorityDrops.addAndGet((priority - takenUnpersistedPriorityDrops).coerceAtLeast(0L))
                     exhaustedDrops.addAndGet((exhausted - takenUnpersistedExhaustedDrops).coerceAtLeast(0L))
                     rejectedDrops.addAndGet((rejected - takenUnpersistedRejectedDrops).coerceAtLeast(0L))
@@ -846,6 +864,7 @@ class MessageQueue private constructor(context: Context) {
     fun clearQueue(): Boolean {
         synchronized(lock) {
             generationCounter.incrementAndGet()
+            expiredPruneTerpersistRestore = 0L
             cached = mutableListOf()
             persistDirty = false
             volatileQueue.clear()
@@ -1218,7 +1237,25 @@ class MessageQueue private constructor(context: Context) {
                 persistLocked(fresh)
             }
             if (restoringDrops && pruneTertulis) {
-                expiredPruneSelamaRestore += (loaded.size - fresh.size).toLong()
+                val jumlahPrune = (loaded.size - fresh.size).toLong()
+                expiredPruneSelamaRestore += jumlahPrune
+                // Catatannya ikut tercakram sekarang juga
+                // (issue #2096): gabungkan jumlah prune ke
+                // kunci expired di cakram dan daftarkan ke
+                // lapangan pengurang gabungan, agar kematian
+                // proses sebelum persist akhir restore tidak
+                // menghilangkan catatan yang antreannya
+                // sudah ter-prune. Gagal commit membiarkan
+                // keadaan seperti semula (catatan hanya di
+                // memori, jendela lama pada subkasus itu).
+                try {
+                    val cakramExpired = sharedPreferences?.getLong(KEY_EXPIRED_DROPS, 0L) ?: 0L
+                    val editorPrune = sharedPreferences?.edit()
+                    if (editorPrune != null && editorPrune.putLong(KEY_EXPIRED_DROPS, cakramExpired + jumlahPrune).commit()) {
+                        expiredPruneTerpersistRestore += jumlahPrune
+                    }
+                } catch (_: Exception) {
+                }
             }
             return fresh
         }
