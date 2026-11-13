@@ -516,4 +516,24 @@ class CalculatorStateTest {
         h.run("5")
         assertEquals("5", h.state.currentNumber)
     }
+    @Test
+    fun toggleSignOnLoneMinusClearsIt() {
+        val h = Harness()
+        h.run("5", "+", "±", "±")
+        assertEquals("", h.state.currentNumber)
+    }
+
+    @Test
+    fun toggleSignOnZeroKeepsZero() {
+        val h = Harness()
+        h.run("0", "±")
+        assertEquals("0", h.state.currentNumber)
+    }
+
+    @Test
+    fun toggleSignOnEmptyEntryIsNoOp() {
+        val h = Harness()
+        h.run("±")
+        assertEquals("", h.state.currentNumber)
+    }
 }
