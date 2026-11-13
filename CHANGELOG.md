@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Uji baru mengunci kesetaraan batas predikat baris terlambat: baris bertanggal tepat di batas masa depan tetap diterima (kedua repository meloloskannya di SQL), bukan tertunda satu siklus sapuan.
 - Uji baru mengunci batas atas pengambilan log pada toleransi masa depan tepat 15 menit: perubahan tanda atau angka toleransi kini ketahuan uji, bukan lagi berisiko menggeser sinkron log panggilan/SMS secara senyap.
 - Logout kini menghapus sesi owner, membatalkan restore tertunda, dan menaikkan epoch restore dalam satu ruas kunci yang sama: terapkan restore yang sedang berjalan tidak lagi bisa lolos gerbang epoch di celah antar-langkah logout lalu menghidupkan lagi sesi owner sesudah logout menjawab sukses (pasangan sisi terapkannya sudah ditutup lebih dulu).
 

@@ -464,4 +464,9 @@ class CursorAdvanceTest {
         assertEquals(1_700_000_900_000L, CursorAdvance.batasAtas(1_700_000_000_000L))
         assertEquals(900_000L, CursorAdvance.batasAtas(0L))
     }
+
+    @Test
+    fun terlambatTanggalPersisDiBatasDiterima() {
+        assertTrue(CursorAdvance.terlambat(11L, 500L, 2000L, 10L, 500L))
+    }
 }
