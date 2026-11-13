@@ -1122,10 +1122,10 @@ class SetupActivity : AppCompatActivity() {
                 is VerifyOutcome.HttpError -> {
                     markCredentialErrorIfStored(outcome.code, token, chatId, currentToken, storedChatId)
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                        // Penjaga Activity mati seperti cabang
-                        // chat-buruk di atas (issue #1019):
-                        // Toast dari Activity yang sudah hancur
-                        // bisa gagal tampil di sebagian perangkat.
+                        // Penjaga Activity mati (issue
+                        // #1019): Toast dari Activity yang
+                        // sudah hancur bisa gagal tampil
+                        // di sebagian perangkat.
                         if (isFinishing || isDestroyed) return@withContext
                         Toast.makeText(this@SetupActivity, getString(R.string.setup_save_failed, outcome.code.toString()), Toast.LENGTH_LONG).show()
                         // Penanda error kredensial yang baru

@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Komentar basi di alur Simpan Setup yang menunjuk blok toast lama yang sudah terhapus kini ditulis ulang agar menunjuk penjaganya sendiri (issue #2081).
 - Kueri tiruan pada uji pencarian riwayat nomor kini menerapkan batas tanggal persis seperti basis data sungguhan, dan dua uji baru mengunci baris masa depan di jalur persis maupun fuzzy (issue #2080).
 - Dua cabang formatResult kalkulator kini terkunci uji: desimal berulang memakai skala penuh 8 digit dan hasil negatif berulang tetap tampil polos dengan ruang tanda (issue #2079).
 - Tiga cabang toggleSign kalkulator kini terkunci uji: minus tunggal terhapus, nol tetap nol, dan entri kosong tidak berubah (issue #2078).
