@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Dua cabang formatResult kalkulator kini terkunci uji: desimal berulang memakai skala penuh 8 digit dan hasil negatif berulang tetap tampil polos dengan ruang tanda (issue #2079).
 - Tiga cabang toggleSign kalkulator kini terkunci uji: minus tunggal terhapus, nol tetap nol, dan entri kosong tidak berubah (issue #2078).
 - Cabang tukar operator dan rantai Error pada setOperator kalkulator kini terkunci uji: operator terakhir yang berlaku, dan keadaan tetap bersih sesudah bagi-nol berantai (issue #2077).
 - Empat cabang masukan angka kalkulator yang belum terjangkau uji kini terkunci: digit di atas nol/minus-nol mengganti entri, titik sesudah minus tunggal, dan plafon 12 digit (issue #2076).

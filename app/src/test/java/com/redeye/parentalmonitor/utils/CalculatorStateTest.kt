@@ -536,4 +536,17 @@ class CalculatorStateTest {
         h.run("±")
         assertEquals("", h.state.currentNumber)
     }
+    @Test
+    fun repeatingDecimalUsesFullEightDigitScale() {
+        val h = Harness()
+        h.run("1", "÷", "3", "=")
+        assertEquals("0.33333333", h.state.currentNumber)
+    }
+
+    @Test
+    fun negativeRepeatingDecimalStaysPlainWithSignExtra() {
+        val h = Harness()
+        h.run("0", "−", "10000", "÷", "3", "=")
+        assertEquals("-3333.3333333", h.state.currentNumber)
+    }
 }
