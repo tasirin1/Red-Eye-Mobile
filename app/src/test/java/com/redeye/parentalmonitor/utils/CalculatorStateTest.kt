@@ -74,6 +74,17 @@ class CalculatorStateTest {
     }
 
     @Test
+    fun clearFromPendingOperatorDropsOperator() {
+        val h = Harness()
+        // C dari keadaan operator-tertunda menolkan
+        // operator (issue #2105): tanpa reset itu
+        // operator basi "+" membuat ubah tanda membuka
+        // entri "-" dan hasilnya -3, bukan 3.
+        h.run("5", "+", "C", "\u00b1", "3", "=")
+        assertEquals("3", h.state.currentNumber)
+    }
+
+    @Test
     fun clearFromPendingOperatorDropsPrevious() {
         val h = Harness()
         // C dari keadaan operator-tertunda menolkan
