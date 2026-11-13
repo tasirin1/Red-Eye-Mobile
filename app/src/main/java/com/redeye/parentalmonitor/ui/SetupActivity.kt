@@ -1814,7 +1814,6 @@ class SetupActivity : AppCompatActivity() {
             val token = input.token
             val chatId = input.chatId
             val storedAccessPin = try { prefs.accessPin } catch (_: Exception) { "" }
-            val accessPin = if (rawAccessPin == STORED_MASK) restoreAccessPin(token, chatId, storedAccessPin) else rawAccessPin
             when (val outcome = verifyCredentials(token, chatId) { myTest != testSeq.get() }) {
                 is VerifyOutcome.Stale -> return@launch
                 is VerifyOutcome.HttpError -> {
