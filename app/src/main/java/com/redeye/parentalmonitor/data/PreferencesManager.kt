@@ -3218,7 +3218,21 @@ class PreferencesManager(context: Context) {
                 editor.putInt(KEY_SYNC_INTERVAL, newSyncInterval)
                 editor.putInt(KEY_CAMERA_INTERVAL, newCameraInterval)
                 if (newAccessPin != null) {
-                    if (newAccessPin != accessPin) bumpCredentialGeneration(editor)
+                    if (newAccessPin != accessPin) {
+                        bumpCredentialGeneration(editor)
+                        // PIN berubah ikut memutar kode
+                        // pasangan (issue #2091): tautan
+                        // pasangan yang dicetak sebelum PIN
+                        // ada/berubah tidak boleh tetap
+                        // menyelesaikan pairing tanpa PIN
+                        // baru -- putCredentialState hanya
+                        // mengosongkannya bila token/chat
+                        // berubah, jadi perubahan PIN saja
+                        // harus mengosongkannya di sini, di
+                        // editor yang sama.
+                        editor.putString(KEY_OWNER_PAIR_CODE, "")
+                        editor.putLong(KEY_OWNER_PAIR_AT, 0L)
+                    }
                     editor.putString(KEY_ACCESS_PIN, newAccessPin)
                 }
                 // Simpan kredensial membatalkan catatan
