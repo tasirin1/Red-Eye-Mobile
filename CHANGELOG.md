@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.710] - 2026-11-14
+
 ### Fixed
 
 - Uji baru mengunci batas jendela simpan jurnal crash: entri berumur tepat 24 jam tetap dipertahankan saat pencatatan, bukan terbuang — tanpa kunci ini perubahan tanda kesetaraan bisa menghilangkan satu anggota gugus crash dan membuat mode aman gagal terpicu pada rangkaian jam maju-mundur yang pas.
