@@ -74,6 +74,17 @@ class CalculatorStateTest {
     }
 
     @Test
+    fun toggleSignAfterPercentNegatesEntryOnce() {
+        val h = Harness()
+        // Ubah tanda tepat satu kali pada entri persen
+        // (issue #2107): negasi berlaku juga saat
+        // entryReplaced terpasang; uji dua-kali yang lama
+        // menyamakan mutan no-op dengan produksi.
+        h.run("1", "%", "\u00b1")
+        assertEquals("-0.01", h.state.currentNumber)
+    }
+
+    @Test
     fun toggleSignOnResultNegatesAndRepeatsNegated() {
         val h = Harness()
         // Ubah tanda pada keadaan hasil (issue #2106):
