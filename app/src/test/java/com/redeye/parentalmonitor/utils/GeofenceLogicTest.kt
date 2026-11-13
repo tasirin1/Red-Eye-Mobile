@@ -144,4 +144,9 @@ class GeofenceLogicTest {
     fun jemputHitJarakPersisRadiusTerpicu() {
         assertTrue(GeofenceLogic.jemputHit(50, 50f, 10f))
     }
+
+    @Test
+    fun judgedOutsideJarakPersisRadiusBukanDiLuar() {
+        assertFalse(GeofenceLogic.judgedOutside(50f, 50, 10f))
+    }
 }

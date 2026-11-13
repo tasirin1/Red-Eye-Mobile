@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Uji baru mengunci kesetaraan radius penilaian di luar pagar: posisi persis di tepi radius bukan "di luar", jadi alert jam malam/sekolah dan skor kewaspadaan tidak menyala dari posisi batas dalam.
 - Uji baru mengunci kesetaraan radius kabar jemput: posisi persis di tepi radius dengan fix akurat tetap memicu kabar jemput.
 - Uji baru mengunci penjaga owner cadangan restore: chat id yang terurai ke nol ("0000") memakai owner lama, bukan menghasilkan target owner 0 yang membuat perintah owner tak dikenali siapa pun sesudah restore.
 - Uji baru mengunci batas panjang username pada validasi restore dari dua sisi: username 4 dan 33 aksara (di luar aturan panjang Telegram 5-32) kini tertolak secara uji.
