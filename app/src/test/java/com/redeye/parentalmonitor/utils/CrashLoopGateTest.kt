@@ -71,4 +71,11 @@ class CrashLoopGateTest {
         assertEquals(listOf(5L, 10L), CrashLoopGate.parse("10\nabc\n-3\n5\n\n"))
         assertEquals("5\n10", CrashLoopGate.serialkan(listOf(5L, 10L)))
     }
+
+    @Test
+    fun modeAmanPivotMemakaiCrashKetigaTerakhir() {
+        val menit = 60_000L
+        val jurnal = listOf(80 * menit, 95 * menit, 99 * menit)
+        assertFalse(CrashLoopGate.modeAman(jurnal, 100 * menit))
+    }
 }
