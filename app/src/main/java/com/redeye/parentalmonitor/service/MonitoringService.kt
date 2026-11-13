@@ -5937,16 +5937,30 @@ class MonitoringService : Service() {
         // #1078): logout yang terjadi selama validasi ulang
         // jaringan di atas membatalkan penerapan di sini,
         // bukan sesudah kredensial telanjur tertimpa.
-        if (epochAtClaim != ownerEpoch) {
+        // Gerbang + simpan satu ruas di bawah restoreLock
+        // (issue #2114): logout menaikkan epoch di bawah
+        // kunci yang sama, jadi epoch tak bisa berubah di
+        // celah antara pembacaan gerbang dan commit
+        // saveCredentials. Tanpa ruas ini logout yang
+        // mendarat tepat di celah itu kalah: owner sudah
+        // dibersihkan, tetapi commit restore tetap menulis
+        // ulang kredensial + owner target sesudahnya.
+        val targetOwner = RestoreRules.ownerFallback(data.ownerId, newChat, oldOwner)
+        val saved = synchronized(restoreLock) {
+            if (epochAtClaim != ownerEpoch) {
+                null
+            } else {
+                try {
+                    preferencesManager.saveCredentials(newToken, newChat, data.syncInterval, data.cameraInterval, targetOwner, data.accessPin.ifEmpty { null })
+                } catch (_: Exception) {
+                    false
+                }
+            }
+        }
+        if (saved == null) {
             audit("restore gugur sebelum simpan (epoch berubah)", "private")
             sendToTelegram("ℹ️ Pemulihan dibatalkan karena sesi owner berubah selama penerapan. Setelan lama tetap dipakai.")
             return
-        }
-        val targetOwner = RestoreRules.ownerFallback(data.ownerId, newChat, oldOwner)
-        val saved = try {
-            preferencesManager.saveCredentials(newToken, newChat, data.syncInterval, data.cameraInterval, targetOwner, data.accessPin.ifEmpty { null })
-        } catch (_: Exception) {
-            false
         }
         if (!saved) {
             audit("restore simpan gagal", "private")

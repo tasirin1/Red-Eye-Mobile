@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Fixed
+
+- Gerbang epoch terakhir penerapan restore dan penyimpanan kredensial kini satu ruas di bawah restoreLock, jadi logout yang mendarat tepat di celah antara pembacaan gerbang dan commit tidak lagi kalah oleh commit restore yang menulis ulang kredensial dan owner sesudah owner dibersihkan (issue #2114).
+
 ## [1.6.706] - 2026-11-13
 
 ### Fixed
