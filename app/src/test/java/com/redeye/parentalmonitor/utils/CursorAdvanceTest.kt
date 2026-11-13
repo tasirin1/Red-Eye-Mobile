@@ -140,7 +140,11 @@ class CursorAdvanceTest {
             // saringan ini jendela calon model lebih
             // sempit dari produksi dan baris terlambat
             // di posisi calon ke-101+ hilang dari model.
-            val calon = rows.filter { it.first > idMax && it.second < dateCursor }
+            // Gerbang jangkar non-positif produksi
+            // (CallLogRepository: afterIdMax <= 0
+            // menonaktifkan sapuan; issue #2099):
+            // sejajar gerbang model SMS ambilSms.
+            val calon = if (idMax <= 0L) emptyList() else rows.filter { it.first > idMax && it.second < dateCursor }
                 .sortedBy { it.first }.take(100)
             val telat = calon.filter { CursorAdvance.terlambat(it.first, it.second, dateCursor, idMax, Long.MAX_VALUE) }
             val page = if (telat.isEmpty()) utama else (telat + utama).sortedWith(compareBy({ it.second }, { it.first }))
@@ -281,7 +285,10 @@ class CursorAdvanceTest {
             // harness tanpa jam.
             val utama = baris.filter { it.second <= Long.MAX_VALUE && (it.second > dateCursor || (it.second == dateCursor && it.first > idCursor)) }
                 .sortedWith(compareBy({ it.second }, { it.first })).take(100)
-            val calon = baris.filter { it.first > terpersist && it.second < dateCursor }
+            // Gerbang jangkar non-positif yang sama
+            // (issue #2099): jangkar terbit <= 0
+            // menonaktifkan sapuan seperti produksi.
+            val calon = if (terpersist <= 0L) emptyList() else baris.filter { it.first > terpersist && it.second < dateCursor }
                 .sortedBy { it.first }.take(100)
             val telat = calon.filter { CursorAdvance.terlambat(it.first, it.second, dateCursor, terpersist, Long.MAX_VALUE) }
             val page = if (telat.isEmpty()) utama else (telat + utama).sortedWith(compareBy({ it.second }, { it.first }))
