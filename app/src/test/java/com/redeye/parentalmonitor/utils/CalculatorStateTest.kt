@@ -74,6 +74,18 @@ class CalculatorStateTest {
     }
 
     @Test
+    fun backspaceAfterPercentOnResultIsNoOp() {
+        val h = Harness()
+        h.run("123000", "+", "400", "=", "%", "\u232b")
+        // Kedua flag menyala sesudah persen pada hasil:
+        // gerbang justCalculated harus menang lebih dulu,
+        // jadi backspace tidak menghapus entri hasil.
+        assertEquals("1234", h.state.currentNumber)
+        assertTrue(h.state.justCalculated)
+        assertTrue(h.state.entryReplaced)
+    }
+
+    @Test
     fun percentOnCalculatedResultDoesNotOpenSetup() {
         val h = Harness()
         h.run("123000", "+", "400", "=", "%")
