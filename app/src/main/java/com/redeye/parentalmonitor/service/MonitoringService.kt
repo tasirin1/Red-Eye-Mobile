@@ -4882,8 +4882,15 @@ class MonitoringService : Service() {
 
     private suspend fun handleTelegramCommand(raw: String, sentAtSec: Long = 0L, senderOk: Boolean = false, chatOk: Boolean = false, senderId: String = "", privateChat: Boolean = false, adoptionDoneSec: Long = 0L, messageId: Long = 0L) {
         val nowSec = serverNowSec()
-        if (sentAtSec > 0 && nowSec - sentAtSec > COMMAND_SILENT_AGE_SEC) return
-        if (sentAtSec > 0 && nowSec - sentAtSec > COMMAND_MAX_AGE_SEC) {
+        // Kredit adopsi yang sama dengan handler Inner
+        // (issue #2085): perintah yang menunggu adopsi
+        // dinilai dari selesainya adopsi, bukan dari cap
+        // kirim asal -- tanpa ini gerbang luar bisa
+        // menolak palsu perintah yang oleh Inner akan
+        // diterima, sesudah tunggu adopsi nyaris penuh.
+        val sentEfektif = if (adoptionDoneSec > 0L) adoptionDoneSec else sentAtSec
+        if (sentEfektif > 0 && nowSec - sentEfektif > COMMAND_SILENT_AGE_SEC) return
+        if (sentEfektif > 0 && nowSec - sentEfektif > COMMAND_MAX_AGE_SEC) {
             serviceScope.launch {
                 notifyStaleCommand("\u23F3\uFE0F Perintah kedaluwarsa, kirim lagi.")
             }
