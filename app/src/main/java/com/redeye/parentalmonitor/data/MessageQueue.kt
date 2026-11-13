@@ -49,6 +49,16 @@ class MessageQueue private constructor(context: Context) {
     @Volatile
     private var corruptSidikTerakhir: String? = null
 
+    // Jumlah catatan expired yang lahir dari prune
+    // readLocked SELAMA restore berjalan dan tulis
+    // prune-nya sudah diterima (issue #2083): pesan
+    // tersimpan yang terprune itu sudah hilang dari
+    // antrean dan tidak kembali ke volatile bila
+    // restore gagal, jadi porsi ini dikecualikan dari
+    // rollback catch restore. Direset di pintu masuk
+    // tryRestorePersistent; semua akses di bawah lock.
+    private var expiredPruneSelamaRestore = 0L
+
     private var persistedOverflowDrops = 0L
     private var persistedExpiredDrops = 0L
     private var persistedPriorityDrops = 0L
@@ -177,6 +187,7 @@ class MessageQueue private constructor(context: Context) {
             val previousRejectedDrops = rejectedDrops.get()
             val previousCorruptDrops = corruptDrops.get()
             val previousDropsDirty = dropsDirty
+            expiredPruneSelamaRestore = 0L
             return try {
                 val restored = PreferencesManager.openEncryptedPrefs(appContext, QUEUE_PREFS_NAME)
                 sharedPreferences = restored
@@ -230,7 +241,19 @@ class MessageQueue private constructor(context: Context) {
                     android.util.Log.e("MessageQueue", "Persistent queue restore failed", e)
                 }
                 overflowDrops.set(previousOverflowDrops)
-                expiredDrops.set(previousExpiredDrops)
+                // Kategori expired dikecualikan SEBAGIAN
+                // dari rollback (issue #2083): porsi prune
+                // readLocked yang sudah tertulis selama
+                // restore menggambarkan pesan tersimpan
+                // yang sudah hilang dari antrean dan tidak
+                // kembali ke volatile -- seperti corrupt,
+                // fakta cakramnya tetap benar. Porsi lain
+                // (prune pending milik restore ini sendiri)
+                // ter-rollback utuh karena pesannya memang
+                // kembali ke antrean volatile di bawah.
+                val expiredKini = expiredDrops.get()
+                val expiredSelamat = minOf(expiredPruneSelamaRestore, maxOf(0L, expiredKini - previousExpiredDrops))
+                expiredDrops.set(previousExpiredDrops + expiredSelamat)
                 priorityDrops.set(previousPriorityDrops)
                 exhaustedDrops.set(previousExhaustedDrops)
                 rejectedDrops.set(previousRejectedDrops)
@@ -244,7 +267,7 @@ class MessageQueue private constructor(context: Context) {
                 // volatile, jadi rollback-nya utuh.
                 val corruptKini = corruptDrops.get()
                 corruptDrops.set(maxOf(previousCorruptDrops, corruptKini))
-                dropsDirty = previousDropsDirty || corruptKini > previousCorruptDrops
+                dropsDirty = previousDropsDirty || corruptKini > previousCorruptDrops || expiredSelamat > 0L
                 volatileQueue.clear()
                 volatileQueue.addAll(pending)
                 sharedPreferences = null
@@ -1169,7 +1192,10 @@ class MessageQueue private constructor(context: Context) {
         if (fresh.size != loaded.size) {
             noteExpiredLocked((loaded.size - fresh.size).toLong())
             android.util.Log.w("MessageQueue", "Dropped ${loaded.size - fresh.size} expired message(s)")
-            persistLocked(fresh)
+            val pruneTertulis = persistLocked(fresh)
+            if (restoringDrops && pruneTertulis) {
+                expiredPruneSelamaRestore += (loaded.size - fresh.size).toLong()
+            }
             return fresh
         }
         cached = loaded

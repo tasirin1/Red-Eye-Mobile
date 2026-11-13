@@ -3,6 +3,7 @@
 
 ### Fixed
 ## [1.6.697] - 2026-11-13
+- Catatan kedaluwarsa dari prune bacaan yang sudah tertulis selama pemulihan penyimpanan tidak lagi ikut terhapus oleh rollback pemulihan: porsi itu menggambarkan pesan tersimpan yang memang sudah hilang, sejajar dengan pengecualian corrupt (issue #2083).
 - Satu kerusakan antrean yang sama kini tercatat tepat satu kali ke kategori corrupt walau tulis perbaikannya terus gagal: sidik pasangan nilai rusak menahan pencatatan ulang sampai ada tulisan sah atau bacaan sehat (issue #2082).
 
 ### Fixed
