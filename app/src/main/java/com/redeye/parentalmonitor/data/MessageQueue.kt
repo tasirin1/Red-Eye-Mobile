@@ -1201,7 +1201,22 @@ class MessageQueue private constructor(context: Context) {
         if (fresh.size != loaded.size) {
             noteExpiredLocked((loaded.size - fresh.size).toLong())
             android.util.Log.w("MessageQueue", "Dropped ${loaded.size - fresh.size} expired message(s)")
-            val pruneTertulis = persistLocked(fresh)
+            // Selama restore, tulisan prune harus terbukti
+            // tercakram saat itu juga (issue #2090): nilai
+            // true dari jalur tunda persistLocked belum
+            // menulis apa pun, dan catch restore membuang
+            // snapshot tertundanya sambil mempertahankan
+            // catatan #2083 -- restore berikutnya lalu
+            // mencatat pesan yang sama kedua kalinya.
+            // Paksa tulis sinkron seperti akhir tangga
+            // parse; di luar restore jalur tunda tetap
+            // cukup karena tak ada rollback yang membuang
+            // snapshot-nya.
+            val pruneTertulis = if (restoringDrops) {
+                persistLocked(fresh, force = true, syncOnMain = true)
+            } else {
+                persistLocked(fresh)
+            }
             if (restoringDrops && pruneTertulis) {
                 expiredPruneSelamaRestore += (loaded.size - fresh.size).toLong()
             }

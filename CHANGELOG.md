@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Fixed
+
+- Prune kedaluwarsa antrean selama pemulihan penyimpanan kini ditulis sinkron paksa, sehingga catatan yang dikecualikan dari rollback hanya bertumpu pada tulisan yang terbukti tercakram dan pesan yang sama tidak tercatat dua kali (issue #2090).
+
 ## [1.6.698] - 2026-11-13
 
 ### Fixed
