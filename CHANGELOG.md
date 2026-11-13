@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Uji baru mengunci sisi luar jendela picu mode aman: gugus crash berentang tepat 10 menit lebih 1 milidetik tidak memicu mode aman, melengkapi kunci sisi tepat 10 menit sebelumnya.
 - Uji baru mengunci saringan cap masa depan pada penilaian mode aman: cap dari masa depan (jam perangkat maju lalu mundur) diabaikan — tidak bisa melengkapi gugus crash menjadi picu palsu, dan tidak merentangkan gugus rapat menjadi gagal picu.
 - Uji baru mengunci sisi luar batas jendela simpan jurnal crash: entri berumur tepat 24 jam lebih 1 milidetik terbuang saat pencatatan, melengkapi kunci sisi tepat 24 jam sebelumnya.
 
