@@ -549,4 +549,17 @@ class CalculatorStateTest {
         h.run("0", "−", "10000", "÷", "3", "=")
         assertEquals("-3333.3333333", h.state.currentNumber)
     }
+    @Test
+    fun digitCapCountsOnlyDigitsForNegativeEntry() {
+        val h = Harness()
+        h.run("5", "+", "±", "123456789012")
+        assertEquals("-123456789012", h.state.currentNumber)
+    }
+
+    @Test
+    fun digitCapCountsOnlyDigitsForDecimalEntry() {
+        val h = Harness()
+        h.run("0.123456789012")
+        assertEquals("0.12345678901", h.state.currentNumber)
+    }
 }
