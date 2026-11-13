@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Fixed
+
+- Uji baru mengunci persen pada hasil nol: entryReplaced terpasang, lastExpression bersih, tombol sama-dengan tetap menampilkan nol (issue #2103).
+
 ## [1.6.702] - 2026-11-13
 
 ### Fixed

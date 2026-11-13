@@ -74,6 +74,21 @@ class CalculatorStateTest {
     }
 
     @Test
+    fun percentOnZeroResultLocksRepeatState() {
+        val h = Harness()
+        // Persen pada hasil nol tetap memasang
+        // entryReplaced dan membersihkan lastExpression
+        // (issue #2103): penjaga percent() tidak boleh
+        // menahan "0", kalau tidak tombol = berikutnya
+        // mengulang operasi dan mengubah "0" jadi "-5".
+        h.run("5", "\u2212", "5", "=", "%")
+        assertEquals("", h.state.lastExpression)
+        assertTrue(h.state.entryReplaced)
+        h.run("=")
+        assertEquals("0", h.state.currentNumber)
+    }
+
+    @Test
     fun percentOperatorToggleSignDigitKeepsMinus() {
         val h = Harness()
         // Reset entryReplaced di kepala setOperator
