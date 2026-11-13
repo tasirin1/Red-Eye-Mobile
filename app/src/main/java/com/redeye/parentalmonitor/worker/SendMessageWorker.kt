@@ -434,6 +434,11 @@ class SendMessageWorker(
                 System.currentTimeMillis()
             )
             if (!marked) {
+                // #2129: pesan yang sudah gugur di registerTransientFailures tetap
+                // dicatat walau penanda galat kredensial gagal dipasang.
+                if (authDropped > 0 && !queueCleared && sameCreds) {
+                    notifyExhaustedDrops(authDropped)
+                }
                 MessageScheduler.scheduleMessageSend(applicationContext)
                 return Result.success()
             }

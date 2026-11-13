@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Fixed
+
+- Jalur auth yang penanda galat kredensialnya gagal dipasang (kredensial berubah di tengah jalan) kini tetap mencatat dan melaporkan pesan antrean yang sudah dibuang karena mentok percobaan, tidak lagi hilang diam-diam dari buku gugur dan kabar ke owner.
+
 ## [1.6.708] - 2026-11-13
 
 ### Fixed
