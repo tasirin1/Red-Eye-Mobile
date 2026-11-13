@@ -54,4 +54,10 @@ class RestoreRulesTest {
         assertFalse(RestoreRules.isValidToken("1:" + "A".repeat(34)))
         assertFalse(RestoreRules.isValidToken(":" + "A".repeat(35)))
     }
+
+    @Test
+    fun usernameEmpatDanTigaPuluhTigaAksaraDitolak() {
+        assertFalse(RestoreRules.isValidChatId("@aaaa"))
+        assertFalse(RestoreRules.isValidChatId("@" + "a".repeat(33)))
+    }
 }
