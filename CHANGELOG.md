@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Uji baru mengunci ambang panjang backspace pada entri 2 karakter (issue #2109).
 - Ikatan restore kini mengikuti adopsi id chat efektif, jadi PIN dan owner dari cadangan ber-chat @username tidak lagi gugur senyap saat disimpan (issue #2108).
 
 ## [1.6.704] - 2026-11-13

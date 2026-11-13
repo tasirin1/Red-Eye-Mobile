@@ -74,6 +74,16 @@ class CalculatorStateTest {
     }
 
     @Test
+    fun backspaceOnTwoDigitEntryDropsOneDigit() {
+        val h = Harness()
+        // Ambang panjang backspace (issue #2109): entri
+        // 2 karakter terhapus satu digit lewat jalur
+        // umum, bukan dikosongkan cabang pendek.
+        h.run("5", "5", "\u232b")
+        assertEquals("5", h.state.currentNumber)
+    }
+
+    @Test
     fun toggleSignAfterPercentNegatesEntryOnce() {
         val h = Harness()
         // Ubah tanda tepat satu kali pada entri persen
