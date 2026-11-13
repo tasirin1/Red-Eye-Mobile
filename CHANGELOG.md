@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.700] - 2026-11-13
+
 ### Fixed
 
 - Uji baru mengunci urutan gerbang backspace sesudah persen pada hasil: backspace tidak menghapus entri hasil persen (issue #2098).
