@@ -39,9 +39,44 @@ class NumberHistorySearch<T>(
         if (exactMatched.isNotEmpty()) return NumberHistoryResult(exactMatched.take(safeLimit), truncated = exactRows.size > safeLimit)
         if (norm.length < 10) return NumberHistoryResult(emptyList())
         val fuzzy = com.redeye.parentalmonitor.utils.PhoneNumbers.fuzzyLikePattern(norm)
-        val rows = query("${numberColumn} LIKE ? ESCAPE '\\' AND ${dateColumn} <= ?", arrayOf(fuzzy, now.toString()), "${dateColumn} DESC, ${idColumn} DESC", safeLimit + 1)
-        val matched = filterByNumber(rows, norm, wantAlt)
-        if (matched.isNotEmpty()) return NumberHistoryResult(matched.take(safeLimit), truncated = rows.size > safeLimit)
+        // Bendera terpotong jalur fuzzy dihitung dari
+        // kecocokan sesudah saring, bukan baris LIKE
+        // mentah (issue #2113): baris pengganggu bisa
+        // lolos LIKE tetapi gugur saring, jadi sonde
+        // limit+1 mentah bisa menyalakan bendera palsu
+        // sekaligus menyembunyikan kecocokan di luar
+        // sonde. Pindai dilanjutkan berhalaman keyset
+        // sampai kecocokan ke-(limit+1) terbukti atau
+        // baris LIKE habis; plafon 1.000 baris LIKE
+        // (pola plafon halaman #1931) -- yang tak
+        // terbukti habis dinyatakan terpotong.
+        val fuzzyMatched = ArrayList<T>()
+        var fuzzyUpperDate = now
+        var fuzzyUpperId = Long.MAX_VALUE
+        var fuzzyComplete = false
+        var fuzzyScanned = 0
+        var fuzzyPageLimit = safeLimit + 1
+        while (true) {
+            val page = query("${numberColumn} LIKE ? ESCAPE '\\' AND ${dateColumn} <= ? AND (${dateColumn} < ? OR (${dateColumn} = ? AND ${idColumn} < ?))", arrayOf(fuzzy, now.toString(), fuzzyUpperDate.toString(), fuzzyUpperDate.toString(), fuzzyUpperId.toString()), "${dateColumn} DESC, ${idColumn} DESC", fuzzyPageLimit)
+            if (page.isEmpty()) {
+                fuzzyComplete = true
+                break
+            }
+            fuzzyScanned += page.size
+            fuzzyMatched.addAll(filterByNumber(page, norm, wantAlt))
+            if (fuzzyMatched.size > safeLimit) return NumberHistoryResult(fuzzyMatched.take(safeLimit), truncated = true)
+            if (page.size < fuzzyPageLimit) {
+                fuzzyComplete = true
+                break
+            }
+            if (fuzzyScanned >= 1000) break
+            val oldest = page.last()
+            if (dateOf(oldest) > fuzzyUpperDate || (dateOf(oldest) == fuzzyUpperDate && idOf(oldest) >= fuzzyUpperId)) break
+            fuzzyUpperDate = dateOf(oldest)
+            fuzzyUpperId = idOf(oldest)
+            fuzzyPageLimit = 500
+        }
+        if (fuzzyMatched.isNotEmpty()) return NumberHistoryResult(fuzzyMatched.take(safeLimit), truncated = !fuzzyComplete)
         val cutoff = now - 365L * 24 * 60 * 60_000L
         var upperDate = now
         var upperId = Long.MAX_VALUE

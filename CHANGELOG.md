@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Bendera terpotong jalur fuzzy pencarian riwayat nomor kini dihitung dari kecocokan sesudah saring lewat pindai LIKE berhalaman keyset, jadi baris pengganggu yang lolos LIKE tidak lagi menyalakan label terpotong palsu atau menyembunyikan kecocokan di luar sonde (issue #2113).
 - Konsumsi restore tertahan oleh pemeriksa startup kini diklaim atomik di bawah restoreLock, jadi /restore batal tepat di tenggat tidak lagi dijawab berhasil atau tidak ada sesi padahal restore tetap diterapkan (issue #2112).
 - Drain persist kini menulis snapshot antrean sebelum penghitung drop, jadi kematian proses di antara keduanya tidak lagi membuat batch kedaluwarsa/eviksi yang sama terhitung dua kali (issue #2111).
 

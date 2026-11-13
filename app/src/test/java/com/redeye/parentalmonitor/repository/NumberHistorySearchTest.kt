@@ -43,7 +43,17 @@ class NumberHistorySearchTest {
                     // mutan produksi yang membuang batas
                     // itu terlihat oleh uji.
                     val batas = if (sel.contains("<= ?")) args?.getOrNull(1)?.toLongOrNull() ?: Long.MAX_VALUE else Long.MAX_VALUE
-                    data.filter { subsekuens(it.nomor.filter { c -> c.isDigit() }, digitPola) && it.tanggal <= batas }
+                    var hasilLike = data.filter { subsekuens(it.nomor.filter { c -> c.isDigit() }, digitPola) && it.tanggal <= batas }
+                    // Batas atas keyset kelanjutan fuzzy
+                    // (issue #2113): seleksi produksi
+                    // membawa pasangan (tanggal, id) pada
+                    // argumen 2 dan 4.
+                    if (sel.contains("< ?")) {
+                        val upperDate = args?.getOrNull(2)?.toLongOrNull() ?: Long.MAX_VALUE
+                        val upperId = args?.getOrNull(4)?.toLongOrNull() ?: Long.MAX_VALUE
+                        hasilLike = hasilLike.filter { it.tanggal < upperDate || (it.tanggal == upperDate && it.id < upperId) }
+                    }
+                    hasilLike
                         .sortedWith(compareByDescending<Baris> { it.tanggal }.thenByDescending { it.id })
                         .take(limit)
                 }
@@ -257,5 +267,68 @@ class NumberHistorySearchTest {
         val hasil = pencarian(kueri).search("081234567890")
         assertTrue(hasil.items.isEmpty())
         assertFalse(hasil.truncated)
+    }
+
+    @Test
+    fun fuzzyPenggangguLikeTidakMembuatTerpotongPalsu() {
+        // Regresi #2113: dua baris pengganggu lolos LIKE
+        // sebagai subsekuens tetapi gugur saring nomor;
+        // dua kecocokan sejati mengisi sisa sonde
+        // limit+1. Bendera lama (jumlah baris LIKE
+        // mentah) menyala palsu padahal seluruh
+        // kecocokan tampil.
+        val data = listOf(
+            Baris("081234567890999", kini - 1_000, 4),
+            Baris("081234567890999", kini - 2_000, 3),
+            Baris("99081234567890", kini - 3_000, 2),
+            Baris("99081234567890", kini - 4_000, 1)
+        )
+        val kueri = KueriPalsu(data)
+        val hasil = pencarian(kueri).search("081234567890", limit = 3)
+        assertEquals(2, hasil.items.size)
+        assertFalse(hasil.truncated)
+        assertEquals(listOf("persis", "fuzzy", "fuzzy"), kueri.panggilan)
+    }
+
+    @Test
+    fun fuzzyPenggangguTidakMenyembunyikanKecocokanDiLuarSonde() {
+        // Pasangan #2113: kecocokan ketiga berada di
+        // luar sonde limit+1 baris LIKE karena dua
+        // pengganggu mengisi kepalanya. Kelanjutan
+        // keyset wajib menemukannya: hasil tepat limit
+        // yang tuntas adalah utuh, bukan terpotong --
+        // dan itemnya tidak boleh berhenti di dua.
+        val data = listOf(
+            Baris("081234567890999", kini - 1_000, 9),
+            Baris("081234567890999", kini - 2_000, 8),
+            Baris("99081234567890", kini - 3_000, 7),
+            Baris("99081234567890", kini - 4_000, 6),
+            Baris("99081234567890", kini - 5_000, 5)
+        )
+        val kueri = KueriPalsu(data)
+        val hasil = pencarian(kueri).search("081234567890", limit = 3)
+        assertEquals(3, hasil.items.size)
+        assertFalse(hasil.truncated)
+        assertEquals(listOf("persis", "fuzzy", "fuzzy"), kueri.panggilan)
+    }
+
+    @Test
+    fun fuzzyTerpotongTerbuktiOlehKecocokanKeempat() {
+        // Arah sebaliknya #2113: kecocokan keempat di
+        // luar sonde memang membuktikan terpotong,
+        // walau sonde pertama hanya memuat dua
+        // kecocokan di antara dua pengganggu.
+        val data = listOf(
+            Baris("081234567890999", kini - 1_000, 10),
+            Baris("081234567890999", kini - 2_000, 9),
+            Baris("99081234567890", kini - 3_000, 8),
+            Baris("99081234567890", kini - 4_000, 7),
+            Baris("99081234567890", kini - 5_000, 6),
+            Baris("99081234567890", kini - 6_000, 5)
+        )
+        val kueri = KueriPalsu(data)
+        val hasil = pencarian(kueri).search("081234567890", limit = 3)
+        assertEquals(3, hasil.items.size)
+        assertTrue(hasil.truncated)
     }
 }
