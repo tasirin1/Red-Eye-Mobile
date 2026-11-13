@@ -37,7 +37,13 @@ class NumberHistorySearchTest {
                 sel.contains("LIKE") -> {
                     panggilan.add("fuzzy")
                     val digitPola = (args?.getOrNull(0) ?: "").filter { it.isDigit() }
-                    data.filter { subsekuens(it.nomor.filter { c -> c.isDigit() }, digitPola) }
+                    // Batas tanggal hanya berlaku bila
+                    // seleksi produksi memintanya (issue
+                    // #2080): palsu meniru basis data, jadi
+                    // mutan produksi yang membuang batas
+                    // itu terlihat oleh uji.
+                    val batas = if (sel.contains("<= ?")) args?.getOrNull(1)?.toLongOrNull() ?: Long.MAX_VALUE else Long.MAX_VALUE
+                    data.filter { subsekuens(it.nomor.filter { c -> c.isDigit() }, digitPola) && it.tanggal <= batas }
                         .sortedWith(compareByDescending<Baris> { it.tanggal }.thenByDescending { it.id })
                         .take(limit)
                 }
@@ -53,8 +59,15 @@ class NumberHistorySearchTest {
                 }
                 sel.contains(" OR ") -> {
                     panggilan.add("persis")
-                    val varian = (args ?: emptyArray()).dropLast(1).toSet()
-                    data.filter { it.nomor in varian }
+                    // Batas tanggal hanya berlaku bila
+                    // seleksi produksi memintanya (issue
+                    // #2080): argumen terakhir adalah cap
+                    // kini hanya bila batas itu ada.
+                    val adaBatas = sel.contains("<= ?")
+                    val semua = (args ?: emptyArray()).toList()
+                    val varian = (if (adaBatas) semua.dropLast(1) else semua).toSet()
+                    val batas = if (adaBatas) semua.lastOrNull()?.toLongOrNull() ?: Long.MAX_VALUE else Long.MAX_VALUE
+                    data.filter { it.nomor in varian && it.tanggal <= batas }
                         .sortedWith(compareByDescending<Baris> { it.tanggal }.thenByDescending { it.id })
                         .take(limit)
                 }
@@ -216,5 +229,33 @@ class NumberHistorySearchTest {
         assertEquals(1, hasil.items.size)
         assertTrue(hasil.truncated)
         assertEquals(listOf("persis", "fuzzy", "halaman", "halaman"), kueri.panggilan)
+    }
+    @Test
+    fun persisMengabaikanBarisMasaDepan() {
+        // Batas tanggal jalur persis (issue #2080):
+        // baris bertanggal sesudah kini tak boleh
+        // kembali dari kueri persis.
+        val data = listOf(
+            Baris("081234567890", kini - 1_000, 1),
+            Baris("081234567890", kini + 100_000, 2)
+        )
+        val kueri = KueriPalsu(data)
+        val hasil = pencarian(kueri).search("081234567890")
+        assertEquals(1, hasil.items.size)
+        assertEquals(1L, hasil.items[0].id)
+    }
+
+    @Test
+    fun fuzzyMengabaikanBarisMasaDepan() {
+        // Pasangan jalur fuzzy (issue #2080): baris
+        // berawalan asing bertanggal masa depan
+        // tersaring oleh batas tanggal fuzzy, dan
+        // pindai halaman pun tak mengembalikannya
+        // (batas atas awalnya adalah kini).
+        val data = listOf(Baris("99081234567890", kini + 100_000, 1))
+        val kueri = KueriPalsu(data)
+        val hasil = pencarian(kueri).search("081234567890")
+        assertTrue(hasil.items.isEmpty())
+        assertFalse(hasil.truncated)
     }
 }
