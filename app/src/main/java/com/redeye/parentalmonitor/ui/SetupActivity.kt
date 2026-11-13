@@ -1150,6 +1150,7 @@ class SetupActivity : AppCompatActivity() {
                     // bukan-anggota, jaringan) seperti
                     // jalur Tes, bukan runtuh menjadi
                     // toast format chat ID.
+                    samakanIkatanRestore(token, chatId, outcome.effectiveChatId)
                     chatId = outcome.effectiveChatId
                 }
             }
@@ -1273,6 +1274,22 @@ class SetupActivity : AppCompatActivity() {
 
     private fun restoreBindingIntact(token: String, chatId: String): Boolean {
         return pendingRestoreToken.isNotEmpty() && token == pendingRestoreToken && chatId == pendingRestoreChatId
+    }
+
+    private fun samakanIkatanRestore(token: String, chatMentah: String, chatEfektif: String) {
+        // Adopsi id efektif mematahkan ikatan restore
+        // untuk cadangan ber-chat @username (issue
+        // #2108): pendingRestoreChatId memegang string
+        // impor apa adanya, sedangkan restoreAccessPin
+        // dan restoreOwnerOverride dipanggil dengan id
+        // numerik hasil resolusi, jadi kesamaan persis
+        // di restoreBindingIntact tak pernah terpenuhi
+        // dan PIN cadangan gugur senyap ke PIN lama.
+        // Bila ikatan utuh terhadap chat mentah, ikuti
+        // identitasnya ke id efektif sebelum dinilai.
+        if (chatEfektif != chatMentah && restoreBindingIntact(token, chatMentah)) {
+            pendingRestoreChatId = chatEfektif
+        }
     }
 
     private fun restoreOwnerOverride(token: String, chatId: String): Long? {
@@ -1850,6 +1867,7 @@ class SetupActivity : AppCompatActivity() {
                         if (namaBot.isNotEmpty()) {
                             Toast.makeText(this@SetupActivity, getString(R.string.setup_test_connected_as, namaBot), Toast.LENGTH_LONG).show()
                         }
+                        samakanIkatanRestore(token, chatId, outcome.effectiveChatId)
                         confirmSaveAfterTest(token, outcome.effectiveChatId, myTest, syncInterval, cameraInterval, if (rawAccessPin == STORED_MASK) restoreAccessPin(token, outcome.effectiveChatId, storedAccessPin) else rawAccessPin)
                     }
                 }
