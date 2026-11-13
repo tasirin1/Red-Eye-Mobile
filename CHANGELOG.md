@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Gerbang rahasia kalkulator kini terkunci terhadap pelonggaran kecocokan: kode dengan digit tambahan di depan atau di belakang tidak membuka Setup (issue #2093).
 - Perilaku digit sesudah hasil berplafon penuh kini terkunci uji: angka baru memulai entri baru, bukan membeku di hasil 12 digit (issue #2092).
 - Mengganti PIN akses lewat Simpan kini ikut memutar kode pasangan: tautan pasangan lama tidak lagi bisa menyelesaikan pairing tanpa PIN baru, walau token dan chat ID tidak berubah (issue #2091).
 - Prune kedaluwarsa antrean selama pemulihan penyimpanan kini ditulis sinkron paksa, sehingga catatan yang dikecualikan dari rollback hanya bertumpu pada tulisan yang terbukti tercakram dan pesan yang sama tidak tercatat dua kali (issue #2090).

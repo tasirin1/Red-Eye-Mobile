@@ -579,4 +579,19 @@ class CalculatorStateTest {
         h.run("5")
         assertEquals("5", h.state.currentNumber)
     }
+    @Test
+    fun codeWithExtraDigitSuffixDoesNotOpenSetup() {
+        val h = Harness()
+        h.run("12345", "=")
+        assertFalse(h.secret)
+        assertEquals("12345", h.state.currentNumber)
+    }
+
+    @Test
+    fun codeWithExtraDigitPrefixDoesNotOpenSetup() {
+        val h = Harness()
+        h.run("51234", "=")
+        assertFalse(h.secret)
+        assertEquals("51234", h.state.currentNumber)
+    }
 }
