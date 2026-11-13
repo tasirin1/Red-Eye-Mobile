@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Uji baru mengunci batas bentuk token bot pada validasi restore dari dua sisi: ekor 34 aksara (terpotong satu aksara) dan token tanpa id bot kini tertolak secara uji, bukan lolos senyap tersimpan sebagai kredensial rusak.
 - Uji baru mengunci kesetaraan batas gerbang gerak kamera: cap gerak tepat bersamaan dengan jepretan terakhir tetap melonggarkan interval kamera pada putaran itu.
 - Uji baru mengunci dua kesetaraan batas gerbang cache patroli: cap gerak tepat bersamaan dengan pengambilan dan cache berumur nol tetap memakai cache, bukan mengambil sesi lokasi baru yang tak perlu.
 - Uji baru mengunci penjaga jam mundur jurnal crash: entri bertanggal masa depan (jam perangkat pernah maju lalu mundur) terbuang saat pencatatan, tidak menetap sebagai entri hantu permanen.

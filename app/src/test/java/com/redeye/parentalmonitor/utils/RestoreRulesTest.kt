@@ -48,4 +48,10 @@ class RestoreRulesTest {
         assertEquals(RestoreRules.OwnerOutcome.KEPT, RestoreRules.ownerOutcome(0L, 7L, 7L))
         assertEquals(RestoreRules.OwnerOutcome.KEPT, RestoreRules.ownerOutcome(0L, 0L, 0L))
     }
+
+    @Test
+    fun tokenEkor34DanIdBotKosongDitolak() {
+        assertFalse(RestoreRules.isValidToken("1:" + "A".repeat(34)))
+        assertFalse(RestoreRules.isValidToken(":" + "A".repeat(35)))
+    }
 }
