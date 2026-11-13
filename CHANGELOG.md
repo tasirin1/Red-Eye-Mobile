@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Uji baru mengunci penjaga owner cadangan restore: chat id yang terurai ke nol ("0000") memakai owner lama, bukan menghasilkan target owner 0 yang membuat perintah owner tak dikenali siapa pun sesudah restore.
 - Uji baru mengunci batas panjang username pada validasi restore dari dua sisi: username 4 dan 33 aksara (di luar aturan panjang Telegram 5-32) kini tertolak secara uji.
 - Uji baru mengunci batas bentuk token bot pada validasi restore dari dua sisi: ekor 34 aksara (terpotong satu aksara) dan token tanpa id bot kini tertolak secara uji, bukan lolos senyap tersimpan sebagai kredensial rusak.
 - Uji baru mengunci kesetaraan batas gerbang gerak kamera: cap gerak tepat bersamaan dengan jepretan terakhir tetap melonggarkan interval kamera pada putaran itu.

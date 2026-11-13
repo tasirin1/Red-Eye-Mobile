@@ -60,4 +60,9 @@ class RestoreRulesTest {
         assertFalse(RestoreRules.isValidChatId("@aaaa"))
         assertFalse(RestoreRules.isValidChatId("@" + "a".repeat(33)))
     }
+
+    @Test
+    fun ownerFallbackChatNolNolMemakaiOwnerLama() {
+        assertEquals(7L, RestoreRules.ownerFallback(0L, "0000", 7L))
+    }
 }
