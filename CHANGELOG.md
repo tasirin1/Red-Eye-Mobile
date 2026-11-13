@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Uji persen pada hasil kini turut menegaskan baris riwayat ekspresi ikut dibersihkan, menutup celah mutan yang lolos dari seluruh uji (issue #2097).
 - Catatan prune kedaluwarsa selama pemulihan kini ikut tercakram seketika lewat gabungan ke kunci penghitung di cakram, sehingga kematian proses di tengah pemulihan tidak lagi menghilangkan catatan yang antreannya sudah ter-prune (issue #2096).
 
 ## [1.6.699] - 2026-11-13

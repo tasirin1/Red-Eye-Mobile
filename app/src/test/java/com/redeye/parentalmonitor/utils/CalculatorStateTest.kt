@@ -76,7 +76,12 @@ class CalculatorStateTest {
     @Test
     fun percentOnCalculatedResultDoesNotOpenSetup() {
         val h = Harness()
-        h.run("123000", "+", "400", "=", "%", "=")
+        h.run("123000", "+", "400", "=", "%")
+        // Persen pada hasil membersihkan baris riwayat
+        // ekspresi: mutan yang membuang pembersihan itu
+        // menampilkan lagi ekspresi lama di atas hasil.
+        assertEquals("", h.state.lastExpression)
+        h.run("=")
         assertFalse(h.secret)
         assertEquals("1234", h.state.currentNumber)
         assertTrue(h.state.justCalculated)
