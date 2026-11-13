@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.699] - 2026-11-13
+
 ### Fixed
 
 - Tekanan operator pada keadaan kalkulator kosong kini terkunci uji: tidak ada operator menggantung yang meracuni urutan hitung berikutnya (issue #2095).
