@@ -93,4 +93,13 @@ class CrashLoopGateTest {
         val hasil = CrashLoopGate.catat(listOf(t + 25 * 3_600_000L), t)
         assertEquals(listOf(t), hasil)
     }
+
+    @Test
+    fun catatJurnalPenuhMasaDepanMembuangCapBaru() {
+        val t = 1_700_000_000_000L
+        val menit = 60_000L
+        val jurnal = (1..50).map { t + it * menit }
+        val hasil = CrashLoopGate.catat(jurnal, t)
+        assertEquals(jurnal, hasil)
+    }
 }

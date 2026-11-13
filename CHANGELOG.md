@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Uji baru mengunci urutan sortir pencatatan jurnal crash: jurnal yang sudah penuh 50 entri bercap masa depan (jam perangkat maju lalu mundur) membuang cap baru saat dicatat, bukan entri masa depan tertua — tanpa kunci ini refactor yang menghilangkan sortir bisa membuat mode aman gagal terpicu untuk gugus crash yang sah.
 - Jalur auth yang penanda galat kredensialnya gagal dipasang (kredensial berubah di tengah jalan) kini tetap mencatat dan melaporkan pesan antrean yang sudah dibuang karena mentok percobaan, tidak lagi hilang diam-diam dari buku gugur dan kabar ke owner.
 
 ## [1.6.708] - 2026-11-13
