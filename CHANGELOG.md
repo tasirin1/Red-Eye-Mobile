@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.698] - 2026-11-13
+
 ### Fixed
 
 - Variabel accessPin mati di alur Tes koneksi dihapus: nilainya dihitung dari chat ID mentah dan tidak pernah dipakai, sementara jalur sukses menghitung nilai yang benar dari id efektif hasil verifikasi (issue #2088).
