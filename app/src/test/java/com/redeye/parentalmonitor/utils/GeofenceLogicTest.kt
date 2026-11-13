@@ -149,4 +149,9 @@ class GeofenceLogicTest {
     fun judgedOutsideJarakPersisRadiusBukanDiLuar() {
         assertFalse(GeofenceLogic.judgedOutside(50f, 50, 10f))
     }
+
+    @Test
+    fun hysteresisRadiusBesarMemakaiFaktorNolKomaLimaBelas() {
+        assertTrue(GeofenceLogic.insideWithHysteresis(1, 445f, 400))
+    }
 }

@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Uji baru mengunci faktor margin hysteresis pagar pada radius besar (400 m): margin keluar 15% radius (60 m, di atas lantai 30 m), jadi state tidak mudah berbalik "keluar" hanya oleh jitter GPS di tepi pagar besar.
 - Uji baru mengunci kesetaraan radius penilaian di luar pagar: posisi persis di tepi radius bukan "di luar", jadi alert jam malam/sekolah dan skor kewaspadaan tidak menyala dari posisi batas dalam.
 - Uji baru mengunci kesetaraan radius kabar jemput: posisi persis di tepi radius dengan fix akurat tetap memicu kabar jemput.
 - Uji baru mengunci penjaga owner cadangan restore: chat id yang terurai ke nol ("0000") memakai owner lama, bukan menghasilkan target owner 0 yang membuat perintah owner tak dikenali siapa pun sesudah restore.
