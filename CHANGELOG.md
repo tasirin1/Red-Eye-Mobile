@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Fixed
+
+- Pencarian riwayat nomor tidak lagi menyatakan pindai tuntas saat halaman penuh berakhir tepat di tanggal batas: kecocokan bertanggal sama di halaman berikutnya kini tetap terpindai, atau hasil jujur terpotong bila plafon halaman tercapai (issue #2072).
+
 ## [1.6.696] - 2026-11-13
 
 ### Fixed

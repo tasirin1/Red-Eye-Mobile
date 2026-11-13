@@ -78,10 +78,15 @@ class NumberHistorySearch<T>(
             }
             if (acc.size >= safeLimit) return NumberHistoryResult(acc.take(safeLimit), truncated = true)
             val oldest = page.last()
-            if (dateOf(oldest) <= cutoff) {
-                scanComplete = true
-                break
-            }
+            // Kesetaraan tanggal dengan cutoff TIDAK
+            // menuntaskan pindai (issue #2072): predikat
+            // kueri adalah DATE >= cutoff, jadi baris
+            // lain bertanggal cutoff yang sama dengan id
+            // lebih kecil masih sah dan hanya muncul di
+            // halaman berikutnya lewat batas atas yang
+            // dimajukan di bawah. Dulu kesetaraan itu
+            // dinyatakan tuntas sehingga kecocokan di
+            // tepi cutoff hilang tanpa tanda terpotong.
             if (dateOf(oldest) > upperDate || (dateOf(oldest) == upperDate && idOf(oldest) >= upperId)) break
             upperDate = dateOf(oldest)
             upperId = idOf(oldest)
