@@ -74,6 +74,19 @@ class CalculatorStateTest {
     }
 
     @Test
+    fun toggleSignOnResultNegatesAndRepeatsNegated() {
+        val h = Harness()
+        // Ubah tanda pada keadaan hasil (issue #2106):
+        // hasil dinegasi dan justCalculated dibersihkan,
+        // jadi = berikutnya mengulang pada entri negasi.
+        h.run("1", "+", "=", "\u00b1")
+        assertEquals("-2", h.state.currentNumber)
+        val h2 = Harness()
+        h2.run("1", "+", "2", "=", "\u00b1", "=")
+        assertEquals("-1", h2.state.currentNumber)
+    }
+
+    @Test
     fun clearFromPendingOperatorDropsOperator() {
         val h = Harness()
         // C dari keadaan operator-tertunda menolkan

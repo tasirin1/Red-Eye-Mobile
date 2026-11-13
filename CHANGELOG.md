@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Uji baru mengunci ubah tanda pada keadaan hasil: negasi hasil dan pengulangan pada entri yang dinegasi (issue #2106).
 - Uji baru mengunci reset operator oleh tombol C dari keadaan operator-tertunda (issue #2105).
 - Uji baru mengunci reset previousNumber oleh tombol C dari keadaan operator-tertunda (issue #2104).
 
