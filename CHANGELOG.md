@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.704] - 2026-11-13
+
 ### Fixed
 
 - Uji baru mengunci ubah tanda satu kali pada entri persen (issue #2107).
