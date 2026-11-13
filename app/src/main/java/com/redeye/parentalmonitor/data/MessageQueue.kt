@@ -1150,6 +1150,17 @@ class MessageQueue private constructor(context: Context) {
                 }
                 if (utuh != null) {
                     recovered = utuh
+                    if (!json.isNullOrBlank()) {
+                        // Blob utama rusak total tetapi
+                        // cadangan pulih utuh: kejadian
+                        // korupnya tetap dicatat dengan
+                        // lantai 1 (issue #2101), sejajar
+                        // doktrin lantai cabang tetangga --
+                        // pesan yang hanya ada di generasi
+                        // utama hilang dan jumlah pastinya
+                        // tak diketahui.
+                        catatCorruptSekali(sidik, 1L)
+                    }
                     android.util.Log.w("MessageQueue", "Queue storage corrupt, recovered ${recovered.size} message(s) from backup")
                 } else {
                     val selamatBak = salvagePerElemen(bakJson)

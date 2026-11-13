@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Fixed
+
+- Cabang pemulihan utuh dari cadangan kini mencatat lantai corrupt bila blob utama rusak total, sejajar doktrin lantai cabang tetangganya (issue #2101).
+
 ## [1.6.701] - 2026-11-13
 
 ### Fixed
