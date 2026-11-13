@@ -594,4 +594,10 @@ class CalculatorStateTest {
         assertFalse(h.secret)
         assertEquals("51234", h.state.currentNumber)
     }
+    @Test
+    fun decimalPointStillAppendsAtDigitCap() {
+        val h = Harness()
+        h.run("123456789012.")
+        assertEquals("123456789012.", h.state.currentNumber)
+    }
 }

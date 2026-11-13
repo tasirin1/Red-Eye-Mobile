@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Titik desimal di atas plafon digit kini terkunci uji: titik tetap ditambahkan walau digit sudah penuh (issue #2094).
 - Gerbang rahasia kalkulator kini terkunci terhadap pelonggaran kecocokan: kode dengan digit tambahan di depan atau di belakang tidak membuka Setup (issue #2093).
 - Perilaku digit sesudah hasil berplafon penuh kini terkunci uji: angka baru memulai entri baru, bukan membeku di hasil 12 digit (issue #2092).
 - Mengganti PIN akses lewat Simpan kini ikut memutar kode pasangan: tautan pasangan lama tidak lagi bisa menyelesaikan pairing tanpa PIN baru, walau token dan chat ID tidak berubah (issue #2091).
