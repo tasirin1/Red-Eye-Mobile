@@ -3,6 +3,7 @@
 
 ### Fixed
 ## [1.6.697] - 2026-11-13
+- Cabang tukar operator kalkulator dari entri minus tunggal kini terkunci uji: operator bertukar dan tanda operand kedua tetap hidup sampai hasil (issue #2087).
 - Plafon 12 digit kalkulator kini terkunci juga untuk entri negatif dan desimal: yang dihitung hanya digit, bukan tanda minus atau titik (issue #2086).
 - Gerbang kedaluwarsa luar pada penanganan perintah kini menghormati kredit adopsi yang sama dengan handler dalam: perintah yang lama menunggu adopsi dinilai dari selesainya adopsi, bukan cap kirim asal, sehingga tidak tertolak palsu di lapisan terakhir (issue #2085).
 - Reset penyimpanan antrean kini menaikkan nomor generasi seperti pengosongan antrean, sehingga gerbang anti catatan hantu di pekerja pengirim mengenali pergantian era buku besar dan menolak catatan dari era sebelum reset (issue #2084).

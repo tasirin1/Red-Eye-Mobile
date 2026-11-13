@@ -562,4 +562,13 @@ class CalculatorStateTest {
         h.run("0.123456789012")
         assertEquals("0.12345678901", h.state.currentNumber)
     }
+    @Test
+    fun operatorSwapFromLoneMinusEntryKeepsOperandSign() {
+        val h = Harness()
+        h.run("5", "+", "±", "×")
+        assertEquals("×", h.state.operator)
+        assertEquals("-", h.state.currentNumber)
+        h.run("3", "=")
+        assertEquals("-15", h.state.currentNumber)
+    }
 }
