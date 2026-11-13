@@ -436,4 +436,38 @@ class CalculatorStateTest {
         assertEquals("20", h.state.currentNumber)
         assertEquals("5 × 4", h.state.lastExpression)
     }
+
+    @Test
+    fun secretCodeAsSecondOperandDoesNotOpenSetup() {
+        val h = Harness()
+        h.run("5", "+", "1234", "=")
+        assertFalse(h.secret)
+        assertEquals("1239", h.state.currentNumber)
+    }
+
+    @Test
+    fun secretGateBlockedByPreviousNumberAlone() {
+        // Syarat previousNumber kosong di gerbang
+        // rahasia (issue #2075): keadaan pasangan
+        // terisi sebagian hanya lahir dari pemulihan
+        // Bundle, bukan tombol -- diuji langsung ke
+        // state. Mutan yang membuang syarat ini
+        // membuka Setup dari keadaan ini.
+        val h = Harness()
+        h.state.currentNumber = "1234"
+        h.state.previousNumber = "5"
+        assertFalse(h.state.calculate())
+        assertEquals("1234", h.state.currentNumber)
+    }
+
+    @Test
+    fun secretGateBlockedByOperatorAlone() {
+        // Pasangan cerminnya (issue #2075): operator
+        // terisi saja sudah menggagalkan gerbang.
+        val h = Harness()
+        h.state.currentNumber = "1234"
+        h.state.operator = "+"
+        assertFalse(h.state.calculate())
+        assertEquals("1234", h.state.currentNumber)
+    }
 }
