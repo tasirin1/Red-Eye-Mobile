@@ -2859,12 +2859,40 @@ class MonitoringService : Service() {
             sendToTelegram("ℹ️ Tidak ada sesi owner yang aktif. Kirim /login <PIN> untuk masuk.")
             return
         }
-        val cleared = try { preferencesManager.clearOwnerSync() } catch (_: Exception) { false }
+        // Hapus sesi owner, batalkan restore tertunda, dan
+        // naikkan epoch dalam SATU ruas restoreLock
+        // (issue #2115): pasangan #2114 menutup sisi
+        // terapkan (gerbang + simpan satu ruas), tetapi di
+        // sisi logout penghapusan owner dulu berjalan di
+        // luar kunci dan epoch baru naik di ruas terpisah
+        // belakangan — terapkan yang ruas akhirnya mulai
+        // di celah antar-ruas itu lolos gerbang epoch dan
+        // commit-nya menghidupkan lagi sesi owner sesudah
+        // logout menjawab sukses. Epoch hanya naik bila
+        // penghapusan berhasil; gagal = logout menjawab
+        // gagal persis seperti sebelumnya, tanpa efek lain.
+        val cleared = synchronized(restoreLock) {
+            val sukses = try { preferencesManager.clearOwnerSync() } catch (_: Exception) { false }
+            if (sukses) {
+                pendingRestore = null
+                ownerEpoch++
+                try { preferencesManager.restoreEpochPersisted = ownerEpoch.toLong() } catch (_: Exception) { }
+                // Catatan restore persisten ikut dihapus
+                // (issue #1721): pembatalan restore lewat
+                // logout tak boleh bergantung pada satu
+                // commit epoch yang hasilnya dibuang setter
+                // — jalur saudara (/restore batal dan
+                // clearCredentialCoreSync) menghapus catatan
+                // ini secara eksplisit; logout kini sama.
+                try { preferencesManager.restoreConfirmedJson = "" } catch (_: Exception) { }
+                try { preferencesManager.restoreConfirmedDeadline = 0L } catch (_: Exception) { }
+            }
+            sukses
+        }
         if (!cleared) {
             sendToTelegram("⚠️ Logout gagal. Coba lagi.")
             return
         }
-        synchronized(restoreLock) { pendingRestore = null }
         // Reset state input di bawah kunci yang sama dengan
         // semua penulis/pembaca lain (issue #996): penulisan
         // telanjang bisa berlomba dengan armInput/konsumsi
@@ -2875,19 +2903,6 @@ class MonitoringService : Service() {
             pendingInputChat = ""
         }
         clearPendingPromptMarker()
-        synchronized(restoreLock) {
-            ownerEpoch++
-            try { preferencesManager.restoreEpochPersisted = ownerEpoch.toLong() } catch (_: Exception) { }
-            // Catatan restore persisten ikut dihapus
-            // (issue #1721): pembatalan restore lewat
-            // logout tak boleh bergantung pada satu
-            // commit epoch yang hasilnya dibuang setter
-            // — jalur saudara (/restore batal dan
-            // clearCredentialCoreSync) menghapus catatan
-            // ini secara eksplisit; logout kini sama.
-            try { preferencesManager.restoreConfirmedJson = "" } catch (_: Exception) { }
-            try { preferencesManager.restoreConfirmedDeadline = 0L } catch (_: Exception) { }
-        }
         val queueCleared = try { messageQueue.clearQueue() } catch (_: Exception) { false }
         try { NotificationForwarderService.clearHistory() } catch (_: Exception) {
         }

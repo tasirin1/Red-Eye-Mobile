@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Fixed
+
+- Logout kini menghapus sesi owner, membatalkan restore tertunda, dan menaikkan epoch restore dalam satu ruas kunci yang sama: terapkan restore yang sedang berjalan tidak lagi bisa lolos gerbang epoch di celah antar-langkah logout lalu menghidupkan lagi sesi owner sesudah logout menjawab sukses (pasangan sisi terapkannya sudah ditutup lebih dulu).
+
 ## [1.6.707] - 2026-11-13
 
 ### Fixed
