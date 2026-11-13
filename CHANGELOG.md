@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.705] - 2026-11-13
+
 ### Fixed
 
 - Uji baru mengunci backspace pada entri negatif: tanda minus bertahan sesudah digit terakhir terhapus (issue #2110).
