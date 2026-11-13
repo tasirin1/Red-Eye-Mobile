@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.706] - 2026-11-13
+
 ### Fixed
 
 - Bendera terpotong jalur fuzzy pencarian riwayat nomor kini dihitung dari kecocokan sesudah saring lewat pindai LIKE berhalaman keyset, jadi baris pengganggu yang lolos LIKE tidak lagi menyalakan label terpotong palsu atau menyembunyikan kecocokan di luar sonde (issue #2113).
