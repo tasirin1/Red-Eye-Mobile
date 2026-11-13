@@ -37,6 +37,18 @@ class MessageQueue private constructor(context: Context) {
     // diterima desain volatile).
     private var dropWipePendingVolatile = false
 
+    // Sidik pasangan nilai antrean rusak yang SUDAH
+    // dicatat ke kategori corrupt (issue #2082): selama
+    // isi tersimpan persis sama dan belum tergantikan
+    // tulisan sah, bacaan ulang atas kerusakan fisik
+    // yang sama tidak mencatat lagi -- tanpa penanda
+    // ini, tulis perbaikan yang terus gagal membuat
+    // satu kerusakan terhitung +1 pada setiap siklus
+    // pulih. Sidik gugur pada tulisan snapshot yang
+    // berhasil dan pada bacaan yang sehat.
+    @Volatile
+    private var corruptSidikTerakhir: String? = null
+
     private var persistedOverflowDrops = 0L
     private var persistedExpiredDrops = 0L
     private var persistedPriorityDrops = 0L
@@ -994,7 +1006,7 @@ class MessageQueue private constructor(context: Context) {
             if (!bakJson.isNullOrBlank()) {
                 json = bakJson
             } else {
-                try { noteCorruptDrops(1L) } catch (_: Exception) { }
+                catatCorruptSekali(sidikPasangan(null, bakJson), 1L)
                 // Perbaiki nilai rusak di tempat (issue
                 // #2074): tulis antrean kosong yang sah
                 // menimpa kedua nilai, meniru ujung tangga
@@ -1043,6 +1055,7 @@ class MessageQueue private constructor(context: Context) {
             // corruptDrops dan dilaporkan seperti kategori
             // drop lain; cadangan utuh tetap jalan terakhir.
             val bakJson = try { sharedPreferences?.getString(KEY_QUEUE_BAK, null) } catch (_: Exception) { null }
+            val sidik = sidikPasangan(json, bakJson)
             val selamatUtama = salvagePerElemen(json)
             val recovered: MutableList<QueuedMessage>
             if (selamatUtama != null && (selamatUtama.first.isNotEmpty() || selamatUtama.second > 0)) {
@@ -1074,7 +1087,7 @@ class MessageQueue private constructor(context: Context) {
                     }
                 }
                 if (hilangUtama > 0) {
-                    try { noteCorruptDrops(hilangUtama.toLong()) } catch (_: Exception) { }
+                    catatCorruptSekali(sidik, hilangUtama.toLong())
                 }
                 android.util.Log.w("MessageQueue", "Queue storage corrupt, salvaged ${recovered.size} message(s), lost $hilangUtama")
             } else {
@@ -1092,13 +1105,13 @@ class MessageQueue private constructor(context: Context) {
                     recovered = selamatBak?.first ?: mutableListOf()
                     val hilang = selamatBak?.second ?: 0
                     if (hilang > 0) {
-                        try { noteCorruptDrops(hilang.toLong()) } catch (_: Exception) { }
+                        catatCorruptSekali(sidik, hilang.toLong())
                     } else if (!json.isNullOrBlank() || !bakJson.isNullOrBlank()) {
                         // Kedua blob tak terbaca sama sekali:
                         // jumlah pastinya tak diketahui — catat
                         // 1 sebagai batas bawah agar kejadiannya
                         // tetap terhitung & terlaporkan.
-                        try { noteCorruptDrops(1L) } catch (_: Exception) { }
+                        catatCorruptSekali(sidik, 1L)
                     }
                     android.util.Log.w("MessageQueue", "Queue storage corrupt, salvaged ${recovered.size} message(s) from backup elements, lost $hilang")
                 }
@@ -1150,6 +1163,7 @@ class MessageQueue private constructor(context: Context) {
             } catch (_: Exception) {
             }
         }
+        if (parsedOk) corruptSidikTerakhir = null
         val cutoff = System.currentTimeMillis() - 7 * 24 * 60 * 60_000L
         val fresh = filterFresh(loaded, cutoff).toMutableList()
         if (fresh.size != loaded.size) {
@@ -1311,6 +1325,7 @@ class MessageQueue private constructor(context: Context) {
                 false
             }
             if (saved) {
+                corruptSidikTerakhir = null
                 lastWrittenJson = json
                 lastWrittenIds = snapshot.mapTo(HashSet()) { it.id }
             }
@@ -1519,6 +1534,20 @@ class MessageQueue private constructor(context: Context) {
     // Kategori drop keenam (issue #1520): pesan yang
     // hilang karena data antrean RUSAK — dulu kehilangan
     // ini satu-satunya yang tak dihitung/dilaporkan.
+    private fun sidikPasangan(a: String?, b: String?): String =
+        (a?.length ?: -1).toString() + ":" + (a?.hashCode() ?: 0) + ":" + (b?.length ?: -1) + ":" + (b?.hashCode() ?: 0)
+
+    // Mencatat corrupt hanya bila pasangan nilai rusak
+    // ini belum pernah dicatat (issue #2082).
+    private fun catatCorruptSekali(sidik: String, jumlah: Long) {
+        if (corruptSidikTerakhir == sidik) return
+        try {
+            noteCorruptDrops(jumlah)
+            corruptSidikTerakhir = sidik
+        } catch (_: Exception) {
+        }
+    }
+
     fun noteCorruptDrops(by: Long) {
         if (by <= 0L) return
         synchronized(lock) {

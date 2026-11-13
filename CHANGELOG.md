@@ -1,6 +1,9 @@
 ## [Unreleased]
 
+
+### Fixed
 ## [1.6.697] - 2026-11-13
+- Satu kerusakan antrean yang sama kini tercatat tepat satu kali ke kategori corrupt walau tulis perbaikannya terus gagal: sidik pasangan nilai rusak menahan pencatatan ulang sampai ada tulisan sah atau bacaan sehat (issue #2082).
 
 ### Fixed
 
