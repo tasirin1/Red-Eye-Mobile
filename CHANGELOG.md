@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.697] - 2026-11-13
+
 ### Fixed
 
 - Komentar basi di alur Simpan Setup yang menunjuk blok toast lama yang sudah terhapus kini ditulis ulang agar menunjuk penjaganya sendiri (issue #2081).
