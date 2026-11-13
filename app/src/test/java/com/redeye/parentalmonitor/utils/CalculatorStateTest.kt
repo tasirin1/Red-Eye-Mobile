@@ -571,4 +571,12 @@ class CalculatorStateTest {
         h.run("3", "=")
         assertEquals("-15", h.state.currentNumber)
     }
+    @Test
+    fun digitAfterFullCapResultStartsNewEntry() {
+        val h = Harness()
+        h.run("999999999999", "+", "0", "=")
+        assertEquals("999999999999", h.state.currentNumber)
+        h.run("5")
+        assertEquals("5", h.state.currentNumber)
+    }
 }
