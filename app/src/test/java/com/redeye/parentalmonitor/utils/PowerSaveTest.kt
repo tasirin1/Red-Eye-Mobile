@@ -66,4 +66,10 @@ class PowerSaveTest {
         assertTrue(PowerSave.patrolSlowed(179))
         assertTrue(PowerSave.patrolSlowed(120))
     }
+
+    @Test
+    fun patrolPakaiCacheKesetaraanGerakDanUmurNolDiterima() {
+        assertTrue(PowerSave.patrolPakaiCache(true, 100_000L, 100_000L, 60_000L))
+        assertTrue(PowerSave.patrolPakaiCache(true, 0L, 100L, 0L))
+    }
 }

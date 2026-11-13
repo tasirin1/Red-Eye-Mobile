@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Uji baru mengunci dua kesetaraan batas gerbang cache patroli: cap gerak tepat bersamaan dengan pengambilan dan cache berumur nol tetap memakai cache, bukan mengambil sesi lokasi baru yang tak perlu.
 - Uji baru mengunci penjaga jam mundur jurnal crash: entri bertanggal masa depan (jam perangkat pernah maju lalu mundur) terbuang saat pencatatan, tidak menetap sebagai entri hantu permanen.
 - Uji baru mengunci batas rentang pemicu mode aman: gugus crash berentang tepat 10 menit tetap memicu mode aman sesuai doktrin sumbernya.
 - Uji baru mengunci indeks pivot mode aman CrashLoopGate: rentang dinilai dari crash ketiga terakhir, jadi tiga crash tersebar 19 menit tidak lagi berisiko dinilai gugus rapat pemicu mode aman palsu.
