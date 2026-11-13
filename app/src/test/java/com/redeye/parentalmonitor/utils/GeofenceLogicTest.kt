@@ -139,4 +139,9 @@ class GeofenceLogicTest {
         assertFalse(GeofenceLogic.configured(-6_200_000L, 106_800_000L, -5))
         assertTrue(GeofenceLogic.configured(-6_200_000L, 106_800_000L, 200))
     }
+
+    @Test
+    fun jemputHitJarakPersisRadiusTerpicu() {
+        assertTrue(GeofenceLogic.jemputHit(50, 50f, 10f))
+    }
 }
