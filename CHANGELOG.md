@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.711] - 2026-11-14
+
 ### Fixed
 
 - Uji baru mengunci sisi luar jendela picu mode aman: gugus crash berentang tepat 10 menit lebih 1 milidetik tidak memicu mode aman, melengkapi kunci sisi tepat 10 menit sebelumnya.
