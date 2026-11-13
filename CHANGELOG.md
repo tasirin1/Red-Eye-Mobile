@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.709] - 2026-11-13
+
 ### Fixed
 
 - Uji baru mengunci urutan sortir pencatatan jurnal crash: jurnal yang sudah penuh 50 entri bercap masa depan (jam perangkat maju lalu mundur) membuang cap baru saat dicatat, bukan entri masa depan tertua — tanpa kunci ini refactor yang menghilangkan sortir bisa membuat mode aman gagal terpicu untuk gugus crash yang sah.
