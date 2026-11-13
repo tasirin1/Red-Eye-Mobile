@@ -74,6 +74,17 @@ class CalculatorStateTest {
     }
 
     @Test
+    fun clearFromPendingOperatorDropsPrevious() {
+        val h = Harness()
+        // C dari keadaan operator-tertunda menolkan
+        // previousNumber (issue #2104): tanpa reset itu
+        // operand basi "5" diadopsi operator berikutnya
+        // dan hasil akhirnya 8, bukan 3.
+        h.run("5", "+", "C", "+", "3", "=")
+        assertEquals("3", h.state.currentNumber)
+    }
+
+    @Test
     fun percentOnZeroResultLocksRepeatState() {
         val h = Harness()
         // Persen pada hasil nol tetap memasang

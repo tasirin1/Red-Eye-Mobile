@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Fixed
+
+- Uji baru mengunci reset previousNumber oleh tombol C dari keadaan operator-tertunda (issue #2104).
+
 ## [1.6.703] - 2026-11-13
 
 ### Fixed
