@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Catatan corrupt dari bacaan antrean yang gagal total tidak lagi terhapus oleh rollback pemulihan penyimpanan: kategori corrupt dikecualikan dari pemulihan potret karena ia merekam fakta keadaan nilai tersimpan (issue #2073).
 - Pencarian riwayat nomor tidak lagi menyatakan pindai tuntas saat halaman penuh berakhir tepat di tanggal batas: kecocokan bertanggal sama di halaman berikutnya kini tetap terpindai, atau hasil jujur terpotong bila plafon halaman tercapai (issue #2072).
 
 ## [1.6.696] - 2026-11-13

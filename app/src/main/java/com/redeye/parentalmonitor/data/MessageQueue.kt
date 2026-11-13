@@ -222,8 +222,17 @@ class MessageQueue private constructor(context: Context) {
                 priorityDrops.set(previousPriorityDrops)
                 exhaustedDrops.set(previousExhaustedDrops)
                 rejectedDrops.set(previousRejectedDrops)
-                corruptDrops.set(previousCorruptDrops)
-                dropsDirty = previousDropsDirty
+                // Kategori corrupt dikecualikan dari
+                // rollback (issue #2073): catatannya
+                // merekam fakta keadaan nilai tersimpan
+                // (kedua nilai antrean tak terbaca), yang
+                // tetap benar walau restore ini gagal --
+                // lima kategori lain menggambarkan pesan
+                // tertunda yang memang kembali ke antrean
+                // volatile, jadi rollback-nya utuh.
+                val corruptKini = corruptDrops.get()
+                corruptDrops.set(maxOf(previousCorruptDrops, corruptKini))
+                dropsDirty = previousDropsDirty || corruptKini > previousCorruptDrops
                 volatileQueue.clear()
                 volatileQueue.addAll(pending)
                 sharedPreferences = null
