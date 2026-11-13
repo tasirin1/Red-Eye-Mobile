@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.701] - 2026-11-13
+
 ### Fixed
 
 - Uji pendamping negatif mengunci suku tanda minus pada cek luapan digit pasca-pembulatan formatResult (issue #2100).
