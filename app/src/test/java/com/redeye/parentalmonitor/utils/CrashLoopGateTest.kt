@@ -116,4 +116,20 @@ class CrashLoopGateTest {
         val hasil = CrashLoopGate.catat(listOf(t - CrashLoopGate.SIMPAN_MS - 1), t)
         assertEquals(listOf(t), hasil)
     }
+
+    @Test
+    fun modeAmanCapMasaDepanTidakMelengkapiGugus() {
+        val t = 1_700_000_000_000L
+        val menit = 60_000L
+        val jurnal = listOf(t - 5 * menit, t - menit, t + 3 * menit)
+        assertFalse(CrashLoopGate.modeAman(jurnal, t))
+    }
+
+    @Test
+    fun modeAmanCapMasaDepanJauhTidakMerentangkanGugus() {
+        val t = 1_700_000_000_000L
+        val menit = 60_000L
+        val jurnal = listOf(t - 9 * menit, t - 5 * menit, t - menit, t + 20 * 3_600_000L)
+        assertTrue(CrashLoopGate.modeAman(jurnal, t))
+    }
 }

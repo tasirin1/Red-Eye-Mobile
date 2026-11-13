@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Uji baru mengunci saringan cap masa depan pada penilaian mode aman: cap dari masa depan (jam perangkat maju lalu mundur) diabaikan — tidak bisa melengkapi gugus crash menjadi picu palsu, dan tidak merentangkan gugus rapat menjadi gagal picu.
 - Uji baru mengunci sisi luar batas jendela simpan jurnal crash: entri berumur tepat 24 jam lebih 1 milidetik terbuang saat pencatatan, melengkapi kunci sisi tepat 24 jam sebelumnya.
 
 ## [1.6.710] - 2026-11-14
