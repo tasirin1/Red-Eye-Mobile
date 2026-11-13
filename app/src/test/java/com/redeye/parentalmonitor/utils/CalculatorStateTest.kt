@@ -497,4 +497,23 @@ class CalculatorStateTest {
         h.run("1234567890123")
         assertEquals("123456789012", h.state.currentNumber)
     }
+    @Test
+    fun operatorSwapUsesLatestOperator() {
+        val h = Harness()
+        h.run("5", "+", "×")
+        assertEquals("×", h.state.operator)
+        h.run("3", "=")
+        assertEquals("15", h.state.currentNumber)
+    }
+
+    @Test
+    fun operatorAfterChainedErrorKeepsStateClean() {
+        val h = Harness()
+        h.run("1", "÷", "0", "×")
+        assertEquals("Error", h.state.currentNumber)
+        assertEquals("", h.state.previousNumber)
+        assertEquals("", h.state.operator)
+        h.run("5")
+        assertEquals("5", h.state.currentNumber)
+    }
 }

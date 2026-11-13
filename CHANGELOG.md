@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Cabang tukar operator dan rantai Error pada setOperator kalkulator kini terkunci uji: operator terakhir yang berlaku, dan keadaan tetap bersih sesudah bagi-nol berantai (issue #2077).
 - Empat cabang masukan angka kalkulator yang belum terjangkau uji kini terkunci: digit di atas nol/minus-nol mengganti entri, titik sesudah minus tunggal, dan plafon 12 digit (issue #2076).
 - Uji gerbang rahasia kalkulator kini mencakup kode sebagai operand kedua dan kedua syarat kekosongan pasangan secara langsung, sehingga mutan yang melemahkan gerbang penyamaran tertangkap suite (issue #2075).
 - Nilai antrean yang rusak di kedua salinan kini diperbaiki di tempat dengan tulisan kosong yang sah sesudah dicatat, sehingga bacaan berikutnya tidak menabrak kerusakan yang sama dan mencatat corrupt berulang pada setiap siklus pulih (issue #2074).
