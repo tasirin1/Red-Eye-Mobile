@@ -768,13 +768,6 @@ class MonitoringService : Service() {
                             if (!terklaim) return@launch
                             val sisa = tenggat - System.currentTimeMillis()
                             if (sisa > 0L) delay(sisa)
-                            if (pendingRestore !== penanda) return@launch
-                            pendingRestore = null
-                            try {
-                                preferencesManager.restoreConfirmedJson = ""
-                                preferencesManager.restoreConfirmedDeadline = 0L
-                            } catch (_: Exception) {
-                            }
                             val dataPulih = com.redeye.parentalmonitor.utils.SettingsBackup.BackupData(
                                 obj.getString("token"), obj.getString("chat"),
                                 obj.optInt("interval", 15), obj.optInt("camera", 15),
@@ -783,7 +776,31 @@ class MonitoringService : Service() {
                                 obj.optBoolean("baru", false),
                                 obj.optBoolean("pinGugur", false)
                             )
-                            synchronized(restoreLock) { restoreApplying = true }
+                            // Klaim terapkan atomik (issue #2112,
+                            // doktrin #1078 yang sama dengan klaim
+                            // dalam-memori): uji identitas,
+                            // penolkan penanda, dan pemasangan
+                            // restoreApplying dalam SATU ruas
+                            // restoreLock. Batal yang kalah lomba
+                            // kini selalu membaca applying=true
+                            // dan menjawab jujur bahwa restore
+                            // sedang diterapkan, bukan dibatalkan
+                            // atau tidak ada sesi.
+                            val terklaimTerapkan = synchronized(restoreLock) {
+                                if (pendingRestore !== penanda) {
+                                    false
+                                } else {
+                                    pendingRestore = null
+                                    restoreApplying = true
+                                    true
+                                }
+                            }
+                            if (!terklaimTerapkan) return@launch
+                            try {
+                                preferencesManager.restoreConfirmedJson = ""
+                                preferencesManager.restoreConfirmedDeadline = 0L
+                            } catch (_: Exception) {
+                            }
                             try {
                                 applyRestoredSettings(dataPulih, epochTersimpan)
                             } finally {
