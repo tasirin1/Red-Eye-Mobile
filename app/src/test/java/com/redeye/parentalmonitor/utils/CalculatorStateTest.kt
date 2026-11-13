@@ -600,4 +600,13 @@ class CalculatorStateTest {
         h.run("123456789012.")
         assertEquals("123456789012.", h.state.currentNumber)
     }
+    @Test
+    fun operatorPressOnEmptyStateIsNoOp() {
+        val h = Harness()
+        h.run("×")
+        assertEquals("", h.state.operator)
+        assertEquals("", h.state.currentNumber)
+        h.run("×", "±", "3", "=")
+        assertEquals("3", h.state.currentNumber)
+    }
 }

@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Tekanan operator pada keadaan kalkulator kosong kini terkunci uji: tidak ada operator menggantung yang meracuni urutan hitung berikutnya (issue #2095).
 - Titik desimal di atas plafon digit kini terkunci uji: titik tetap ditambahkan walau digit sudah penuh (issue #2094).
 - Gerbang rahasia kalkulator kini terkunci terhadap pelonggaran kecocokan: kode dengan digit tambahan di depan atau di belakang tidak membuka Setup (issue #2093).
 - Perilaku digit sesudah hasil berplafon penuh kini terkunci uji: angka baru memulai entri baru, bukan membeku di hasil 12 digit (issue #2092).
