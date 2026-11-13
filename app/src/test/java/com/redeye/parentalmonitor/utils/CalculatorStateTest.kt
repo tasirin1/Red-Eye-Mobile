@@ -470,4 +470,31 @@ class CalculatorStateTest {
         assertFalse(h.state.calculate())
         assertEquals("1234", h.state.currentNumber)
     }
+    @Test
+    fun digitTypedOverZeroReplacesEntry() {
+        val h = Harness()
+        h.run("0", "5")
+        assertEquals("5", h.state.currentNumber)
+    }
+
+    @Test
+    fun digitTypedOverMinusZeroReplacesEntry() {
+        val h = Harness()
+        h.run("5", "+", "±", "0", "5")
+        assertEquals("-5", h.state.currentNumber)
+    }
+
+    @Test
+    fun dotAfterLoneMinusStartsMinusZeroPoint() {
+        val h = Harness()
+        h.run("5", "+", "±", ".", "5")
+        assertEquals("-0.5", h.state.currentNumber)
+    }
+
+    @Test
+    fun digitCapStopsAtTwelveDigits() {
+        val h = Harness()
+        h.run("1234567890123")
+        assertEquals("123456789012", h.state.currentNumber)
+    }
 }
