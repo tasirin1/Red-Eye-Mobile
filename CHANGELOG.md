@@ -1,8 +1,7 @@
 ## [Unreleased]
 
-
 ### Fixed
-## [1.6.697] - 2026-11-13
+
 - Variabel accessPin mati di alur Tes koneksi dihapus: nilainya dihitung dari chat ID mentah dan tidak pernah dipakai, sementara jalur sukses menghitung nilai yang benar dari id efektif hasil verifikasi (issue #2088).
 - Cabang tukar operator kalkulator dari entri minus tunggal kini terkunci uji: operator bertukar dan tanda operand kedua tetap hidup sampai hasil (issue #2087).
 - Plafon 12 digit kalkulator kini terkunci juga untuk entri negatif dan desimal: yang dihitung hanya digit, bukan tanda minus atau titik (issue #2086).
@@ -10,6 +9,8 @@
 - Reset penyimpanan antrean kini menaikkan nomor generasi seperti pengosongan antrean, sehingga gerbang anti catatan hantu di pekerja pengirim mengenali pergantian era buku besar dan menolak catatan dari era sebelum reset (issue #2084).
 - Catatan kedaluwarsa dari prune bacaan yang sudah tertulis selama pemulihan penyimpanan tidak lagi ikut terhapus oleh rollback pemulihan: porsi itu menggambarkan pesan tersimpan yang memang sudah hilang, sejajar dengan pengecualian corrupt (issue #2083).
 - Satu kerusakan antrean yang sama kini tercatat tepat satu kali ke kategori corrupt walau tulis perbaikannya terus gagal: sidik pasangan nilai rusak menahan pencatatan ulang sampai ada tulisan sah atau bacaan sehat (issue #2082).
+
+## [1.6.697] - 2026-11-13
 
 ### Fixed
 
