@@ -74,6 +74,20 @@ class CalculatorStateTest {
     }
 
     @Test
+    fun percentOperatorToggleSignDigitKeepsMinus() {
+        val h = Harness()
+        // Reset entryReplaced di kepala setOperator
+        // (issue #2102): persen memasang flag itu, dan
+        // flag basi yang bertahan melewati operator
+        // akan menghapus entri "-" dari toggleSign
+        // lewat prolog appendNumber, mengubah hasil.
+        h.run("123400", "%", "+", "\u00b1", "3")
+        assertEquals("-3", h.state.currentNumber)
+        h.run("=")
+        assertEquals("1231", h.state.currentNumber)
+    }
+
+    @Test
     fun backspaceAfterPercentOnResultIsNoOp() {
         val h = Harness()
         h.run("123000", "+", "400", "=", "%", "\u232b")
