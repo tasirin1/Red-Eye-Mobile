@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.713] - 2026-11-14
+
 ### Added
 
 - Tombol “Segarkan” sekarang juga ada di laporan /location, /lastcalls, /lastsms, /lastnotify, /track, /screentime, dan /uptime (lanjutan pengurang gulir; di /screentime tombolnya membawa angka jam yang dipilih): menekannya mengambil data terbaru dan menimpa laporan lama di pesan yang sama, jadi tidak perlu menggulir mencari laporan baru.
