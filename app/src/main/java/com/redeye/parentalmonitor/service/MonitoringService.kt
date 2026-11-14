@@ -4027,13 +4027,15 @@ class MonitoringService : Service() {
                     "lastsms" -> lastSmsReportText()
                     "lastnotify" -> lastNotifReportText()
                     "track" -> jejakReportText()
+                    "screentime" -> screenTimeFull(aksi.arg ?: 24)
+                    "uptime" -> uptimeReportText()
                     else -> null
                 }
                 if (teks != null) {
                     // Edit gagal (gerbang edit/gangguan) tidak
                     // boleh diam: jatuh ke pesan baru seperti
                     // cabang Navigate (issue #1937).
-                    val markup = markupSegarkan(aksi.command)
+                    val markup = markupSegarkan(aksi.command, aksi.arg)
                     if (!editTextMessage(targetChat, pesanId, teks, markup)) {
                         sendToTelegram(teks, markup)
                     }
@@ -4405,10 +4407,10 @@ class MonitoringService : Service() {
     // (kemudahan pakai, keputusan pemilik 2026-11-12):
     // tombol Segarkan mengedit pesan yang sama lewat
     // MenuCallback.Refresh; Menu utama tetap satu ketuk.
-    private fun markupSegarkan(command: String): com.redeye.parentalmonitor.network.InlineKeyboardMarkup {
+    private fun markupSegarkan(command: String, arg: Int? = null): com.redeye.parentalmonitor.network.InlineKeyboardMarkup {
         return com.redeye.parentalmonitor.network.InlineKeyboardMarkup(
             listOf(
-                listOf(com.redeye.parentalmonitor.network.InlineButton("\uD83D\uDD04 Segarkan", "segar:" + command)),
+                listOf(com.redeye.parentalmonitor.network.InlineButton("\uD83D\uDD04 Segarkan", if (arg != null) "segar:$command:$arg" else "segar:" + command)),
                 listOf(com.redeye.parentalmonitor.network.InlineButton("\uD83C\uDFE0 Menu utama", "menu:open"))
             )
         )
@@ -5165,7 +5167,8 @@ class MonitoringService : Service() {
                 } else if (raw.isNotEmpty() && (parsed == null || parsed !in 1..24)) {
                     sendToTelegram("Cara pakai: /screentime &lt;1-24&gt; (jam, bawaan 24)")
                 } else {
-                    sendToTelegram(screenTimeFull(parsed ?: 24))
+                    val jam = parsed ?: 24
+                    sendToTelegram(screenTimeFull(jam), markupSegarkan("screentime", jam))
                 }
             }
             "/driving" -> handleKendaraCommand(arg)
@@ -7067,9 +7070,13 @@ class MonitoringService : Service() {
     private suspend fun handleUptimeCommand(privateChat: Boolean) {
         // Penolakan grup (issue #1758), pola #1689.
         if (!privateChat) { sendToTelegram("\uD83D\uDD12 Rincian hanya via private chat dengan bot."); return }
+        sendToTelegram(uptimeReportText(), markupSegarkan("uptime"))
+    }
+
+    private suspend fun uptimeReportText(): String {
         val started = serviceStartAt
         if (started <= 0) {
-            sendToTelegram("\u23F1\uFE0F Uptime: tak tahu.")
+            return "\u23F1\uFE0F Uptime: tak tahu."
         } else {
             val elapsed = android.os.SystemClock.elapsedRealtime() - serviceStartElapsed
             val wall = System.currentTimeMillis() - started
@@ -7078,7 +7085,7 @@ class MonitoringService : Service() {
             // dulu algoritma yang sama diduplikasi kata demi kata
             // di sini, berisiko tertinggal bila fungsi aslinya berubah.
             val span = com.redeye.parentalmonitor.utils.ReportFormat.durationText(millis)
-            sendToTelegram("\u23F1\uFE0F <b>Uptime</b>\nJalan: $span\nSejak: " + formatDate(started))
+            return "\u23F1\uFE0F <b>Uptime</b>\nJalan: $span\nSejak: " + formatDate(started)
         }
     }
 

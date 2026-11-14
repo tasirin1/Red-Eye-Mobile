@@ -10,7 +10,7 @@ sealed class MenuCallback {
     // mengedit pesan yang sama dengan data terbaru, bukan
     // mengirim pesan baru. Hanya laporan baca-saja murah
     // yang boleh disegarkan; daftar di REFRESH_COMMANDS.
-    data class Refresh(val command: String) : MenuCallback()
+    data class Refresh(val command: String, val arg: Int? = null) : MenuCallback()
     // Jepret ulang (permintaan pemilik 2026-11-14): tombol di
     // bawah foto kamera / tangkapan layar yang menjepret ulang
     // lalu MENIMPA media di pesan yang sama (editMessageMedia),
@@ -39,7 +39,7 @@ sealed class MenuCallback {
         // Laporan yang boleh disegarkan di tempat lewat
         // tombol "segar:<perintah>": baca-saja, murah, dan
         // teksnya dibangun ulang penuh tiap penyegaran.
-        val REFRESH_COMMANDS = setOf("status", "battery", "storage", "location", "lastcalls", "lastsms", "lastnotify", "track")
+        val REFRESH_COMMANDS = setOf("status", "battery", "storage", "location", "lastcalls", "lastsms", "lastnotify", "track", "screentime", "uptime")
 
         // Sengaja tidak private (issue #903): uji mengunci tiap
         // nilai peta ini ke kepala perintah yang hidup di
@@ -90,8 +90,16 @@ sealed class MenuCallback {
             if (raw == "menu:angka") return Navigate("main", false)
             if (raw.startsWith("m:")) return Navigate(viewName(raw.removePrefix("m:").trim()), true)
             if (raw.startsWith("segar:")) {
-                val command = perintah(raw.removePrefix("segar:"))
-                return if (command in REFRESH_COMMANDS) Refresh(command) else null
+                val rest = raw.removePrefix("segar:")
+                val pisah = rest.indexOf(':')
+                val command = perintah(if (pisah < 0) rest else rest.substring(0, pisah))
+                if (command !in REFRESH_COMMANDS) return null
+                if (pisah < 0) return Refresh(command)
+                if (command == "screentime") {
+                    val jam = rest.substring(pisah + 1).trim().toIntOrNull()
+                    if (jam != null && jam in 1..24) return Refresh(command, jam)
+                }
+                return null
             }
             if (raw.startsWith("refoto:")) {
                 val mode = raw.removePrefix("refoto:").trim().lowercase(Locale.ROOT)
