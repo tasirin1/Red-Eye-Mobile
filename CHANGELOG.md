@@ -2,7 +2,7 @@
 
 ### Added
 
-- Tombol “Segarkan” sekarang juga ada di laporan /location, /lastcalls, dan /lastsms (lanjutan pengurang gulir): menekannya mengambil data terbaru dan menimpa laporan lama di pesan yang sama, jadi tidak perlu menggulir mencari laporan baru.
+- Tombol “Segarkan” sekarang juga ada di laporan /location, /lastcalls, /lastsms, /lastnotify, dan /track (lanjutan pengurang gulir): menekannya mengambil data terbaru dan menimpa laporan lama di pesan yang sama, jadi tidak perlu menggulir mencari laporan baru.
 
 ## [1.6.712] - 2026-11-14
 

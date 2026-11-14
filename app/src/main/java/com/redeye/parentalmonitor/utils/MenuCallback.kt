@@ -39,7 +39,7 @@ sealed class MenuCallback {
         // Laporan yang boleh disegarkan di tempat lewat
         // tombol "segar:<perintah>": baca-saja, murah, dan
         // teksnya dibangun ulang penuh tiap penyegaran.
-        val REFRESH_COMMANDS = setOf("status", "battery", "storage", "location", "lastcalls", "lastsms")
+        val REFRESH_COMMANDS = setOf("status", "battery", "storage", "location", "lastcalls", "lastsms", "lastnotify", "track")
 
         // Sengaja tidak private (issue #903): uji mengunci tiap
         // nilai peta ini ke kepala perintah yang hidup di

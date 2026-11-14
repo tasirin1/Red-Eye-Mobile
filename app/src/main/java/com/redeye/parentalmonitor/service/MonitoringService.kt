@@ -4025,6 +4025,8 @@ class MonitoringService : Service() {
                     "location" -> locationReportText()
                     "lastcalls" -> lastCallsReportText()
                     "lastsms" -> lastSmsReportText()
+                    "lastnotify" -> lastNotifReportText()
+                    "track" -> jejakReportText()
                     else -> null
                 }
                 if (teks != null) {
@@ -5219,9 +5221,13 @@ class MonitoringService : Service() {
 
     private suspend fun handleJejakCommand(privateChat: Boolean) {
         if (!privateChat) { sendToTelegram("\uD83D\uDD12 Rincian hanya via private chat dengan bot."); return }
+        sendToTelegram(jejakReportText(), markupSegarkan("track"))
+    }
+
+    private suspend fun jejakReportText(): String {
         val trail = trailList()
         if (trail.isEmpty()) {
-            sendToTelegram("👣 Jejak kosong. Lokasi tercatat tiap patroli/perintah lokasi.")
+            return "👣 Jejak kosong. Lokasi tercatat tiap patroli/perintah lokasi."
         } else {
             // Saring titik kasar + tampilkan akurasi (issue #851):
             // jalur ringkasan sudah menyaring >1000 m, /track
@@ -5234,7 +5240,7 @@ class MonitoringService : Service() {
             val coarseCount = trail.size - fine.size
             val shownPool = if (fine.isNotEmpty()) fine else trail
             val last = shownPool.takeLast(10)
-            sendToTelegram(buildString {
+            return buildString {
                 appendLine("👣 <b>Jejak (${trail.size} titik tersimpan, ${last.size} terakhir)</b>")
                 if (coarseCount > 0 && fine.isNotEmpty()) {
                     appendLine("($coarseCount titik kasar >1 km disembunyikan)")
@@ -5244,7 +5250,7 @@ class MonitoringService : Service() {
                     appendLine("${TimeFmt.short(pt.at)} — ${pt.lat},${pt.lon}$accText")
                 }
                 append("https://www.google.com/maps/dir/" + last.joinToString("/") { "${it.first.lat},${it.first.lon}" })
-            })
+            }
         }
     }
 
@@ -7024,22 +7030,24 @@ class MonitoringService : Service() {
 
     private suspend fun handleLastNotifCommand(privateChat: Boolean) {
         if (!privateChat) { sendToTelegram("\uD83D\uDD12 Rincian hanya via private chat dengan bot."); return }
+        sendToTelegram(lastNotifReportText(), markupSegarkan("lastnotify"))
+    }
+
+    private suspend fun lastNotifReportText(): String {
         val items = try {
             NotificationForwarderService.history()
         } catch (_: Exception) {
             emptyList()
         }
         if (items.isEmpty()) {
-            sendToTelegram("\uD83D\uDD14 Belum ada notifikasi tercatat.")
+            return "\uD83D\uDD14 Belum ada notifikasi tercatat."
         } else {
-            sendToTelegram(
-                buildString {
-                    appendLine("\uD83D\uDD14 <b>Notifikasi terakhir</b>")
-                    for (item in items.takeLast(10)) {
-                        appendLine("\u2022 " + formatDate(item.at) + " \u00B7 " + Html.escape(item.app) + ": " + Html.escape(item.title).let { it.take(safeCut(it, 80)) } + " \u2014 " + Html.escape(item.text).let { it.take(safeCut(it, 120)) })
-                    }
+            return buildString {
+                appendLine("\uD83D\uDD14 <b>Notifikasi terakhir</b>")
+                for (item in items.takeLast(10)) {
+                    appendLine("\u2022 " + formatDate(item.at) + " \u00B7 " + Html.escape(item.app) + ": " + Html.escape(item.title).let { it.take(safeCut(it, 80)) } + " \u2014 " + Html.escape(item.text).let { it.take(safeCut(it, 120)) })
                 }
-            )
+            }
         }
     }
 

@@ -44,6 +44,8 @@ class MenuCallbackTest {
         assertEquals(MenuCallback.Refresh("location"), MenuCallback.parse("segar:location"))
         assertEquals(MenuCallback.Refresh("lastcalls"), MenuCallback.parse("segar:lastcalls"))
         assertEquals(MenuCallback.Refresh("lastsms"), MenuCallback.parse("segar:lastsms"))
+        assertEquals(MenuCallback.Refresh("lastnotify"), MenuCallback.parse("segar:lastnotify"))
+        assertEquals(MenuCallback.Refresh("track"), MenuCallback.parse("segar:track"))
         assertNull(MenuCallback.parse("segar:photo"))
         assertNull(MenuCallback.parse("segar:apps"))
         assertNull(MenuCallback.parse("segar:stop"))
