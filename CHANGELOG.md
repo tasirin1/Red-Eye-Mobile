@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.712] - 2026-11-14
+
 ### Added
 
 - Tombol “Jepret ulang” di bawah foto kamera (permintaan pemilik): menekannya menjepret foto baru memakai lensa yang sama dengan foto di atasnya, lalu foto baru itu MENIMPA foto lama di pesan yang sama — tidak ada pesan baru dan tidak perlu menggulir. Bila pesan sudah melewati batas ganti Telegram (48 jam), foto baru terkirim sebagai pesan biasa.
