@@ -11,6 +11,13 @@ sealed class MenuCallback {
     // mengirim pesan baru. Hanya laporan baca-saja murah
     // yang boleh disegarkan; daftar di REFRESH_COMMANDS.
     data class Refresh(val command: String) : MenuCallback()
+    // Jepret ulang (permintaan pemilik 2026-11-14): tombol di
+    // bawah foto kamera / tangkapan layar yang menjepret ulang
+    // lalu MENIMPA media di pesan yang sama (editMessageMedia),
+    // bukan mengirim pesan baru — tak perlu menggulir. mode:
+    // "b" = lensa belakang, "f" = lensa depan, "s" = tangkapan
+    // layar. Mode di luar daftar ditolak parser.
+    data class JepretUlang(val mode: String) : MenuCallback()
     data class AskInput(val command: String, val view: String) : MenuCallback()
     // harapan (issue #902): keadaan yang TERTULIS di label saat
     // tombol dibuat ("1"=NYALA, "0"=MATI). Bila keadaan aktual
@@ -86,6 +93,11 @@ sealed class MenuCallback {
                 val command = perintah(raw.removePrefix("segar:"))
                 return if (command in REFRESH_COMMANDS) Refresh(command) else null
             }
+            if (raw.startsWith("refoto:")) {
+                val mode = raw.removePrefix("refoto:").trim().lowercase(Locale.ROOT)
+                return if (mode == "b" || mode == "f") JepretUlang(mode) else null
+            }
+            if (raw == "reshot") return JepretUlang("s")
             if (raw.startsWith("x:")) {
                 val command = perintah(raw.removePrefix("x:"))
                 return if (command.isEmpty()) null else Run(command)

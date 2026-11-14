@@ -216,6 +216,17 @@ interface TelegramApi {
 
     @Multipart
     @POST
+    suspend fun editMessageMedia(
+        @Url url: String,
+        @Part("chat_id") chatId: RequestBody,
+        @Part("message_id") messageId: RequestBody,
+        @Part("media") media: RequestBody,
+        @Part photo: MultipartBody.Part,
+        @Part("reply_markup") replyMarkup: RequestBody?
+    ): Response<TelegramResponse>
+
+    @Multipart
+    @POST
     suspend fun sendVideo(
         @Url url: String,
         @Part("chat_id") chatId: RequestBody,

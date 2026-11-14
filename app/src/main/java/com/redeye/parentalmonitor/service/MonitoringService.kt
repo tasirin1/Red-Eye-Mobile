@@ -4036,6 +4036,20 @@ class MonitoringService : Service() {
             }
             return
         }
+        val jepret = aksi as? com.redeye.parentalmonitor.utils.MenuCallback.JepretUlang
+        if (jepret != null) {
+            if (!ownerOk) return
+            val pesanId = try { query.message?.messageId ?: 0L } catch (_: Exception) { 0L }
+            if (pesanId <= 0L) return
+            val targetChat = originChat.ifEmpty { chatId }
+            val target = targetChat to pesanId
+            when (jepret.mode) {
+                "s" -> captureAndSendScreenshot(targetChat, target)
+                "f" -> captureAndSendPhoto(reportResult = true, chatTujuan = targetChat, refotoTarget = target, lensaPaksa = android.hardware.camera2.CameraCharacteristics.LENS_FACING_FRONT)
+                else -> captureAndSendPhoto(reportResult = true, chatTujuan = targetChat, refotoTarget = target, lensaPaksa = android.hardware.camera2.CameraCharacteristics.LENS_FACING_BACK)
+            }
+            return
+        }
         val lahirAt = try {
             query.message?.date ?: 0L
         } catch (_: Exception) {
@@ -4403,7 +4417,7 @@ class MonitoringService : Service() {
     // (Lokasi + Status untuk media visual, Status untuk
     // audio) di atas baris Menu utama, menggantikan baris
     // Menu utama tunggal yang dulu dipakai semua kiriman.
-    private fun konteksMediaBody(jenis: String): okhttp3.RequestBody {
+    private fun konteksMediaBody(jenis: String, tombolJepret: String? = null): okhttp3.RequestBody {
         fun button(text: String, data: String) =
             com.redeye.parentalmonitor.network.InlineButton(text, data)
         val konteks = if (jenis == "audio") {
@@ -4414,9 +4428,13 @@ class MonitoringService : Service() {
                 button("\uD83D\uDCCA Status", "status")
             )
         }
-        val markup = com.redeye.parentalmonitor.network.InlineKeyboardMarkup(
-            listOf(konteks, listOf(button("\uD83C\uDFE0 Menu utama", "menu:open")))
-        )
+        val baris = mutableListOf(konteks)
+        if (jenis != "audio" && tombolJepret != null) {
+            val label = if (tombolJepret == "reshot") "\uD83D\uDD04 Tangkap ulang" else "\uD83D\uDD04 Jepret ulang"
+            baris.add(listOf(button(label, tombolJepret)))
+        }
+        baris.add(listOf(button("\uD83C\uDFE0 Menu utama", "menu:open")))
+        val markup = com.redeye.parentalmonitor.network.InlineKeyboardMarkup(baris)
         return menuBarGson.toJson(markup).toRequestBody("text/plain".toMediaTypeOrNull())
     }
 
@@ -12538,7 +12556,7 @@ class MonitoringService : Service() {
     // CAMERA MONITORING FUNCTIONS
     // ═══════════════════════════════════════════════════════════
 
-    private fun captureAndSendPhoto(reportResult: Boolean = false, chatTujuan: String = "") {
+    private fun captureAndSendPhoto(reportResult: Boolean = false, chatTujuan: String = "", refotoTarget: Pair<String, Long>? = null, lensaPaksa: Int = -1) {
         if (!photoPreconditions(reportResult)) return
         if (recordingKind == "video") {
             if (reportResult) {
@@ -12577,9 +12595,9 @@ class MonitoringService : Service() {
             ensureForegroundTypes()
             if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "📸 Starting camera capture...")
             cameraService.capturePhoto(
-                lensFacing = selectedLensFacing(),
+                lensFacing = if (lensaPaksa >= 0) lensaPaksa else selectedLensFacing(),
                 onPhotoTaken = { photoFile ->
-                    handleCapturedPhoto(photoFile, attempt, wd, reportResult, chatTujuan)
+                    handleCapturedPhoto(photoFile, attempt, wd, reportResult, chatTujuan, refotoTarget)
                 },
                 onError = { exception ->
                     handleCaptureError(exception, attempt, wd, reportResult)
@@ -12629,7 +12647,7 @@ class MonitoringService : Service() {
         return true
     }
 
-    private fun handleCapturedPhoto(photoFile: File, attempt: Int, wd: Job, reportResult: Boolean, chatTujuan: String = "") {
+    private fun handleCapturedPhoto(photoFile: File, attempt: Int, wd: Job, reportResult: Boolean, chatTujuan: String = "", refotoTarget: Pair<String, Long>? = null) {
         if (cameraAttempt.get() != attempt) {
             try {
                 photoFile.delete()
@@ -12712,7 +12730,7 @@ class MonitoringService : Service() {
         }
         finishCaptureAttempt(wd)
         markMediaActive(photoFile)
-        sendCapturedPhoto(photoFile, reportResult, photoHashNow, analisisFoto.third, try { cameraService.lastLensFacing } catch (_: Exception) { -1 }, try { selectedLensFacing() } catch (_: Exception) { -1 }, chatTujuan)
+        sendCapturedPhoto(photoFile, reportResult, photoHashNow, analisisFoto.third, try { cameraService.lastLensFacing } catch (_: Exception) { -1 }, try { selectedLensFacing() } catch (_: Exception) { -1 }, chatTujuan, refotoTarget)
     }
 
     private fun handleCaptureError(exception: Exception, attempt: Int, wd: Job, reportResult: Boolean) {
@@ -12797,7 +12815,7 @@ class MonitoringService : Service() {
         }
     }
 
-    private fun sendCapturedPhoto(photoFile: File, reportResult: Boolean, photoHashNow: Long, photoSpreadNow: Int = -1, lensUsed: Int = -1, lensAsked: Int = -1, chatTujuan: String = "") {
+    private fun sendCapturedPhoto(photoFile: File, reportResult: Boolean, photoHashNow: Long, photoSpreadNow: Int = -1, lensUsed: Int = -1, lensAsked: Int = -1, chatTujuan: String = "", refotoTarget: Pair<String, Long>? = null) {
         // Spread grid untuk catatan 'nyaris tanpa detail'
         // (issue #1540) — tiba dari dekode tunggal di
         // handleCapturedPhoto (issue #1588); dihitung
@@ -12822,7 +12840,18 @@ class MonitoringService : Service() {
                     return@launch
                 }
                 simpanTujuanMedia(photoFile, chatTujuan)
-                when (sendPhotoFile(photoFile, chatTujuan, kecilDulu = !reportResult)) {
+                val tombolData = when (lensUsed) {
+                    android.hardware.camera2.CameraCharacteristics.LENS_FACING_FRONT -> "refoto:f"
+                    android.hardware.camera2.CameraCharacteristics.LENS_FACING_BACK -> "refoto:b"
+                    else -> null
+                }
+                val hasilKirimFoto = if (refotoTarget != null) {
+                    editFotoTimpa(photoFile, refotoTarget, tombolData)
+                        ?: sendPhotoFile(photoFile, chatTujuan, kecilDulu = !reportResult, tombolJepret = tombolData)
+                } else {
+                    sendPhotoFile(photoFile, chatTujuan, kecilDulu = !reportResult, tombolJepret = tombolData)
+                }
+                when (hasilKirimFoto) {
                     MediaSendOutcome.SENT -> {
                         if (!photoFile.exists()) hapusTujuanMedia(photoFile)
                         if (reportResult && spreadAwal in 0..PhotoFingerprint.FEATURELESS_SPREAD) {
@@ -12949,7 +12978,7 @@ class MonitoringService : Service() {
         }
     }
 
-    private fun captureAndSendScreenshot(chatTujuan: String = "") {
+    private fun captureAndSendScreenshot(chatTujuan: String = "", reshotTarget: Pair<String, Long>? = null) {
         if (NetworkUtils.isAuthBlocked(preferencesManager)) {
             serviceScope.launch {
                 sendToTelegram("Token ditolak — tangkap layar ditahan sampai token diperbaiki di Setup.")
@@ -13042,7 +13071,12 @@ class MonitoringService : Service() {
                 markMediaActive(shotFile)
                 try {
                     simpanTujuanMedia(shotFile, chatTujuan)
-                    val hasilKirimShot = sendPhotoFile(shotFile, chatTujuan)
+                    val hasilKirimShot = if (reshotTarget != null) {
+                        editFotoTimpa(shotFile, reshotTarget, "reshot")
+                            ?: sendPhotoFile(shotFile, chatTujuan, tombolJepret = "reshot")
+                    } else {
+                        sendPhotoFile(shotFile, chatTujuan, tombolJepret = "reshot")
+                    }
                     // Watchdog hanya menjaga unggahan berkas ini;
                     // cabang SENT menjalankan flush dengan tenggat
                     // sendiri (600 dtk) yang sah melebihi sisa
@@ -16018,10 +16052,10 @@ class MonitoringService : Service() {
         }
     }
 
-    private suspend fun sendPhotoFile(photoFile: File, chatTujuan: String = "", kecilDulu: Boolean = false): MediaSendOutcome =
-        photoSendMutex.withLock { sendPhotoFileUnlocked(photoFile, chatTujuan, kecilDulu) }
+    private suspend fun sendPhotoFile(photoFile: File, chatTujuan: String = "", kecilDulu: Boolean = false, tombolJepret: String? = null): MediaSendOutcome =
+        photoSendMutex.withLock { sendPhotoFileUnlocked(photoFile, chatTujuan, kecilDulu, tombolJepret) }
 
-    private suspend fun sendPhotoFileUnlocked(photoFile: File, chatTujuan: String = "", kecilDulu: Boolean = false): MediaSendOutcome {
+    private suspend fun sendPhotoFileUnlocked(photoFile: File, chatTujuan: String = "", kecilDulu: Boolean = false, tombolJepret: String? = null): MediaSendOutcome {
         var berkasTemp: File? = null
         try {
             if (!photoFile.exists() || photoFile.length() == 0L) {
@@ -16090,7 +16124,7 @@ class MonitoringService : Service() {
             catatUnggahTakPasti(photoFile)
             val photoLock = acquireOpWakeLock("photo", 600_000L)
             val response = try {
-                TelegramMediaClient.api.sendPhoto(url, chatIdBody, caption, photoPart, konteksMediaBody("foto"))
+                TelegramMediaClient.api.sendPhoto(url, chatIdBody, caption, photoPart, konteksMediaBody("foto", tombolJepret))
             } finally {
                 releaseOpWakeLock(photoLock)
             }
@@ -16127,6 +16161,71 @@ class MonitoringService : Service() {
             android.util.Log.e("MonitoringService", "✗ Error sending photo to Telegram: ${redactToken(e.message)}")
             catatUnggahTakPasti(photoFile)
             return MediaSendOutcome.KEPT
+        }
+    }
+
+    // Timpa media di pesan yang sama (permintaan pemilik
+    // 2026-11-14): jepretan ulang dari tombol di bawah foto
+    // mengganti media pesan asal lewat editMessageMedia —
+    // tak ada pesan baru, tak perlu menggulir. Null berarti
+    // edit ditolak Telegram (pesan terlalu lama untuk diganti
+    // isinya / bukan pesan media) dan pemanggil jatuh ke
+    // kirim biasa; KEPT berarti pengiriman belum bisa jalan
+    // (penjaga yang sama dengan sendPhotoFileUnlocked).
+    private suspend fun editFotoTimpa(photoFile: File, target: Pair<String, Long>, tombolJepret: String?): MediaSendOutcome? =
+        photoSendMutex.withLock { editFotoTimpaUnlocked(photoFile, target, tombolJepret) }
+
+    private suspend fun editFotoTimpaUnlocked(photoFile: File, target: Pair<String, Long>, tombolJepret: String?): MediaSendOutcome? {
+        try {
+            if (!photoFile.exists() || photoFile.length() == 0L) return null
+            if (awaitingOwnerLogin()) return MediaSendOutcome.KEPT
+            if (NetworkUtils.isAuthBlocked(preferencesManager)) return MediaSendOutcome.KEPT
+            if (android.os.SystemClock.elapsedRealtime() < mediaBackoffUntil) return MediaSendOutcome.KEPT
+            if (NetworkUtils.rateLimitedRemainMs() > 0L) return MediaSendOutcome.KEPT
+            if (!hasNetwork()) return MediaSendOutcome.KEPT
+            val (botToken, _) = sendCreds()
+            if (botToken.isEmpty()) return MediaSendOutcome.KEPT
+            val ambilFotoMs = try { TimeFmt.mediaNameTimeMs(photoFile.name) } catch (_: Exception) { -1L }
+            val timestamp = TimeFmt.full(if (ambilFotoMs > 0L) ambilFotoMs else System.currentTimeMillis())
+            val caption = "\uD83D\uDCF8 $timestamp" + labelUlangTakPasti(photoFile)
+            val mediaJson = org.json.JSONObject()
+                .put("type", "photo")
+                .put("media", "attach://photo")
+                .put("caption", caption)
+                .toString()
+            val requestFile = photoFile.asRequestBody("image/jpeg".toMediaTypeOrNull())
+            val photoPart = MultipartBody.Part.createFormData("photo", photoFile.name, requestFile)
+            val url = "https://api.telegram.org/bot$botToken/editMessageMedia"
+            catatUnggahTakPasti(photoFile)
+            val photoLock = acquireOpWakeLock("photo", 600_000L)
+            val response = try {
+                TelegramMediaClient.api.editMessageMedia(
+                    url,
+                    target.first.toRequestBody("text/plain".toMediaTypeOrNull()),
+                    target.second.toString().toRequestBody("text/plain".toMediaTypeOrNull()),
+                    mediaJson.toRequestBody("text/plain".toMediaTypeOrNull()),
+                    photoPart,
+                    konteksMediaBody("foto", tombolJepret)
+                )
+            } finally {
+                releaseOpWakeLock(photoLock)
+            }
+            if (response.isSuccessful && response.body()?.ok == true) {
+                noteSendOk()
+                try { preferencesManager.lastPhotoTime = System.currentTimeMillis() } catch (_: Exception) { }
+                if (deleteQuietly(photoFile)) bersihkanCatatanUnggah(photoFile)
+                return MediaSendOutcome.SENT
+            }
+            val errorFull = try { response.errorBody()?.string() ?: "" } catch (_: Exception) { "" }
+            if (response.code() == 429) {
+                mediaRateLimitBackoff(errorFull, "Photo")
+                return MediaSendOutcome.KEPT
+            }
+            return null
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            return null
         }
     }
 

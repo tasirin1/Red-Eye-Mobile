@@ -126,4 +126,20 @@ class MenuCallbackTest {
         }
         assertNull(MenuCallback.toggleCommand("takada", true))
     }
+
+    @Test
+    fun jepretUlangFotoDanLayar() {
+        assertEquals(MenuCallback.JepretUlang("b"), MenuCallback.parse("refoto:b"))
+        assertEquals(MenuCallback.JepretUlang("f"), MenuCallback.parse("refoto:f"))
+        assertEquals(MenuCallback.JepretUlang("f"), MenuCallback.parse("refoto:F"))
+        assertEquals(MenuCallback.JepretUlang("s"), MenuCallback.parse("reshot"))
+    }
+
+    @Test
+    fun jepretUlangModeLiarDitolak() {
+        assertNull(MenuCallback.parse("refoto:"))
+        assertNull(MenuCallback.parse("refoto:x"))
+        assertNull(MenuCallback.parse("refoto:s"))
+        assertNull(MenuCallback.parse("reshotx"))
+    }
 }
